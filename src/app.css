@@ -190,3 +190,380 @@
   font-size: 13px;
   color: var(--danger);
 }
+
+.logout-btn {
+  margin-left: 4px;
+}
+
+/* --- Auth pages --- */
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 14px 0 6px;
+}
+
+.auth-submit {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text);
+  font-size: 12px;
+  margin: 20px 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+.auth-divider span {
+  padding: 0 10px;
+}
+
+.google-signin-slot {
+  display: flex;
+  justify-content: center;
+}
+
+/* --- Soft email verification banner --- */
+
+.verify-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-top: 16px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+}
+.verify-banner .error {
+  margin-top: 0;
+}
+
+/* --- Event list (dashboard) --- */
+
+.event-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.event-list-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.event-list-item a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text-h);
+}
+.event-list-item a:hover {
+  border-color: var(--accent-border);
+}
+.event-list-item .count {
+  font-size: 13px;
+  color: var(--text);
+}
+.event-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card-bg);
+}
+.guest-link-text {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copy-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* --- Guest link card (event detail) --- */
+
+.guest-link-card {
+  margin: 16px 0;
+}
+.guest-link-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 10px;
+}
+
+/* --- Guest search page --- */
+
+.guest-shell {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+}
+
+.guest-hero {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.guest-brand {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.guest-tagline {
+  margin: 10px 0 8px;
+  font-size: 28px;
+}
+
+.match-summary {
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.match-summary .hint {
+  margin: 0;
+}
+
+.guest-logo {
+  max-height: 56px;
+  max-width: 220px;
+  object-fit: contain;
+}
+.guest-studio-name {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+.guest-powered-by {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.selfie-preview-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.selfie-preview-thumb {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.feedback-note {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.match-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.match-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dismiss-btn {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+  text-decoration: underline;
+  opacity: 0.7;
+}
+.dismiss-btn:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+.share-btn {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.share-btn:hover {
+  text-decoration: underline;
+}
+.share-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Analytics (event detail) --- */
+
+.analytics-card {
+  margin: 16px 0;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 14px;
+}
+.stat-tile {
+  text-align: center;
+  padding: 10px;
+}
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+/* --- Upload progress (event detail) --- */
+
+.upload-progress-card {
+  margin-top: 16px;
+}
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+  margin: 10px 0;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* --- Guest card generator (event detail) --- */
+
+.guest-card-section {
+  margin: 16px 0;
+}
+.guest-card-panel {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.guest-card-canvas {
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* --- Role badge (dashboard) --- */
+
+.role-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+}
+
+/* --- Team / collaborators (event detail) --- */
+
+.team-card {
+  margin: 16px 0;
+}
+.team-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.team-list-item-pending {
+  border-style: dashed;
+}
+
+/* --- Invite acceptance page --- */
+
+.invite-card {
+  max-width: 480px;
+  margin: 20px auto;
+}
+
+/* --- Branding settings page --- */
+
+.branding-form {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+}
+.logo-row {
+  align-items: center;
+}
+.logo-preview {
+  max-height: 60px;
+  max-width: 140px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
