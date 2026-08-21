@@ -438,6 +438,16 @@
   cursor: not-allowed;
 }
 
+/* --- Billing --- */
+
+.billing-card {
+  margin: 16px 0;
+}
+.billing-limits {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
 /* --- Analytics (event detail) --- */
 
 .analytics-card {

@@ -211,6 +211,11 @@ export default function EventDetail() {
               {copied ? 'Copied!' : 'Copy link'}
             </button>
           </div>
+          <p className="hint">
+            Guest access {new Date(event.expires_at) < new Date() ? 'closed' : 'closes'} on {new Date(event.expires_at).toLocaleDateString()}
+            {' · '}
+            {(event.storage_used_bytes / 1e9).toFixed(2)}GB / {(event.storage_limit_bytes / 1e9).toFixed(0)}GB storage used
+          </p>
         </div>
       )}
 

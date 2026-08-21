@@ -6,6 +6,8 @@ import GuestEvent from './pages/GuestEvent.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Branding from './pages/Branding.jsx'
+import Billing from './pages/Billing.jsx'
+import Admin from './pages/Admin.jsx'
 import InviteAccept from './pages/InviteAccept.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
@@ -57,6 +59,8 @@ function DashboardShell({ children }) {
         <nav>
           <NavLink to="/" end>Events</NavLink>
           {user && <NavLink to="/branding">Branding</NavLink>}
+          {user && <NavLink to="/billing">Billing</NavLink>}
+          {user?.is_admin && <NavLink to="/admin">Admin</NavLink>}
           {user && (
             <button className="btn secondary logout-btn" type="button" onClick={logout}>
               Log out
@@ -151,6 +155,26 @@ function App() {
           <DashboardShell>
             <ProtectedRoute>
               <Branding />
+            </ProtectedRoute>
+          </DashboardShell>
+        }
+      />
+      <Route
+        path="/billing"
+        element={
+          <DashboardShell>
+            <ProtectedRoute>
+              <Billing />
+            </ProtectedRoute>
+          </DashboardShell>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <DashboardShell>
+            <ProtectedRoute>
+              <Admin />
             </ProtectedRoute>
           </DashboardShell>
         }

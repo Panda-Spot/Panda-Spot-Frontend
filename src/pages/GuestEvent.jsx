@@ -36,6 +36,36 @@ export default function GuestEvent() {
     }
   }, [])
 
+  // Swap the page's manifest to one scoped to this event so a guest who
+  // installs from this specific event's page gets an icon that reopens
+  // straight into this event, not the photographer dashboard.
+  useEffect(() => {
+    if (!event) return
+    const manifest = {
+      name: event.studio_name ? `${event.studio_name} — PandaSpot` : 'PandaSpot',
+      short_name: event.name?.slice(0, 12) || 'PandaSpot',
+      description: `Spot yourself at ${event.name}`,
+      start_url: `/e/${slug}`,
+      scope: '/e/',
+      display: 'standalone',
+      background_color: '#ffffff',
+      theme_color: event.brand_color || '#aa3bff',
+      icons: [
+        { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+      ],
+    }
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.getElementById('app-manifest')
+    const previousHref = link?.getAttribute('href')
+    if (link) link.setAttribute('href', url)
+
+    return () => {
+      URL.revokeObjectURL(url)
+      if (link && previousHref) link.setAttribute('href', previousHref)
+    }
+  }, [event, slug])
+
   const handleSelfies = (e) => {
     const files = Array.from(e.target.files || [])
     const capped = files.slice(0, MAX_SELFIES)
@@ -140,23 +170,29 @@ export default function GuestEvent() {
         {event?.logo_url && <p className="guest-powered-by">Powered by PandaSpot</p>}
       </div>
 
-      <form className="card" onSubmit={handleSearch}>
-        <p className="subtle">Upload up to {MAX_SELFIES} selfies — we'll find every photo you're in.</p>
-        <div className="file-drop">
-          <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleSelfies} />
-          {selfieHint && <p className="hint">{selfieHint}</p>}
-          {previews.length > 0 && (
-            <div className="selfie-preview-row">
-              {previews.map((src, i) => (
-                <img key={i} src={src} alt={`Selfie preview ${i + 1}`} className="selfie-preview-thumb" />
-              ))}
-            </div>
-          )}
+      {event?.expired ? (
+        <div className="card">
+          <p className="subtle">This event's search window has closed. Contact the photographer if you still need help finding your photos.</p>
         </div>
-        <button className="btn" type="submit" disabled={searching || selfies.length === 0 || !event} style={{ marginTop: 16 }}>
-          {searching ? 'Searching…' : 'Find My Photos'}
-        </button>
-      </form>
+      ) : (
+        <form className="card" onSubmit={handleSearch}>
+          <p className="subtle">Upload up to {MAX_SELFIES} selfies — we'll find every photo you're in.</p>
+          <div className="file-drop">
+            <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleSelfies} />
+            {selfieHint && <p className="hint">{selfieHint}</p>}
+            {previews.length > 0 && (
+              <div className="selfie-preview-row">
+                {previews.map((src, i) => (
+                  <img key={i} src={src} alt={`Selfie preview ${i + 1}`} className="selfie-preview-thumb" />
+                ))}
+              </div>
+            )}
+          </div>
+          <button className="btn" type="submit" disabled={searching || selfies.length === 0 || !event} style={{ marginTop: 16 }}>
+            {searching ? 'Searching…' : 'Find My Photos'}
+          </button>
+        </form>
+      )}
 
       {error && <p className="error">{error}</p>}
       {feedbackNote && <p className="hint feedback-note">{feedbackNote}</p>}

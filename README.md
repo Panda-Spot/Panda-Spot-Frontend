@@ -37,13 +37,18 @@ unrelated to any other Studio-Verse app.
   analytics panel (searches, unique guests, match rate, feedback count), a
   "Generate guest card" section that composes a printable QR-code card (event
   name, studio branding, guest link) as a downloadable PNG, and the shareable
-  guest link. Owners additionally see a **Team** card here to invite a
-  second shooter/assistant by email — the invitee gets their own login,
-  scoped to just that one event (they never see the owner's other events or
-  credentials). Collaborators don't see this card at all. Each photo in the
-  grid has a Delete action (with a confirmation prompt); owners also see a
-  **Danger zone** card to permanently delete the whole event, every photo,
-  and its guest link.
+  guest link alongside a line showing when guest access closes/closed
+  (`expires_at`) and current storage usage vs. the 10GB free-plan cap
+  (`storage_used_bytes` / `storage_limit_bytes`). Owners additionally see a
+  **Team** card here to invite a second shooter/assistant by email — the
+  invitee gets their own login, scoped to just that one event (they never see
+  the owner's other events or credentials). Collaborators don't see this card
+  at all. Each photo in the grid has a Delete action (with a confirmation
+  prompt); owners also see a **Danger zone** card to permanently delete the
+  whole event, every photo, and its guest link. Free-tier limits (15 events
+  per account, the 15th create attempt gets a 403; 10GB storage per event,
+  files past the cap show up in the upload result's skipped list) surface
+  through the existing error/skipped-list displays with no special UI.
 - **Invite acceptance** (`/invites/:token`) — the link an invited assistant
   opens. Shown to anonymous visitors too (it's not behind login); prompts
   them to log in or create an account (carrying the invite forward via a
@@ -52,6 +57,15 @@ unrelated to any other Studio-Verse app.
 - **Branding** (`/branding`) — studio-wide settings: studio name, brand
   color, and logo. These flow through to guest event pages and generated
   guest cards.
+- **Billing** (`/billing`) — "coming soon" placeholder for paid plans; shows
+  the free plan's limits (15 events, 10GB/event storage) and the account's
+  current event count against that limit.
+- **Admin** (`/admin`) — platform-wide overview (total users, events, photos,
+  storage, searches, and a recent-events list) for platform operators only.
+  The nav link only renders when the logged-in user's `is_admin` flag is
+  true; the real authorization is server-side (`GET /admin/overview` 403s for
+  non-admins) — the client-side check is just a UI nicety to hide the link
+  from everyone else.
 
 **Guest (public, no account)**
 
@@ -65,7 +79,20 @@ unrelated to any other Studio-Verse app.
   plus a link back to this guest page) and either opens the device's native
   share sheet (`navigator.share`, on browsers that support sharing files) or
   falls back to downloading the watermarked PNG — the viral loop: whoever
-  receives a shared photo can click through and search for their own.
+  receives a shared photo can click through and search for their own. Once an
+  event's `expired` flag comes back true, the selfie-search form is replaced
+  with a message telling the guest the search window has closed (the hero
+  branding above it still renders either way); this also prevents the guest
+  from ever hitting the 410 the search/feedback/download endpoints return
+  for an expired event.
+
+  This page is also an installable PWA: it dynamically swaps the page's
+  `<link id="app-manifest">` to a per-event Blob-URL manifest (name/short
+  name derived from the studio and event name, `start_url` pointing at this
+  event's `/e/:slug`, and the event's own brand color as `theme_color`) so a
+  guest who installs from a specific event's page gets a home-screen icon
+  that reopens straight into that event — the original manifest href is
+  restored on unmount.
 
 ## Setup
 
@@ -93,6 +120,13 @@ error) until it's configured.
 
 ## Notes
 
+- **PWA setup**: `index.html` links a baseline `public/manifest.json` (app
+  name, `/icon.svg`, brand-purple theme color) via `<link id="app-manifest">`
+  and `src/main.jsx` registers `public/sw.js` (a minimal service worker — no
+  real caching strategy, just enough to satisfy installability) on window
+  load. `GuestEvent.jsx` overrides that shared manifest's href with a
+  per-event Blob URL while mounted (see above) so installs from an event page
+  point back at that event specifically.
 - No brand assets (logo, final color palette) exist yet — the UI uses a
   placeholder purple accent scheme defined as CSS custom properties in
   `src/index.css`.

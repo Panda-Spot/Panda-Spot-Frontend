@@ -128,6 +128,10 @@ export const saveBranding = (studioName, brandColor, logoFile) => {
 
 export const getEventAnalytics = (eventId) => request(`/events/${eventId}/analytics`)
 
+// --- Platform admin (authenticated, server-side admin allowlist only) ---
+
+export const getAdminOverview = () => request("/admin/overview")
+
 // --- Guest (public, no auth) ---
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)
