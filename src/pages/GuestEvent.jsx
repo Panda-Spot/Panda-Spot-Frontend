@@ -177,7 +177,7 @@ export default function GuestEvent() {
           <div className="match-grid">
             {result.matches.map((m) => (
               <div className="photo-card match-card" key={m.photo_id}>
-                <img src={fileUrl(m.url)} alt={m.filename} />
+                <img src={fileUrl(m.thumbnail_url || m.url)} alt={m.filename} />
                 <div className="meta">
                   <span>Match</span>
                   <span>{Math.round(m.similarity * 100)}%</span>

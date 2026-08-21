@@ -320,7 +320,7 @@ export default function EventDetail() {
         <div className="photo-grid">
           {photos.map((p) => (
             <div className="photo-card" key={p.photo_id}>
-              <img src={fileUrl(p.url)} alt={p.filename} />
+              <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">
                 <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
               </div>
