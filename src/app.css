@@ -567,3 +567,16 @@
   border-radius: 8px;
   padding: 4px;
 }
+
+/* --- Danger zone (event detail) --- */
+
+.danger-zone {
+  margin-top: 24px;
+  border-color: var(--danger);
+}
+.danger-btn {
+  background: var(--danger);
+}
+.danger-btn:disabled {
+  opacity: 0.5;
+}

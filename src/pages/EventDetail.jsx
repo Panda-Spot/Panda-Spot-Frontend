@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   cancelInvite,
+  deleteEvent,
+  deletePhoto,
   fileUrl,
   getEvent,
   getEventAnalytics,
@@ -28,6 +30,7 @@ function formatEta(seconds) {
 
 export default function EventDetail() {
   const { eventId } = useParams()
+  const navigate = useNavigate()
   const [event, setEvent] = useState(null)
   const [photos, setPhotos] = useState([])
   const [analytics, setAnalytics] = useState(null)
@@ -43,6 +46,8 @@ export default function EventDetail() {
   const [inviting, setInviting] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
   const [teamError, setTeamError] = useState('')
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null)
+  const [deletingEvent, setDeletingEvent] = useState(false)
   const fileInput = useRef(null)
   const cleanupRef = useRef(null)
 
@@ -158,6 +163,34 @@ export default function EventDetail() {
       loadTeam()
     } catch (e) {
       setTeamError(e.message)
+    }
+  }
+
+  const handleDeletePhoto = async (photoId, filename) => {
+    if (!window.confirm(`Delete "${filename}"? This can't be undone.`)) return
+    setDeletingPhotoId(photoId)
+    setError('')
+    try {
+      await deletePhoto(eventId, photoId)
+      setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDeletingPhotoId(null)
+    }
+  }
+
+  const handleDeleteEvent = async () => {
+    if (!event) return
+    if (!window.confirm(`Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`)) return
+    setDeletingEvent(true)
+    setError('')
+    try {
+      await deleteEvent(eventId)
+      navigate('/')
+    } catch (e) {
+      setError(e.message)
+      setDeletingEvent(false)
     }
   }
 
@@ -323,9 +356,27 @@ export default function EventDetail() {
               <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">
                 <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                <button
+                  className="dismiss-btn"
+                  type="button"
+                  onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
+                  disabled={deletingPhotoId === p.photo_id}
+                >
+                  {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
+                </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {event?.role === 'owner' && (
+        <div className="card danger-zone">
+          <div className="guest-link-label">Danger zone</div>
+          <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event.</p>
+          <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
+            {deletingEvent ? 'Deleting…' : 'Delete event'}
+          </button>
         </div>
       )}
     </div>

@@ -40,7 +40,10 @@ unrelated to any other Studio-Verse app.
   guest link. Owners additionally see a **Team** card here to invite a
   second shooter/assistant by email — the invitee gets their own login,
   scoped to just that one event (they never see the owner's other events or
-  credentials). Collaborators don't see this card at all.
+  credentials). Collaborators don't see this card at all. Each photo in the
+  grid has a Delete action (with a confirmation prompt); owners also see a
+  **Danger zone** card to permanently delete the whole event, every photo,
+  and its guest link.
 - **Invite acceptance** (`/invites/:token`) — the link an invited assistant
   opens. Shown to anonymous visitors too (it's not behind login); prompts
   them to log in or create an account (carrying the invite forward via a

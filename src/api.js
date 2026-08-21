@@ -83,6 +83,12 @@ export const getEvent = (eventId) => request(`/events/${eventId}`)
 
 export const listPhotos = (eventId) => request(`/events/${eventId}/photos`)
 
+export const deletePhoto = (eventId, photoId) =>
+  request(`/events/${eventId}/photos/${photoId}`, { method: "DELETE" })
+
+export const deleteEvent = (eventId) =>
+  request(`/events/${eventId}`, { method: "DELETE" })
+
 // Starts an async upload job — responds immediately with { job_id }.
 // Subscribe to subscribeToUploadProgress() for progress and the final result.
 export const startPhotoUpload = (eventId, files) => {
