@@ -1,9 +1,16 @@
+import { getToken, setToken, clearToken } from "./authToken.js"
+
 const BASE_URL = import.meta.env.VITE_API_URL || "https://git-pipeline.metatronhost.in/panda-spot"
 
 async function request(path, options) {
+  const token = getToken()
+  const headers = { ...(options?.headers || {}) }
+  if (token) headers.Authorization = `Bearer ${token}`
+
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: "include",
     ...options,
+    headers,
   })
   if (!res.ok) {
     let message = `Request failed (${res.status})`
@@ -23,21 +30,30 @@ export const fileUrl = (path) => `${BASE_URL}${path}`
 
 // --- Auth ---
 
-export const register = (email, password, name) =>
-  request("/auth/register", {
+export const register = async (email, password, name) => {
+  const data = await request("/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, name }),
   })
+  setToken(data.token)
+  return data
+}
 
-export const login = (email, password) =>
-  request("/auth/login", {
+export const login = async (email, password) => {
+  const data = await request("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   })
+  setToken(data.token)
+  return data
+}
 
-export const logout = () => request("/auth/logout", { method: "POST" })
+export const logout = () => {
+  clearToken()
+  return request("/auth/logout", { method: "POST" }).catch(() => null)
+}
 
 export const getMe = () => request("/auth/me")
 
@@ -61,12 +77,15 @@ export const confirmPasswordReset = (token, password) =>
     body: JSON.stringify({ password }),
   })
 
-export const loginWithGoogle = (idToken) =>
-  request("/auth/google", {
+export const loginWithGoogle = async (idToken) => {
+  const data = await request("/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id_token: idToken }),
   })
+  setToken(data.token)
+  return data
+}
 
 // --- Events (photographer, authenticated) ---
 
@@ -100,7 +119,10 @@ export const startPhotoUpload = (eventId, files) => {
 // Subscribes to live upload progress via Server-Sent Events. Returns a
 // cleanup function the caller can invoke to unsubscribe/close the connection.
 export const subscribeToUploadProgress = (eventId, jobId, { onProgress, onDone, onError }) => {
-  const url = `${BASE_URL}/events/${eventId}/uploads/${jobId}/stream`
+  // EventSource can't set an Authorization header, so the token goes as a
+  // query param here specifically — see middleware/auth.js's extractToken.
+  const token = getToken()
+  const url = `${BASE_URL}/events/${eventId}/uploads/${jobId}/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`
   const source = new EventSource(url, { withCredentials: true })
   source.onmessage = (e) => {
     const data = JSON.parse(e.data)

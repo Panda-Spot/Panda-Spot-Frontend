@@ -63,8 +63,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="section-title">Your events</h1>
-      <p className="subtle">Create an event, then bulk-upload the photos so guests can find themselves by selfie.</p>
+      <div className="hero-banner">
+        <h1>Your events</h1>
+        <p>Create an event, then bulk-upload the photos so guests can find themselves by selfie.</p>
+      </div>
 
       <form className="card row" onSubmit={handleCreate}>
         <input

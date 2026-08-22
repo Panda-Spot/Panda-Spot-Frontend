@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
 import { getAdminOverview } from '../api.js'
+import StatTile from '../components/StatTile.jsx'
+import TrendChart from '../components/TrendChart.jsx'
 
 export default function Admin() {
   const [data, setData] = useState(null)
@@ -17,27 +20,22 @@ export default function Admin() {
       <h1 className="section-title">Platform overview</h1>
       <div className="card analytics-card">
         <div className="stat-grid">
-          <div className="stat-tile">
-            <div className="stat-value">{data.total_users}</div>
-            <div className="stat-label">users</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-value">{data.total_events}</div>
-            <div className="stat-label">events</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-value">{data.total_photos}</div>
-            <div className="stat-label">photos</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-value">{(data.total_storage_bytes / 1e9).toFixed(1)}GB</div>
-            <div className="stat-label">storage used</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-value">{data.total_searches}</div>
-            <div className="stat-label">searches</div>
-          </div>
+          <StatTile icon={Users} value={data.total_users} label="users" />
+          <StatTile icon={Calendar} value={data.total_events} label="events" />
+          <StatTile icon={Image} value={data.total_photos} label="photos" />
+          <StatTile icon={HardDrive} value={`${(data.total_storage_bytes / 1e9).toFixed(1)}GB`} label="storage used" />
+          <StatTile icon={Search} value={data.total_searches} label="searches" />
         </div>
+      </div>
+
+      <div className="card analytics-card">
+        <div className="guest-link-label">Signups (last 30 days)</div>
+        <TrendChart series={[{ key: 'daily_signups', name: 'Signups', data: data.daily_signups }]} />
+      </div>
+
+      <div className="card analytics-card">
+        <div className="guest-link-label">Events created (last 30 days)</div>
+        <TrendChart series={[{ key: 'daily_events', name: 'Events created', data: data.daily_events }]} />
       </div>
 
       <h2 className="section-title">Recent events</h2>

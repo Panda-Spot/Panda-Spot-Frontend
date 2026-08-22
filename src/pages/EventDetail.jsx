@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Search, Users, Target, Flag } from 'lucide-react'
 import {
   cancelInvite,
   deleteEvent,
@@ -15,6 +16,10 @@ import {
   subscribeToUploadProgress,
 } from '../api.js'
 import GuestCard from '../GuestCard.jsx'
+import Modal from '../components/Modal.jsx'
+import Dropzone from '../components/Dropzone.jsx'
+import StatTile from '../components/StatTile.jsx'
+import TrendChart from '../components/TrendChart.jsx'
 
 function guestLink(slug) {
   return `${window.location.origin}/e/${slug}`
@@ -48,7 +53,7 @@ export default function EventDetail() {
   const [teamError, setTeamError] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [deletingEvent, setDeletingEvent] = useState(false)
-  const fileInput = useRef(null)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const cleanupRef = useRef(null)
 
   const loadTeam = useCallback(() => {
@@ -82,9 +87,8 @@ export default function EventDetail() {
     }
   }, [])
 
-  const handleFiles = async (e) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return
     setUploading(true)
     setError('')
     setLastResult(null)
@@ -108,8 +112,6 @@ export default function EventDetail() {
     } catch (e) {
       setError(e.message)
       setUploading(false)
-    } finally {
-      if (fileInput.current) fileInput.current.value = ''
     }
   }
 
@@ -213,9 +215,18 @@ export default function EventDetail() {
           </div>
           <p className="hint">
             Guest access {new Date(event.expires_at) < new Date() ? 'closed' : 'closes'} on {new Date(event.expires_at).toLocaleDateString()}
-            {' · '}
-            {(event.storage_used_bytes / 1e9).toFixed(2)}GB / {(event.storage_limit_bytes / 1e9).toFixed(0)}GB storage used
           </p>
+          <div className="storage-usage">
+            <div className="progress-bar">
+              <div
+                className="progress-bar-fill"
+                style={{ width: `${Math.min(100, Math.round((event.storage_used_bytes / event.storage_limit_bytes) * 100))}%` }}
+              />
+            </div>
+            <p className="hint">
+              {(event.storage_used_bytes / 1e9).toFixed(2)}GB / {(event.storage_limit_bytes / 1e9).toFixed(0)}GB storage used
+            </p>
+          </div>
         </div>
       )}
 
@@ -223,23 +234,19 @@ export default function EventDetail() {
         <div className="card analytics-card">
           <div className="guest-link-label">Analytics</div>
           <div className="stat-grid">
-            <div className="stat-tile">
-              <div className="stat-value">{analytics.total_searches}</div>
-              <div className="stat-label">searches</div>
-            </div>
-            <div className="stat-tile">
-              <div className="stat-value">{analytics.unique_guests}</div>
-              <div className="stat-label">unique guests</div>
-            </div>
-            <div className="stat-tile">
-              <div className="stat-value">{Math.round(analytics.match_rate * 100)}%</div>
-              <div className="stat-label">match rate</div>
-            </div>
-            <div className="stat-tile">
-              <div className="stat-value">{analytics.feedback_count}</div>
-              <div className="stat-label">flagged as wrong</div>
-            </div>
+            <StatTile icon={Search} value={analytics.total_searches} label="searches" />
+            <StatTile icon={Users} value={analytics.unique_guests} label="unique guests" />
+            <StatTile icon={Target} value={`${Math.round(analytics.match_rate * 100)}%`} label="match rate" />
+            <StatTile icon={Flag} value={analytics.feedback_count} label="flagged as wrong" />
           </div>
+          {analytics.daily_searches && (
+            <TrendChart
+              series={[
+                { key: 'searches', name: 'Searches', data: analytics.daily_searches },
+                { key: 'matches', name: 'Matches', data: analytics.daily_matches },
+              ]}
+            />
+          )}
         </div>
       )}
 
@@ -299,58 +306,61 @@ export default function EventDetail() {
         </div>
       )}
 
-      <div className="file-drop">
-        <input
-          ref={fileInput}
-          type="file"
+      <button className="btn upload-trigger-btn" type="button" onClick={() => setUploadModalOpen(true)}>
+        Upload Photos
+      </button>
+
+      <Modal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title="Upload photos">
+        <Dropzone
+          onFiles={handleFiles}
           accept="image/png,image/jpeg,image/webp"
-          multiple
-          onChange={handleFiles}
           disabled={uploading}
+          hint="JPG, PNG, or WebP — drop multiple photos at once"
         />
-        {!uploading && <p className="hint">Select multiple photos to upload</p>}
-      </div>
 
-      {uploading && (
-        <div className="card upload-progress-card">
-          {progress ? (
-            <>
-              <p className="hint">
-                Processing {progress.completed} of {progress.total} photos…
-              </p>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${progress.total ? Math.round((progress.completed / progress.total) * 100) : 0}%` }}
-                />
-              </div>
-              {progress.current_file && <p className="hint">Now processing: {progress.current_file}</p>}
-              <p className="hint">
-                {progress.photos_per_second != null && `${progress.photos_per_second.toFixed(1)} photos/sec`}
-                {eta && ` · ${eta}`}
-              </p>
-              <p className="hint">
-                Faces found so far: {progress.faces_found_so_far ?? 0} · Skipped: {progress.skipped_so_far?.length ?? 0}
-              </p>
-            </>
-          ) : (
-            <p className="hint">Starting upload…</p>
-          )}
-        </div>
-      )}
+        {uploading && (
+          <div className="card upload-progress-card">
+            {progress ? (
+              <>
+                <p className="hint">
+                  Processing {progress.completed} of {progress.total} photos…
+                </p>
+                <div className="progress-bar">
+                  <div
+                    className="progress-bar-fill"
+                    style={{ width: `${progress.total ? Math.round((progress.completed / progress.total) * 100) : 0}%` }}
+                  />
+                </div>
+                {progress.current_file && <p className="hint">Now processing: {progress.current_file}</p>}
+                <p className="hint">
+                  {progress.photos_per_second != null && `${progress.photos_per_second.toFixed(1)} photos/sec`}
+                  {eta && ` · ${eta}`}
+                </p>
+                <p className="hint">
+                  Faces found so far: {progress.faces_found_so_far ?? 0} · Skipped: {progress.skipped_so_far?.length ?? 0}
+                </p>
+              </>
+            ) : (
+              <p className="hint">Starting upload…</p>
+            )}
+          </div>
+        )}
 
-      {error && <p className="error">{error}</p>}
+        {error && <p className="error">{error}</p>}
 
-      {lastResult && (
-        <p className="hint">
-          Processed {lastResult.photos_processed} photo(s), found {lastResult.faces_found} face(s).
-          {lastResult.skipped.length > 0 && (
-            <span className="skipped-list">
-              Skipped: {lastResult.skipped.join(', ')}
-            </span>
-          )}
-        </p>
-      )}
+        {lastResult && (
+          <p className="hint">
+            Processed {lastResult.photos_processed} photo(s), found {lastResult.faces_found} face(s).
+            {lastResult.skipped.length > 0 && (
+              <span className="skipped-list">
+                Skipped: {lastResult.skipped.join(', ')}
+              </span>
+            )}
+          </p>
+        )}
+      </Modal>
+
+      {error && !uploadModalOpen && <p className="error">{error}</p>}
 
       {photos.length === 0 ? (
         <p className="hint">No photos uploaded yet.</p>

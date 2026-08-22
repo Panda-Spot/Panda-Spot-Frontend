@@ -32,6 +32,7 @@ export default function Login() {
 
   return (
     <div className="auth-page">
+      <div className="auth-wordmark">PandaSpot</div>
       <form className="card auth-card" onSubmit={handleSubmit}>
         <h1 className="section-title">Log in</h1>
         <p className="subtle">Welcome back — manage your events and shared galleries.</p>

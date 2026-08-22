@@ -7,8 +7,11 @@ bulk-upload the photos, and share a public guest link. Guests open the link
 (no account needed), upload a selfie, and find every photo they're in.
 
 This app talks to the PandaSpot API (a separate Node/Express service, see
-`../server`). It has its own auth (email/password, httpOnly JWT cookie) —
-unrelated to any other Studio-Verse app.
+`../server`). It has its own auth (email/password, JWT stored in
+`localStorage` and sent as `Authorization: Bearer <token>` — not a cookie;
+the frontend and API live on different domains in production, and cross-site
+cookies get silently dropped by third-party-cookie blocking in real browsers,
+see `src/authToken.js`) — unrelated to any other Studio-Verse app.
 
 ## Pages
 
@@ -110,8 +113,12 @@ it.
 ## Config
 
 `VITE_API_URL` in `.env` — base URL of the running PandaSpot API instance.
-Defaults to `http://localhost:4000`. Authenticated requests are sent with
-`credentials: 'include'` so the server's httpOnly session cookie is used.
+Defaults to `http://localhost:4000`. Authenticated requests send
+`Authorization: Bearer <token>`, with the token read from `localStorage`
+(`src/authToken.js`) — set on successful register/login/Google sign-in,
+cleared on logout. `credentials: 'include'` is still sent too, so the
+server's bonus cookie works if it's ever available, but nothing here
+depends on it.
 
 `VITE_GOOGLE_CLIENT_ID` in `.env` — the Google Cloud OAuth Client ID used for
 "Sign in with Google" (Google Identity Services, loaded dynamically). Leave
@@ -120,6 +127,19 @@ error) until it's configured.
 
 ## Notes
 
+- **Visual design**: bold/vibrant but light-first — light card/page surfaces
+  throughout, with the purple/pink brand gradient (`--gradient-brand`, new
+  `--accent-2` token) reserved for accents (buttons, hero sections, hover
+  states, icons), not large background fills. A display font (Space Grotesk,
+  loaded via Google Fonts in `index.html`) is used for headings. New shared
+  components in `src/components/`: `Modal.jsx` + `Dropzone.jsx` (the event
+  detail upload flow is now a drag-and-drop modal instead of a bare file
+  input), `StatTile.jsx` (icon + value + label, via `lucide-react`), and
+  `TrendChart.jsx` (a `recharts` line-chart wrapper used for the 30-day
+  searches/matches trend on event analytics and the signups/events trends on
+  the admin overview — its two series colors are a validated
+  accessibility-checked pair, deliberately kept separate from the brand
+  purple/pink, which failed that same check when tried as a chart pair).
 - **PWA setup**: `index.html` links a baseline `public/manifest.json` (app
   name, `/icon.svg`, brand-purple theme color) via `<link id="app-manifest">`
   and `src/main.jsx` registers `public/sw.js` (a minimal service worker — no

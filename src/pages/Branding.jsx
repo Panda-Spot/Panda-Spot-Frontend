@@ -81,6 +81,7 @@ export default function Branding() {
             value={brandColor}
             onChange={(e) => setBrandColor(e.target.value)}
           />
+          <span className="color-swatch" style={{ background: brandColor }} />
           <span className="hint">{brandColor}</span>
         </div>
 

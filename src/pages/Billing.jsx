@@ -22,9 +22,18 @@ export default function Billing() {
           <li>10GB of photo storage per event</li>
         </ul>
         {eventCount != null && (
-          <p className="hint">
-            You're using {eventCount} of {FREE_EVENT_LIMIT} events.
-          </p>
+          <>
+            <div className="meter">
+              <div
+                className="meter-fill"
+                style={{ width: `${Math.min(100, Math.round((eventCount / FREE_EVENT_LIMIT) * 100))}%` }}
+              />
+            </div>
+            <div className="meter-labels">
+              <span>{eventCount} used</span>
+              <span>{FREE_EVENT_LIMIT} limit</span>
+            </div>
+          </>
         )}
       </div>
 

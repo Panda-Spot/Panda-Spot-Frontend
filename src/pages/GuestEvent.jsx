@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Share2, Download, X } from 'lucide-react'
 import { downloadMatches, fileUrl, getPublicEvent, searchBySelfies, sendMatchFeedback } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
@@ -151,10 +152,13 @@ export default function GuestEvent() {
   }
 
   const accentStyle = event?.brand_color ? { '--accent': event.brand_color } : undefined
+  const heroStyle = event?.brand_color
+    ? { background: `linear-gradient(135deg, ${event.brand_color}, var(--accent-2))` }
+    : undefined
 
   return (
     <div className="guest-shell" style={accentStyle}>
-      <div className="guest-hero">
+      <div className="guest-hero" style={heroStyle}>
         {event?.logo_url ? (
           <img className="guest-logo" src={fileUrl(event.logo_url)} alt={event.studio_name || 'Studio logo'} />
         ) : (
@@ -206,6 +210,7 @@ export default function GuestEvent() {
             </p>
             {result.matches.length > 0 && (
               <button className="btn secondary" type="button" onClick={handleDownloadAll} disabled={downloading}>
+                <Download size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
                 {downloading ? 'Preparing zip…' : 'Download all'}
               </button>
             )}
@@ -225,6 +230,7 @@ export default function GuestEvent() {
                     onClick={() => handleShare(m)}
                     disabled={sharingId === m.photo_id}
                   >
+                    <Share2 size={13} />
                     {sharingId === m.photo_id ? 'Preparing…' : 'Share'}
                   </button>
                   <button
@@ -232,6 +238,7 @@ export default function GuestEvent() {
                     type="button"
                     onClick={() => handleNotMe(m.photo_id)}
                   >
+                    <X size={13} />
                     Not me
                   </button>
                 </div>

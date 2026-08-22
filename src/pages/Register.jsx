@@ -33,6 +33,7 @@ export default function Register() {
 
   return (
     <div className="auth-page">
+      <div className="auth-wordmark">PandaSpot</div>
       <form className="card auth-card" onSubmit={handleSubmit}>
         <h1 className="section-title">Create your account</h1>
         <p className="subtle">Set up PandaSpot for your photography business — create events, upload galleries, and let guests spot themselves.</p>
