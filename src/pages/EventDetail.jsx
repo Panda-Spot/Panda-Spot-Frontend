@@ -189,7 +189,7 @@ export default function EventDetail() {
     setError('')
     try {
       await deleteEvent(eventId)
-      navigate('/')
+      navigate('/events')
     } catch (e) {
       setError(e.message)
       setDeletingEvent(false)
@@ -200,7 +200,7 @@ export default function EventDetail() {
 
   return (
     <div>
-      <Link className="back-link" to="/">&larr; All events</Link>
+      <Link className="back-link" to="/events">&larr; All events</Link>
       <h1 className="section-title">{event?.name || 'Event'}</h1>
       <p className="subtle">Bulk-upload the event photos here. Each photo is scanned for faces so guests can find themselves later.</p>
 
