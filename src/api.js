@@ -116,15 +116,62 @@ export const startPhotoUpload = (eventId, files) => {
   return request(`/events/${eventId}/photos`, { method: "POST", body: form })
 }
 
-// Starts an async Google Drive import job — responds immediately with
-// { job_id, files_found }. Subscribe to subscribeToUploadProgress() for
-// progress and the final result, same as startPhotoUpload().
-export const importFromDrive = (eventId, folderUrl) =>
-  request(`/events/${eventId}/import/drive`, {
+// Connects a public Google Drive folder to an event and starts the initial
+// import job — responds immediately with { job_id, files_found }. Subscribe
+// to subscribeToUploadProgress() for progress and the final result, same as
+// startPhotoUpload(). `confirm: true` is required — the server rejects the
+// request without it, since this scans and imports every photo currently in
+// the folder; the UI must warn the photographer before calling this.
+export const connectDriveFolder = (eventId, folderUrl) =>
+  request(`/events/${eventId}/drive/connect`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ folder_url: folderUrl }),
+    body: JSON.stringify({ folder_url: folderUrl, confirm: true }),
   })
+
+// Manually re-syncs an already-connected Drive folder: imports any photos
+// added since the last sync and removes any whose Drive file was deleted.
+// Same job/progress shape as connectDriveFolder.
+export const syncDriveFolder = (eventId) =>
+  request(`/events/${eventId}/drive/sync`, { method: "POST" })
+
+// Turns the daily automatic sync on/off for an already-connected folder.
+export const setDriveAutoSync = (eventId, enabled) =>
+  request(`/events/${eventId}/drive/auto-sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+
+// --- Beam (camera-to-cloud live upload) ---
+
+// Fetches the event's current Beam FTP credentials, or { connected: false }
+// if none have been generated yet.
+export const getBeamCredentials = (eventId) => request(`/events/${eventId}/beam/credentials`)
+
+// Generates fresh credentials (first setup, or "Regenerate" — the previous
+// username/password stop working immediately).
+export const generateBeamCredentials = (eventId) =>
+  request(`/events/${eventId}/beam/credentials`, { method: "POST" })
+
+// Revokes Beam access — the camera's saved credentials stop working.
+export const disconnectBeam = (eventId) =>
+  request(`/events/${eventId}/beam/credentials`, { method: "DELETE" })
+
+// Subscribes to "a new photo just arrived via Beam" over Server-Sent Events.
+// Returns a cleanup function. Unlike subscribeToUploadProgress, this has no
+// fixed end — it just keeps streaming for as long as the event page is open.
+export const subscribeToLiveEvents = (eventId, { onPhotoAdded, onPhotoSkipped }) => {
+  const token = getToken()
+  const url = `${BASE_URL}/events/${eventId}/live/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`
+  const source = new EventSource(url, { withCredentials: true })
+  source.onmessage = (e) => {
+    const data = JSON.parse(e.data)
+    if (data.type === "photo_added") onPhotoAdded(data)
+    else if (data.type === "photo_skipped") onPhotoSkipped(data)
+  }
+  return () => source.close()
+}
 
 // Subscribes to live upload progress via Server-Sent Events. Returns a
 // cleanup function the caller can invoke to unsubscribe/close the connection.

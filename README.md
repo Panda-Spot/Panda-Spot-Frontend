@@ -60,7 +60,15 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   fetch the original from the Drive folder live, so the tab shows a notice
   that the folder should stay shared as "Anyone with the link can view" — if
   it's later restricted or a file is deleted there, that specific photo can no
-  longer be downloaded through PandaSpot (search still works).
+  longer be downloaded through PandaSpot (search still works). A third tab,
+  "Live from camera", sets up Beam — camera-to-cloud live upload straight from
+  a photographer's camera via its own built-in FTP transfer, no companion app
+  needed. The first time, it warns what turning this on means, then shows the
+  generated host/port/username/password to enter into the camera's FTP
+  settings (re-viewable any time, plus "Regenerate credentials" and "Turn off
+  camera upload"). While connected, the page also opens a live event stream so
+  photos the camera sends appear in the gallery immediately, with a small
+  banner naming each arrival — no manual refresh needed.
 - **Invite acceptance** (`/invites/:token`) — the link an invited assistant
   opens. Shown to anonymous visitors too (it's not behind login); prompts
   them to log in or create an account (carrying the invite forward via a

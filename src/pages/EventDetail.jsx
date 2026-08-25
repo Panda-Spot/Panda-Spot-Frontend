@@ -3,18 +3,24 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Target, Flag } from 'lucide-react'
 import {
   cancelInvite,
+  connectDriveFolder,
   deleteEvent,
   deletePhoto,
+  disconnectBeam,
   fileUrl,
+  generateBeamCredentials,
+  getBeamCredentials,
   getEvent,
   getEventAnalytics,
-  importFromDrive,
   inviteCollaborator,
   listCollaborators,
   listPhotos,
   removeCollaborator,
+  setDriveAutoSync,
   startPhotoUpload,
+  subscribeToLiveEvents,
   subscribeToUploadProgress,
+  syncDriveFolder,
 } from '../api.js'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
@@ -57,8 +63,16 @@ export default function EventDetail() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
   const [driveUrl, setDriveUrl] = useState('')
-  const [importingDrive, setImportingDrive] = useState(false)
+  const [connectingDrive, setConnectingDrive] = useState(false)
+  const [syncingDrive, setSyncingDrive] = useState(false)
+  const [togglingAutoSync, setTogglingAutoSync] = useState(false)
+  const [beam, setBeam] = useState(null)
+  const [settingUpBeam, setSettingUpBeam] = useState(false)
+  const [regeneratingBeam, setRegeneratingBeam] = useState(false)
+  const [disconnectingBeam, setDisconnectingBeam] = useState(false)
+  const [liveNotice, setLiveNotice] = useState('')
   const cleanupRef = useRef(null)
+  const liveStreamCleanupRef = useRef(null)
 
   const loadTeam = useCallback(() => {
     listCollaborators(eventId)
@@ -91,6 +105,34 @@ export default function EventDetail() {
     }
   }, [])
 
+  // Keeps the gallery updating live while a camera is streaming photos in
+  // via Beam — independent of whether the upload modal is open.
+  useEffect(() => {
+    if (liveStreamCleanupRef.current) {
+      liveStreamCleanupRef.current()
+      liveStreamCleanupRef.current = null
+    }
+    if (!event?.beam_connected) return undefined
+
+    liveStreamCleanupRef.current = subscribeToLiveEvents(eventId, {
+      onPhotoAdded: (data) => {
+        setPhotos((prev) => (prev.some((p) => p.photo_id === data.photo_id) ? prev : [data, ...prev]))
+        setLiveNotice(`New photo from your camera: ${data.filename}`)
+        setTimeout(() => setLiveNotice(''), 4000)
+      },
+      onPhotoSkipped: (data) => {
+        setLiveNotice(`Skipped a camera photo (${data.reason})`)
+        setTimeout(() => setLiveNotice(''), 4000)
+      },
+    })
+    return () => {
+      if (liveStreamCleanupRef.current) {
+        liveStreamCleanupRef.current()
+        liveStreamCleanupRef.current = null
+      }
+    }
+  }, [eventId, event?.beam_connected])
+
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
     setUploading(true)
@@ -119,15 +161,22 @@ export default function EventDetail() {
     }
   }
 
-  const handleDriveImport = async () => {
+  const handleDriveConnect = async () => {
     if (!driveUrl.trim()) return
-    setImportingDrive(true)
+    const confirmed = window.confirm(
+      "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
+      "PandaSpot only keeps a thumbnail and face data for each photo; the originals stay in Drive and are fetched " +
+      "live when a guest downloads or shares one. Continue?"
+    )
+    if (!confirmed) return
+
+    setConnectingDrive(true)
     setUploading(true)
     setError('')
     setLastResult(null)
     setProgress(null)
     try {
-      const { job_id: jobId } = await importFromDrive(eventId, driveUrl.trim())
+      const { job_id: jobId } = await connectDriveFolder(eventId, driveUrl.trim())
       setDriveUrl('')
       cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
         onProgress: (data) => setProgress(data),
@@ -147,7 +196,109 @@ export default function EventDetail() {
       setError(e.message)
       setUploading(false)
     } finally {
-      setImportingDrive(false)
+      setConnectingDrive(false)
+    }
+  }
+
+  const handleDriveSync = async () => {
+    setSyncingDrive(true)
+    setUploading(true)
+    setError('')
+    setLastResult(null)
+    setProgress(null)
+    try {
+      const { job_id: jobId } = await syncDriveFolder(eventId)
+      cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+        onProgress: (data) => setProgress(data),
+        onDone: (data) => {
+          setUploading(false)
+          setProgress(null)
+          setLastResult(data)
+          load()
+        },
+        onError: (data) => {
+          setUploading(false)
+          setProgress(null)
+          setError(data.message || 'Sync failed')
+        },
+      })
+    } catch (e) {
+      setError(e.message)
+      setUploading(false)
+    } finally {
+      setSyncingDrive(false)
+    }
+  }
+
+  const handleToggleAutoSync = async (enabled) => {
+    setTogglingAutoSync(true)
+    setError('')
+    try {
+      await setDriveAutoSync(eventId, enabled)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setTogglingAutoSync(false)
+    }
+  }
+
+  const handleSetupBeam = async () => {
+    const confirmed = window.confirm(
+      "This turns on live camera upload for this event: any photo your camera sends will be scanned for faces " +
+      "and added to the gallery automatically, the same as a regular upload. You'll get a host/username/password " +
+      "to enter into your camera's FTP transfer settings next. Continue?"
+    )
+    if (!confirmed) return
+    setSettingUpBeam(true)
+    setError('')
+    try {
+      const creds = await generateBeamCredentials(eventId)
+      setBeam(creds)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSettingUpBeam(false)
+    }
+  }
+
+  const handleShowBeamCredentials = async () => {
+    setError('')
+    try {
+      const creds = await getBeamCredentials(eventId)
+      setBeam(creds)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const handleRegenerateBeam = async () => {
+    if (!window.confirm("This invalidates the current username/password — you'll need to re-enter the new ones into your camera. Continue?")) return
+    setRegeneratingBeam(true)
+    setError('')
+    try {
+      const creds = await generateBeamCredentials(eventId)
+      setBeam(creds)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setRegeneratingBeam(false)
+    }
+  }
+
+  const handleDisconnectBeam = async () => {
+    if (!window.confirm('Turn off camera upload for this event? Your camera\'s saved settings will stop working.')) return
+    setDisconnectingBeam(true)
+    setError('')
+    try {
+      await disconnectBeam(eventId)
+      setBeam(null)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDisconnectingBeam(false)
     }
   }
 
@@ -362,6 +513,13 @@ export default function EventDetail() {
           >
             Import from Google Drive
           </button>
+          <button
+            type="button"
+            className={uploadTab === 'beam' ? 'upload-tab active' : 'upload-tab'}
+            onClick={() => setUploadTab('beam')}
+          >
+            Live from camera
+          </button>
         </div>
 
         {uploadTab === 'files' ? (
@@ -371,13 +529,85 @@ export default function EventDetail() {
             disabled={uploading}
             hint="JPG, PNG, or WebP — drop multiple photos at once"
           />
+        ) : uploadTab === 'beam' ? (
+          <div className="drive-import">
+            {!event?.beam_connected ? (
+              <>
+                <p className="hint drive-import-notice">
+                  Connect your camera's own WiFi/FTP transfer so photos land in this gallery — scanned for faces
+                  and thumbnailed — while the shoot is still happening. This needs a camera with built-in FTP
+                  transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.
+                </p>
+                <button className="btn" type="button" onClick={handleSetupBeam} disabled={settingUpBeam}>
+                  {settingUpBeam ? 'Setting up…' : 'Set up camera upload'}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">Camera upload is on for this event.</p>
+                {!beam ? (
+                  <button className="btn" type="button" onClick={handleShowBeamCredentials}>
+                    Show camera setup details
+                  </button>
+                ) : (
+                  <div className="beam-credentials">
+                    <div className="beam-field"><span>Host</span><code>{beam.ftp_host}</code></div>
+                    <div className="beam-field"><span>Port</span><code>{beam.ftp_port}</code></div>
+                    <div className="beam-field"><span>Username</span><code>{beam.ftp_username}</code></div>
+                    <div className="beam-field"><span>Password</span><code>{beam.ftp_password}</code></div>
+                    <p className="hint">
+                      Enter these into your camera's FTP transfer settings menu, and set it to upload on capture.
+                    </p>
+                  </div>
+                )}
+                <div className="row">
+                  <button className="btn secondary" type="button" onClick={handleRegenerateBeam} disabled={regeneratingBeam}>
+                    {regeneratingBeam ? 'Regenerating…' : 'Regenerate credentials'}
+                  </button>
+                  <button className="btn danger-btn" type="button" onClick={handleDisconnectBeam} disabled={disconnectingBeam}>
+                    {disconnectingBeam ? 'Turning off…' : 'Turn off camera upload'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : event?.drive_folder_url ? (
+          <div className="drive-import">
+            <p className="hint">
+              Connected to{' '}
+              <a href={event.drive_folder_url} target="_blank" rel="noreferrer">this Drive folder</a>.
+              {' '}
+              {event.last_drive_sync_at
+                ? `Last synced ${new Date(event.last_drive_sync_at).toLocaleString()}.`
+                : 'Not synced yet.'}
+            </p>
+            <p className="hint drive-import-notice">
+              Syncing checks for photos added or removed in the folder since the last sync — new ones are
+              imported, and ones deleted from Drive are removed from PandaSpot too.
+            </p>
+            <div className="row">
+              <button className="btn" type="button" onClick={handleDriveSync} disabled={uploading}>
+                {syncingDrive ? 'Syncing…' : 'Sync now'}
+              </button>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={!!event.drive_sync_enabled}
+                  disabled={togglingAutoSync}
+                  onChange={(e) => handleToggleAutoSync(e.target.checked)}
+                />
+                Auto-sync once a day
+              </label>
+            </div>
+          </div>
         ) : (
           <div className="drive-import">
             <p className="hint drive-import-notice">
               Imported photos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails and face-search data are kept.
               Downloads and shares fetch the original from your Drive folder live, so keep it shared as
               &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific
-              photos can no longer be downloaded through PandaSpot (search still works fine).
+              photos can no longer be downloaded through PandaSpot (search still works fine). Connecting scans and
+              imports every photo currently in the folder, so it can take a while for a large one.
             </p>
             <div className="row">
               <input
@@ -388,8 +618,8 @@ export default function EventDetail() {
                 onChange={(e) => setDriveUrl(e.target.value)}
                 disabled={uploading}
               />
-              <button className="btn" type="button" onClick={handleDriveImport} disabled={uploading || !driveUrl.trim()}>
-                {importingDrive ? 'Starting…' : 'Import'}
+              <button className="btn" type="button" onClick={handleDriveConnect} disabled={uploading || !driveUrl.trim()}>
+                {connectingDrive ? 'Connecting…' : 'Connect folder'}
               </button>
             </div>
           </div>
@@ -428,6 +658,7 @@ export default function EventDetail() {
         {lastResult && (
           <p className="hint">
             Processed {lastResult.photos_processed} photo(s), found {lastResult.faces_found} face(s).
+            {lastResult.removed_count > 0 && ` Removed ${lastResult.removed_count} photo(s) no longer in Drive.`}
             {lastResult.skipped.length > 0 && (
               <span className="skipped-list">
                 Skipped: {lastResult.skipped.join(', ')}
@@ -438,6 +669,8 @@ export default function EventDetail() {
       </Modal>
 
       {error && !uploadModalOpen && <p className="error">{error}</p>}
+
+      {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
       {photos.length === 0 ? (
         <p className="hint">No photos uploaded yet.</p>
