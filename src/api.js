@@ -193,6 +193,26 @@ export const subscribeToUploadProgress = (eventId, jobId, { onProgress, onDone, 
 
 // --- Branding (photographer, authenticated) ---
 
+// --- Drive backup (advanced/beta — see server README's "Drive backup") ---
+
+// Not a fetch — a full-page navigation, since this hands off to Google's own
+// consent screen. requireAuth on the server accepts the token as a query
+// param for exactly this reason (same trick the SSE streams use).
+export const driveBackupConnectUrl = () => {
+  const token = getToken()
+  return `${BASE_URL}/auth/google/drive-backup/connect${token ? `?token=${encodeURIComponent(token)}` : ""}`
+}
+
+export const disconnectDriveBackup = () =>
+  request("/auth/google/drive-backup/disconnect", { method: "POST" })
+
+export const setEventDriveBackup = (eventId, enabled) =>
+  request(`/events/${eventId}/drive-backup/toggle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+
 export const getBranding = () => request("/branding")
 
 export const saveBranding = (studioName, brandColor, logoFile) => {

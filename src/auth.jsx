@@ -41,8 +41,21 @@ export function AuthProvider({ children }) {
     setUser(u)
   }, [])
 
+  // Re-fetches the current user from the server — used after a flow that
+  // changes server-side user state without going through login/register,
+  // e.g. returning from the Drive backup OAuth redirect (Branding.jsx).
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await api.getMe()
+      setUser(u)
+      return u
+    } catch {
+      return null
+    }
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setUserDirectly }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, setUserDirectly, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

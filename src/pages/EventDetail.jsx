@@ -19,9 +19,11 @@ import {
   setDriveAutoSync,
   startPhotoUpload,
   subscribeToLiveEvents,
+  setEventDriveBackup,
   subscribeToUploadProgress,
   syncDriveFolder,
 } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
 import Dropzone from '../components/Dropzone.jsx'
@@ -43,6 +45,7 @@ function formatEta(seconds) {
 export default function EventDetail() {
   const { eventId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [event, setEvent] = useState(null)
   const [photos, setPhotos] = useState([])
   const [analytics, setAnalytics] = useState(null)
@@ -66,6 +69,7 @@ export default function EventDetail() {
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
+  const [togglingDriveBackup, setTogglingDriveBackup] = useState(false)
   const [beam, setBeam] = useState(null)
   const [settingUpBeam, setSettingUpBeam] = useState(false)
   const [regeneratingBeam, setRegeneratingBeam] = useState(false)
@@ -299,6 +303,19 @@ export default function EventDetail() {
       setError(e.message)
     } finally {
       setDisconnectingBeam(false)
+    }
+  }
+
+  const handleToggleDriveBackup = async (enabled) => {
+    setTogglingDriveBackup(true)
+    setError('')
+    try {
+      await setEventDriveBackup(eventId, enabled)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setTogglingDriveBackup(false)
     }
   }
 
@@ -599,6 +616,22 @@ export default function EventDetail() {
                 Auto-sync once a day
               </label>
             </div>
+            {user?.drive_backup_beta && (
+              <div className="row" style={{ marginTop: 10 }}>
+                <label
+                  className="checkbox-row"
+                  title={!event.drive_backup_available ? 'Connect Drive backup for your account first (Branding page)' : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!event.drive_backup_enabled}
+                    disabled={togglingDriveBackup || !event.drive_backup_available}
+                    onChange={(e) => handleToggleDriveBackup(e.target.checked)}
+                  />
+                  Back up camera captures to this Drive folder <span className="hint">(advanced, beta)</span>
+                </label>
+              </div>
+            )}
           </div>
         ) : (
           <div className="drive-import">
