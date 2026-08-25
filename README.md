@@ -104,7 +104,11 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   with a message telling the guest the search window has closed (the hero
   branding above it still renders either way); this also prevents the guest
   from ever hitting the 410 the search/feedback/download endpoints return
-  for an expired event.
+  for an expired event. Below the results, a small card lets the guest opt
+  in to being notified (email or WhatsApp) if more photos of them show up
+  later — useful now that photos can keep arriving live via Beam during a
+  shoot. Choosing WhatsApp also offers a one-off "just text me this link
+  now" button, independent of the ongoing subscription.
 
   This page is also an installable PWA: it dynamically swaps the page's
   `<link id="app-manifest">` to a per-event Blob-URL manifest (name/short

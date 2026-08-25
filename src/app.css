@@ -646,6 +646,19 @@
   font-weight: 600;
 }
 
+.guest-alert-card {
+  margin-top: 20px;
+}
+.guest-alert-tabs {
+  display: flex;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-top: 10px;
+  max-width: 280px;
+}
+
 .match-card {
   position: relative;
   display: flex;

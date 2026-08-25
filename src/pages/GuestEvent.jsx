@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Share2, Download, X } from 'lucide-react'
-import { downloadMatches, fileUrl, getPublicEvent, searchBySelfies, sendMatchFeedback } from '../api.js'
+import {
+  downloadMatches,
+  fileUrl,
+  getPublicEvent,
+  searchBySelfies,
+  sendGalleryLinkViaWhatsApp,
+  sendMatchFeedback,
+  subscribeToMatchAlerts,
+} from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
 
@@ -23,6 +31,12 @@ export default function GuestEvent() {
   const [sharingId, setSharingId] = useState(null)
   const [shareNote, setShareNote] = useState('')
   const shareTimer = useRef(null)
+  const [alertChannel, setAlertChannel] = useState('email')
+  const [alertContact, setAlertContact] = useState('')
+  const [subscribingAlert, setSubscribingAlert] = useState(false)
+  const [alertSubscribed, setAlertSubscribed] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('')
+  const [sendingLink, setSendingLink] = useState(false)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -151,6 +165,36 @@ export default function GuestEvent() {
     }
   }
 
+  const handleSubscribeAlert = async (e) => {
+    e.preventDefault()
+    if (!alertContact.trim()) return
+    setSubscribingAlert(true)
+    setAlertMessage('')
+    try {
+      await subscribeToMatchAlerts(slug, getGuestClientId(), alertChannel, alertContact.trim())
+      setAlertSubscribed(true)
+      setAlertMessage("You're set — we'll let you know if more photos of you show up.")
+    } catch (e) {
+      setAlertMessage(e.message)
+    } finally {
+      setSubscribingAlert(false)
+    }
+  }
+
+  const handleSendLinkNow = async () => {
+    if (!alertContact.trim()) return
+    setSendingLink(true)
+    setAlertMessage('')
+    try {
+      await sendGalleryLinkViaWhatsApp(slug, alertContact.trim())
+      setAlertMessage('Sent! Check WhatsApp for your gallery link.')
+    } catch (e) {
+      setAlertMessage(e.message)
+    } finally {
+      setSendingLink(false)
+    }
+  }
+
   const accentStyle = event?.brand_color ? { '--accent': event.brand_color } : undefined
   const heroStyle = event?.brand_color
     ? { background: `linear-gradient(135deg, ${event.brand_color}, var(--accent-2))` }
@@ -244,6 +288,58 @@ export default function GuestEvent() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="card guest-alert-card">
+            {alertSubscribed ? (
+              <p className="hint">You're set — we'll let you know if more photos of you show up at this event.</p>
+            ) : (
+              <>
+                <p className="subtle">More photos might still come in during the event — want us to let you know?</p>
+                <form onSubmit={handleSubscribeAlert}>
+                  <div className="guest-alert-tabs">
+                    <button
+                      type="button"
+                      className={alertChannel === 'email' ? 'upload-tab active' : 'upload-tab'}
+                      onClick={() => { setAlertChannel('email'); setAlertContact('') }}
+                    >
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      className={alertChannel === 'whatsapp' ? 'upload-tab active' : 'upload-tab'}
+                      onClick={() => { setAlertChannel('whatsapp'); setAlertContact('') }}
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <input
+                      className="text-input"
+                      type={alertChannel === 'email' ? 'email' : 'tel'}
+                      placeholder={alertChannel === 'email' ? 'you@example.com' : '+919876543210'}
+                      value={alertContact}
+                      onChange={(e) => setAlertContact(e.target.value)}
+                    />
+                    <button className="btn" type="submit" disabled={subscribingAlert || !alertContact.trim()}>
+                      {subscribingAlert ? 'Saving…' : 'Notify me'}
+                    </button>
+                  </div>
+                  {alertChannel === 'whatsapp' && (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      style={{ marginTop: 8 }}
+                      onClick={handleSendLinkNow}
+                      disabled={sendingLink || !alertContact.trim()}
+                    >
+                      {sendingLink ? 'Sending…' : 'Just text me this link now'}
+                    </button>
+                  )}
+                </form>
+              </>
+            )}
+            {alertMessage && <p className="hint feedback-note">{alertMessage}</p>}
           </div>
         </>
       )}

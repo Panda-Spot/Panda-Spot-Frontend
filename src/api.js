@@ -229,6 +229,31 @@ export const sendMatchFeedback = (slug, searchId, photoId) =>
     body: JSON.stringify({ search_id: searchId, photo_id: photoId }),
   })
 
+// Opts this guest in to being notified (email or WhatsApp) if more photos of
+// them show up later in this event. Re-subscribing (e.g. searching again)
+// just updates the existing subscription.
+export const subscribeToMatchAlerts = (slug, guestClientId, channel, contact) =>
+  request(`/e/${slug}/alerts/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guest_client_id: guestClientId, channel, contact }),
+  })
+
+export const unsubscribeFromMatchAlerts = (slug, guestClientId) =>
+  request(`/e/${slug}/alerts/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guest_client_id: guestClientId }),
+  })
+
+// One-off "text me this gallery link" — sends once, no ongoing subscription.
+export const sendGalleryLinkViaWhatsApp = (slug, phone) =>
+  request(`/e/${slug}/whatsapp/send-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone }),
+  })
+
 // --- Collaborators / invites (photographer, authenticated) ---
 
 export const listCollaborators = (eventId) => request(`/events/${eventId}/collaborators`)
