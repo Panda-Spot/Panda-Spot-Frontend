@@ -116,6 +116,16 @@ export const startPhotoUpload = (eventId, files) => {
   return request(`/events/${eventId}/photos`, { method: "POST", body: form })
 }
 
+// Starts an async Google Drive import job — responds immediately with
+// { job_id, files_found }. Subscribe to subscribeToUploadProgress() for
+// progress and the final result, same as startPhotoUpload().
+export const importFromDrive = (eventId, folderUrl) =>
+  request(`/events/${eventId}/import/drive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder_url: folderUrl }),
+  })
+
 // Subscribes to live upload progress via Server-Sent Events. Returns a
 // cleanup function the caller can invoke to unsubscribe/close the connection.
 export const subscribeToUploadProgress = (eventId, jobId, { onProgress, onDone, onError }) => {

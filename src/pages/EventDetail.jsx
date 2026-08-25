@@ -8,6 +8,7 @@ import {
   fileUrl,
   getEvent,
   getEventAnalytics,
+  importFromDrive,
   inviteCollaborator,
   listCollaborators,
   listPhotos,
@@ -54,6 +55,9 @@ export default function EventDetail() {
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploadTab, setUploadTab] = useState('files')
+  const [driveUrl, setDriveUrl] = useState('')
+  const [importingDrive, setImportingDrive] = useState(false)
   const cleanupRef = useRef(null)
 
   const loadTeam = useCallback(() => {
@@ -112,6 +116,38 @@ export default function EventDetail() {
     } catch (e) {
       setError(e.message)
       setUploading(false)
+    }
+  }
+
+  const handleDriveImport = async () => {
+    if (!driveUrl.trim()) return
+    setImportingDrive(true)
+    setUploading(true)
+    setError('')
+    setLastResult(null)
+    setProgress(null)
+    try {
+      const { job_id: jobId } = await importFromDrive(eventId, driveUrl.trim())
+      setDriveUrl('')
+      cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+        onProgress: (data) => setProgress(data),
+        onDone: (data) => {
+          setUploading(false)
+          setProgress(null)
+          setLastResult(data)
+          load()
+        },
+        onError: (data) => {
+          setUploading(false)
+          setProgress(null)
+          setError(data.message || 'Import failed')
+        },
+      })
+    } catch (e) {
+      setError(e.message)
+      setUploading(false)
+    } finally {
+      setImportingDrive(false)
     }
   }
 
@@ -311,12 +347,53 @@ export default function EventDetail() {
       </button>
 
       <Modal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title="Upload photos">
-        <Dropzone
-          onFiles={handleFiles}
-          accept="image/png,image/jpeg,image/webp"
-          disabled={uploading}
-          hint="JPG, PNG, or WebP — drop multiple photos at once"
-        />
+        <div className="upload-tabs">
+          <button
+            type="button"
+            className={uploadTab === 'files' ? 'upload-tab active' : 'upload-tab'}
+            onClick={() => setUploadTab('files')}
+          >
+            Upload files
+          </button>
+          <button
+            type="button"
+            className={uploadTab === 'drive' ? 'upload-tab active' : 'upload-tab'}
+            onClick={() => setUploadTab('drive')}
+          >
+            Import from Google Drive
+          </button>
+        </div>
+
+        {uploadTab === 'files' ? (
+          <Dropzone
+            onFiles={handleFiles}
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            hint="JPG, PNG, or WebP — drop multiple photos at once"
+          />
+        ) : (
+          <div className="drive-import">
+            <p className="hint drive-import-notice">
+              Imported photos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails and face-search data are kept.
+              Downloads and shares fetch the original from your Drive folder live, so keep it shared as
+              &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific
+              photos can no longer be downloaded through PandaSpot (search still works fine).
+            </p>
+            <div className="row">
+              <input
+                className="text-input"
+                type="url"
+                placeholder="https://drive.google.com/drive/folders/..."
+                value={driveUrl}
+                onChange={(e) => setDriveUrl(e.target.value)}
+                disabled={uploading}
+              />
+              <button className="btn" type="button" onClick={handleDriveImport} disabled={uploading || !driveUrl.trim()}>
+                {importingDrive ? 'Starting…' : 'Import'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {uploading && (
           <div className="card upload-progress-card">

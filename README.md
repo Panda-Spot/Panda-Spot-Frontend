@@ -51,7 +51,16 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   whole event, every photo, and its guest link. Free-tier limits (15 events
   per account, the 15th create attempt gets a 403; 10GB storage per event,
   files past the cap show up in the upload result's skipped list) surface
-  through the existing error/skipped-list displays with no special UI.
+  through the existing error/skipped-list displays with no special UI. The
+  upload modal has a second tab, "Import from Google Drive", alongside
+  "Upload files" — paste a public Drive folder link and it's imported as a
+  background job that streams progress through the exact same SSE display as
+  direct uploads. Photos imported this way aren't copied onto PandaSpot's
+  server; only thumbnails and face-search data are stored, and downloads/shares
+  fetch the original from the Drive folder live, so the tab shows a notice
+  that the folder should stay shared as "Anyone with the link can view" — if
+  it's later restricted or a file is deleted there, that specific photo can no
+  longer be downloaded through PandaSpot (search still works).
 - **Invite acceptance** (`/invites/:token`) — the link an invited assistant
   opens. Shown to anonymous visitors too (it's not behind login); prompts
   them to log in or create an account (carrying the invite forward via a
