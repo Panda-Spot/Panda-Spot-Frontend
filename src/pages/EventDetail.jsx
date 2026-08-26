@@ -19,6 +19,7 @@ import {
   setDriveAutoSync,
   startPhotoUpload,
   subscribeToLiveEvents,
+  reclaimDriveBackupNow,
   setEventDriveBackup,
   subscribeToUploadProgress,
   syncDriveFolder,
@@ -70,6 +71,8 @@ export default function EventDetail() {
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
   const [togglingDriveBackup, setTogglingDriveBackup] = useState(false)
+  const [reclaimingDriveBackup, setReclaimingDriveBackup] = useState(false)
+  const [driveBackupMessage, setDriveBackupMessage] = useState('')
   const [beam, setBeam] = useState(null)
   const [settingUpBeam, setSettingUpBeam] = useState(false)
   const [regeneratingBeam, setRegeneratingBeam] = useState(false)
@@ -316,6 +319,20 @@ export default function EventDetail() {
       setError(e.message)
     } finally {
       setTogglingDriveBackup(false)
+    }
+  }
+
+  const handleReclaimDriveBackupNow = async () => {
+    setReclaimingDriveBackup(true)
+    setError('')
+    setDriveBackupMessage('')
+    try {
+      const result = await reclaimDriveBackupNow(eventId)
+      setDriveBackupMessage(`Reclaimed ${result.reclaimed_count} photo(s) from Drive.`)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setReclaimingDriveBackup(false)
     }
   }
 
@@ -617,10 +634,10 @@ export default function EventDetail() {
               </label>
             </div>
             {user?.drive_backup_beta && (
-              <div className="row" style={{ marginTop: 10 }}>
+              <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 <label
                   className="checkbox-row"
-                  title={!event.drive_backup_available ? 'Connect Drive backup for your account first (Branding page)' : undefined}
+                  title={!event.drive_backup_available ? 'Drive backup is not set up on this PandaSpot instance yet' : undefined}
                 >
                   <input
                     type="checkbox"
@@ -630,8 +647,21 @@ export default function EventDetail() {
                   />
                   Back up camera captures to this Drive folder <span className="hint">(advanced, beta)</span>
                 </label>
+                {event.drive_backup_enabled && (
+                  <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
+                    {reclaimingDriveBackup ? 'Reclaiming…' : "I've made my copies — free up space"}
+                  </button>
+                )}
               </div>
             )}
+            {event.drive_backup_enabled && (
+              <p className="hint drive-import-notice">
+                Backed-up captures live in this Drive folder for only 2 days before being pulled back to PandaSpot's
+                server and removed from Drive, and 7 days total before permanent deletion everywhere. Make your own
+                copy in Drive (select all, "Make a copy") well before then.
+              </p>
+            )}
+            {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
           </div>
         ) : (
           <div className="drive-import">

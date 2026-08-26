@@ -203,15 +203,17 @@ export const driveBackupConnectUrl = () => {
   return `${BASE_URL}/auth/google/drive-backup/connect${token ? `?token=${encodeURIComponent(token)}` : ""}`
 }
 
-export const disconnectDriveBackup = () =>
-  request("/auth/google/drive-backup/disconnect", { method: "POST" })
-
 export const setEventDriveBackup = (eventId, enabled) =>
   request(`/events/${eventId}/drive-backup/toggle`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabled }),
   })
+
+// "I've made my copies — free up space": reclaims this event's Drive-backed
+// photos right now instead of waiting for the automatic 2-day sweep.
+export const reclaimDriveBackupNow = (eventId) =>
+  request(`/events/${eventId}/drive-backup/reclaim-now`, { method: "POST" })
 
 export const getBranding = () => request("/branding")
 

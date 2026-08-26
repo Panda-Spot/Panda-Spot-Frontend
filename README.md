@@ -76,13 +76,17 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   the invite and drops them onto the event.
 - **Branding** (`/branding`) — studio-wide settings: studio name, brand
   color, and logo. These flow through to guest event pages and generated
-  guest cards. Accounts on the `DRIVE_BACKUP_BETA_EMAILS` allowlist (see the
-  server README) also see a **Drive backup (advanced, beta)** card here — a
-  "Connect Google Drive" button that hands off to a Google consent screen
-  (separate from Sign-In-with-Google) authorizing PandaSpot to write into
-  Drive folders it creates/is given; once connected, each event with both a
-  Drive folder and Beam set up gets a per-event toggle (on that event's own
-  page) to mirror camera captures into that folder.
+  guest cards. Platform admins (`is_admin`) also see a **Drive backup
+  (advanced, beta — platform setup)** card here — a one-time "Connect
+  Google Drive" action for the *entire platform's* single shared Drive
+  account (not per-photographer), which the callback page shows as a
+  refresh token to paste into the server's `.env`. Photographers on the
+  server's `DRIVE_BACKUP_BETA_EMAILS` allowlist get a per-event toggle (on
+  that event's own page, once it has both a Drive folder and Beam set up)
+  to mirror camera captures into that folder using the shared account, plus
+  an "I've made my copies — free up space" button and a notice that
+  backed-up captures are only kept 2 days on Drive / 7 days total before
+  permanent deletion (see the server README's "Drive backup" section).
 - **Billing** (`/billing`) — "coming soon" placeholder for paid plans; shows
   the free plan's limits (15 events, 10GB/event storage) and the account's
   current event count against that limit.

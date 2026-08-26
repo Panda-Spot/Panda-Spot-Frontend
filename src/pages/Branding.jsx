@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { disconnectDriveBackup, driveBackupConnectUrl, fileUrl, getBranding, saveBranding } from '../api.js'
+import { driveBackupConnectUrl, fileUrl, getBranding, saveBranding } from '../api.js'
 import { useAuth } from '../auth.jsx'
 
 const DEFAULT_ACCENT = '#aa3bff'
@@ -16,10 +15,7 @@ export default function Branding() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const fileInput = useRef(null)
-  const { user, refreshUser } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [driveBackupMessage, setDriveBackupMessage] = useState('')
-  const [disconnectingDriveBackup, setDisconnectingDriveBackup] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     getBranding()
@@ -31,38 +27,6 @@ export default function Branding() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
-
-  useEffect(() => {
-    const connected = searchParams.get('drive_backup')
-    const err = searchParams.get('drive_backup_error')
-    if (connected === 'connected') {
-      setDriveBackupMessage('Drive backup connected.')
-      refreshUser()
-    } else if (err) {
-      setDriveBackupMessage(`Couldn't connect Drive backup: ${err.replace(/_/g, ' ')}`)
-    }
-    if (connected || err) {
-      searchParams.delete('drive_backup')
-      searchParams.delete('drive_backup_error')
-      setSearchParams(searchParams, { replace: true })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleDisconnectDriveBackup = async () => {
-    if (!window.confirm('Disconnect Drive backup? Beam captures will stop mirroring to Drive for any event using it.')) return
-    setDisconnectingDriveBackup(true)
-    setDriveBackupMessage('')
-    try {
-      await disconnectDriveBackup()
-      await refreshUser()
-      setDriveBackupMessage('Drive backup disconnected.')
-    } catch (e) {
-      setDriveBackupMessage(e.message)
-    } finally {
-      setDisconnectingDriveBackup(false)
-    }
-  }
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0]
@@ -142,25 +106,25 @@ export default function Branding() {
 
       {error && <p className="error">{error}</p>}
 
-      {user?.drive_backup_beta && (
+      {user?.is_admin && (
         <div className="card">
-          <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta)</span></h2>
+          <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta — platform setup)</span></h2>
           <p className="subtle">
-            Mirror each Beam (camera-to-cloud) capture into an event's connected Google Drive folder, so Drive stays
-            the complete archive instead of only holding what was imported from it. Turn it on per-event from that
-            event's page once connected here.
+            One Google account, shared across every event that turns on Drive backup — not something each
+            photographer connects individually. Beam captures get mirrored into an event's Drive folder using this
+            one account (works because the folder is shared as "Anyone with the link — Editor"). Since uploads count
+            against this single account's own Drive quota, they're only kept there for 2 days before being reclaimed
+            back to the server, and 7 days total before permanent deletion — photographers are notified to make
+            their own copy well before then.
           </p>
-          {user.drive_backup_connected ? (
-            <>
-              <p className="hint">Connected.</p>
-              <button className="btn danger-btn" type="button" onClick={handleDisconnectDriveBackup} disabled={disconnectingDriveBackup}>
-                {disconnectingDriveBackup ? 'Disconnecting…' : 'Disconnect Drive backup'}
-              </button>
-            </>
-          ) : (
-            <a className="btn" href={driveBackupConnectUrl()}>Connect Google Drive</a>
-          )}
-          {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
+          {user.drive_backup_configured && <p className="hint">Connected — GOOGLE_DRIVE_BACKUP_REFRESH_TOKEN is set on the server.</p>}
+          <a className="btn" href={driveBackupConnectUrl()}>
+            {user.drive_backup_configured ? 'Reconnect a different account' : 'Connect Google Drive'}
+          </a>
+          <p className="hint">
+            The callback page shows a fresh refresh token to copy into the server's .env, then restart the server for
+            it to take effect.
+          </p>
         </div>
       )}
     </div>
