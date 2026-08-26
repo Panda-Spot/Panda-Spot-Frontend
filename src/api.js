@@ -233,6 +233,32 @@ export const getEventAnalytics = (eventId) => request(`/events/${eventId}/analyt
 
 export const getAdminOverview = () => request("/admin/overview")
 
+export const listAdminUsers = (search, page = 1) =>
+  request(`/admin/users?search=${encodeURIComponent(search || "")}&page=${page}`)
+
+export const getAdminUser = (userId) => request(`/admin/users/${userId}`)
+
+export const suspendAdminUser = (userId) => request(`/admin/users/${userId}/suspend`, { method: "POST" })
+
+export const unsuspendAdminUser = (userId) => request(`/admin/users/${userId}/unsuspend`, { method: "POST" })
+
+export const setAdminUserLimits = (userId, eventLimit, storageLimitBytes) =>
+  request(`/admin/users/${userId}/limits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_limit: eventLimit, storage_limit_bytes: storageLimitBytes }),
+  })
+
+export const deleteAdminUser = (userId, confirmEmail) =>
+  request(`/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm_email: confirmEmail }),
+  })
+
+export const listAdminEvents = (search, page = 1) =>
+  request(`/admin/events?search=${encodeURIComponent(search || "")}&page=${page}`)
+
 // --- Guest (public, no auth) ---
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)

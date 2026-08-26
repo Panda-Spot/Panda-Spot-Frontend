@@ -31,6 +31,8 @@ import Register from './pages/Register.jsx'
 import Branding from './pages/Branding.jsx'
 import Billing from './pages/Billing.jsx'
 import Admin from './pages/Admin.jsx'
+import AdminClients from './pages/AdminClients.jsx'
+import AdminClientDetail from './pages/AdminClientDetail.jsx'
 import InviteAccept from './pages/InviteAccept.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
@@ -190,6 +192,26 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <Admin />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/clients"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminClients />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/clients/:userId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminClientDetail />
             </ProtectedRoute>
           </AppShell>
         }

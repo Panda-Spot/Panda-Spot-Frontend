@@ -5,10 +5,11 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  LayoutDashboard,
   LogOut,
   Menu,
   Palette,
-  ShieldCheck,
+  Users,
   X,
 } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
@@ -24,6 +25,8 @@ const PAGE_TITLES = [
   { test: (p) => p === '/branding', title: 'Branding' },
   { test: (p) => p === '/billing', title: 'Billing' },
   { test: (p) => p === '/admin', title: 'Admin' },
+  { test: (p) => p === '/admin/clients', title: 'Clients' },
+  { test: (p) => p.startsWith('/admin/clients/'), title: 'Client' },
 ]
 
 function pageTitleFor(pathname) {
@@ -68,7 +71,7 @@ function SidebarLink({ to, icon: Icon, children, onNavigate }) {
       to={to}
       className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
       onClick={onNavigate}
-      end={to === '/events'}
+      end={to === '/events' || to === '/admin'}
     >
       <Icon size={17} className="sidebar-link-icon" />
       <span className="sidebar-link-label">{children}</span>
@@ -141,7 +144,8 @@ export default function AppShell({ children }) {
           </SidebarSection>
           {user?.is_admin && (
             <SidebarSection label="Platform" defaultOpen>
-              <SidebarLink to="/admin" icon={ShieldCheck} onNavigate={closeMobile}>Admin</SidebarLink>
+              <SidebarLink to="/admin" icon={LayoutDashboard} onNavigate={closeMobile}>Overview</SidebarLink>
+              <SidebarLink to="/admin/clients" icon={Users} onNavigate={closeMobile}>Clients</SidebarLink>
             </SidebarSection>
           )}
         </nav>
