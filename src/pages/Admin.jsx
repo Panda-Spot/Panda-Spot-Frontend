@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
-import { getAdminOverview } from '../api.js'
+import { driveBackupConnectUrl, getAdminOverview } from '../api.js'
+import { useAuth } from '../auth.jsx'
 import StatTile from '../components/StatTile.jsx'
 import TrendChart from '../components/TrendChart.jsx'
 
 export default function Admin() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const { user } = useAuth()
 
   useEffect(() => {
     getAdminOverview().then(setData).catch((e) => setError(e.message))
@@ -18,6 +20,29 @@ export default function Admin() {
   return (
     <div>
       <h1 className="section-title">Platform overview</h1>
+
+      {user?.is_admin && (
+        <div className="card">
+          <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta — platform setup)</span></h2>
+          <p className="subtle">
+            One Google account, shared across every event that turns on Drive backup — not something each
+            photographer connects individually. Beam captures get mirrored into an event's Drive folder using this
+            one account (works because the folder is shared as "Anyone with the link — Editor"). Since uploads count
+            against this single account's own Drive quota, they're only kept there for 2 days before being reclaimed
+            back to the server (into a separate beam/ subfolder, kept apart from directly-uploaded photos), and 7
+            days total before permanent deletion — photographers are notified to make their own copy well before
+            then.
+          </p>
+          {user.drive_backup_configured && <p className="hint">Connected — GOOGLE_DRIVE_BACKUP_REFRESH_TOKEN is set on the server.</p>}
+          <a className="btn" href={driveBackupConnectUrl()}>
+            {user.drive_backup_configured ? 'Reconnect a different account' : 'Connect Google Drive'}
+          </a>
+          <p className="hint">
+            The callback page shows a fresh refresh token to copy into the server's .env, then restart the server for
+            it to take effect.
+          </p>
+        </div>
+      )}
       <div className="card analytics-card">
         <div className="stat-grid">
           <StatTile icon={Users} value={data.total_users} label="users" />
