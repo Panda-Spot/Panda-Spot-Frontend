@@ -13,6 +13,21 @@
     <link rel="apple-touch-icon" href="/icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script>
+      (function () {
+        // Applied synchronously before first paint to avoid a flash of the
+        // wrong theme — mirrors web/src/theme.jsx's own read/write of the
+        // same key. Defaults to light (not matchMedia) since the product
+        // default is light regardless of OS preference; only an explicit
+        // saved choice switches it.
+        try {
+          var saved = localStorage.getItem('pandaspot_theme');
+          document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

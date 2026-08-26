@@ -61,7 +61,7 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   that the folder should stay shared as "Anyone with the link can view" — if
   it's later restricted or a file is deleted there, that specific photo can no
   longer be downloaded through PandaSpot (search still works). A third tab,
-  "Live from camera", sets up Beam — camera-to-cloud live upload straight from
+  "Live from camera", sets up Shoots — camera-to-cloud live upload straight from
   a photographer's camera via its own built-in FTP transfer, no companion app
   needed. The first time, it warns what turning this on means, then shows the
   generated host/port/username/password to enter into the camera's FTP
@@ -82,7 +82,7 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   account (not per-photographer), which the callback page shows as a
   refresh token to paste into the server's `.env`. Photographers on the
   server's `DRIVE_BACKUP_BETA_EMAILS` allowlist get a per-event toggle (on
-  that event's own page, once it has both a Drive folder and Beam set up)
+  that event's own page, once it has both a Drive folder and Shoots set up)
   to mirror camera captures into that folder using the shared account, plus
   an "I've made my copies — free up space" button and a notice that
   backed-up captures are only kept 2 days on Drive / 7 days total before
@@ -116,7 +116,7 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
   from ever hitting the 410 the search/feedback/download endpoints return
   for an expired event. Below the results, a small card lets the guest opt
   in to being notified (email or WhatsApp) if more photos of them show up
-  later — useful now that photos can keep arriving live via Beam during a
+  later — useful now that photos can keep arriving live via Shoots during a
   shoot. Choosing WhatsApp also offers a one-off "just text me this link
   now" button, independent of the ongoing subscription.
 

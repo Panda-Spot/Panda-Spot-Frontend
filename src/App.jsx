@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Routes, Route, NavLink, Navigate, Link, useLocation } from 'react-router-dom'
 
 function ScrollToTop() {
@@ -36,79 +36,33 @@ import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
-import { useAuth } from './auth.jsx'
-import { requestEmailVerification } from './api.js'
+import AppShell from './components/AppShell.jsx'
 
 // Styles
 import './app.css'
 import './styles/marketing.css'
 
-function VerifyEmailBanner() {
-  const { user } = useAuth()
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState('')
-
-  if (!user || user.email_verified) return null
-
-  const handleResend = async () => {
-    setError('')
-    try {
-      await requestEmailVerification()
-      setSent(true)
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
-  return (
-    <div className="verify-banner">
-      {sent ? (
-        <span>Verification email sent — check your inbox.</span>
-      ) : (
-        <>
-          <span>Please verify your email address.</span>
-          <button className="btn secondary" type="button" onClick={handleResend}>Resend email</button>
-        </>
-      )}
-      {error && <span className="error">{error}</span>}
-    </div>
-  )
-}
-
-function DashboardShell({ children }) {
-  const { user, logout } = useAuth()
-
+// Lightweight shell for pre-auth/account-recovery pages (login, register,
+// password reset, email verification, invite acceptance) — no sidebar,
+// since there's no dashboard nav worth showing someone who isn't
+// authenticated yet. The full sidebar shell (AppShell) is only used for the
+// actual dashboard routes below.
+function AuthLayout({ children }) {
   return (
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
           PandaSpot
-          <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--primary-blue-bg)', color: 'var(--primary-blue)', padding: '2px 8px', borderRadius: 9999, marginLeft: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 9999, marginLeft: 8 }}>
             STUDIO
           </span>
         </Link>
         <nav>
-          {user ? (
-            <>
-              <NavLink to="/events" end>Events</NavLink>
-              <NavLink to="/branding">Branding</NavLink>
-              <NavLink to="/billing">Billing</NavLink>
-              {user?.is_admin && <NavLink to="/admin">Admin</NavLink>}
-              <button className="btn secondary logout-btn" type="button" onClick={logout}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink to="/">Home</NavLink>
-              <NavLink to="/product">Product</NavLink>
-              <NavLink to="/login">Sign In</NavLink>
-            </>
-          )}
+          <NavLink to="/">Home</NavLink>
+          <NavLink to="/product">Product</NavLink>
+          <NavLink to="/login">Sign In</NavLink>
         </nav>
       </header>
-
-      <VerifyEmailBanner />
 
       <main className="content">{children}</main>
     </div>
@@ -139,49 +93,49 @@ function App() {
       <Route
         path="/login"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <Login />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
       <Route
         path="/register"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <Register />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
       <Route
         path="/forgot-password"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <ForgotPassword />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
       <Route
         path="/reset-password/:token"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <ResetPassword />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
       <Route
         path="/verify-email/:token"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <VerifyEmail />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
       <Route
         path="/invites/:token"
         element={
-          <DashboardShell>
+          <AuthLayout>
             <InviteAccept />
-          </DashboardShell>
+          </AuthLayout>
         }
       />
 
@@ -189,11 +143,11 @@ function App() {
       <Route
         path="/events"
         element={
-          <DashboardShell>
+          <AppShell>
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          </DashboardShell>
+          </AppShell>
         }
       />
       <Route
@@ -203,41 +157,41 @@ function App() {
       <Route
         path="/events/:eventId"
         element={
-          <DashboardShell>
+          <AppShell>
             <ProtectedRoute>
               <EventDetail />
             </ProtectedRoute>
-          </DashboardShell>
+          </AppShell>
         }
       />
       <Route
         path="/branding"
         element={
-          <DashboardShell>
+          <AppShell>
             <ProtectedRoute>
               <Branding />
             </ProtectedRoute>
-          </DashboardShell>
+          </AppShell>
         }
       />
       <Route
         path="/billing"
         element={
-          <DashboardShell>
+          <AppShell>
             <ProtectedRoute>
               <Billing />
             </ProtectedRoute>
-          </DashboardShell>
+          </AppShell>
         }
       />
       <Route
         path="/admin"
         element={
-          <DashboardShell>
+          <AppShell>
             <ProtectedRoute>
               <Admin />
             </ProtectedRoute>
-          </DashboardShell>
+          </AppShell>
         }
       />
 

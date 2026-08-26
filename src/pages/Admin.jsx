@@ -26,7 +26,7 @@ export default function Admin() {
           <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta — platform setup)</span></h2>
           <p className="subtle">
             One Google account, shared across every event that turns on Drive backup — not something each
-            photographer connects individually. Beam captures get mirrored into an event's Drive folder using this
+            photographer connects individually. Shoots captures get mirrored into an event's Drive folder using this
             one account (works because the folder is shared as "Anyone with the link — Editor"). Since uploads count
             against this single account's own Drive quota, they're only kept there for 2 days before being reclaimed
             back to the server (into a separate beam/ subfolder, kept apart from directly-uploaded photos), and 7

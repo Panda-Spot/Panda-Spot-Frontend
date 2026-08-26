@@ -143,22 +143,22 @@ export const setDriveAutoSync = (eventId, enabled) =>
     body: JSON.stringify({ enabled }),
   })
 
-// --- Beam (camera-to-cloud live upload) ---
+// --- Shoots (camera-to-cloud live upload) ---
 
-// Fetches the event's current Beam FTP credentials, or { connected: false }
+// Fetches the event's current Shoots FTP credentials, or { connected: false }
 // if none have been generated yet.
-export const getBeamCredentials = (eventId) => request(`/events/${eventId}/beam/credentials`)
+export const getShootsCredentials = (eventId) => request(`/events/${eventId}/shoots/credentials`)
 
 // Generates fresh credentials (first setup, or "Regenerate" — the previous
 // username/password stop working immediately).
-export const generateBeamCredentials = (eventId) =>
-  request(`/events/${eventId}/beam/credentials`, { method: "POST" })
+export const generateShootsCredentials = (eventId) =>
+  request(`/events/${eventId}/shoots/credentials`, { method: "POST" })
 
-// Revokes Beam access — the camera's saved credentials stop working.
-export const disconnectBeam = (eventId) =>
-  request(`/events/${eventId}/beam/credentials`, { method: "DELETE" })
+// Revokes Shoots access — the camera's saved credentials stop working.
+export const disconnectShoots = (eventId) =>
+  request(`/events/${eventId}/shoots/credentials`, { method: "DELETE" })
 
-// Subscribes to "a new photo just arrived via Beam" over Server-Sent Events.
+// Subscribes to "a new photo just arrived via Shoots" over Server-Sent Events.
 // Returns a cleanup function. Unlike subscribeToUploadProgress, this has no
 // fixed end — it just keeps streaming for as long as the event page is open.
 export const subscribeToLiveEvents = (eventId, { onPhotoAdded, onPhotoSkipped }) => {

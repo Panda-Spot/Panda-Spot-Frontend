@@ -6,10 +6,10 @@ import {
   connectDriveFolder,
   deleteEvent,
   deletePhoto,
-  disconnectBeam,
+  disconnectShoots,
   fileUrl,
-  generateBeamCredentials,
-  getBeamCredentials,
+  generateShootsCredentials,
+  getShootsCredentials,
   getEvent,
   getEventAnalytics,
   inviteCollaborator,
@@ -73,10 +73,10 @@ export default function EventDetail() {
   const [togglingDriveBackup, setTogglingDriveBackup] = useState(false)
   const [reclaimingDriveBackup, setReclaimingDriveBackup] = useState(false)
   const [driveBackupMessage, setDriveBackupMessage] = useState('')
-  const [beam, setBeam] = useState(null)
-  const [settingUpBeam, setSettingUpBeam] = useState(false)
-  const [regeneratingBeam, setRegeneratingBeam] = useState(false)
-  const [disconnectingBeam, setDisconnectingBeam] = useState(false)
+  const [shoots, setShoots] = useState(null)
+  const [settingUpShoots, setSettingUpShoots] = useState(false)
+  const [regeneratingShoots, setRegeneratingShoots] = useState(false)
+  const [disconnectingShoots, setDisconnectingShoots] = useState(false)
   const [liveNotice, setLiveNotice] = useState('')
   const cleanupRef = useRef(null)
   const liveStreamCleanupRef = useRef(null)
@@ -113,7 +113,7 @@ export default function EventDetail() {
   }, [])
 
   // Keeps the gallery updating live while a camera is streaming photos in
-  // via Beam — independent of whether the upload modal is open.
+  // via Shoots — independent of whether the upload modal is open.
   useEffect(() => {
     if (liveStreamCleanupRef.current) {
       liveStreamCleanupRef.current()
@@ -250,62 +250,62 @@ export default function EventDetail() {
     }
   }
 
-  const handleSetupBeam = async () => {
+  const handleSetupShoots = async () => {
     const confirmed = window.confirm(
       "This turns on live camera upload for this event: any photo your camera sends will be scanned for faces " +
       "and added to the gallery automatically, the same as a regular upload. You'll get a host/username/password " +
       "to enter into your camera's FTP transfer settings next. Continue?"
     )
     if (!confirmed) return
-    setSettingUpBeam(true)
+    setSettingUpShoots(true)
     setError('')
     try {
-      const creds = await generateBeamCredentials(eventId)
-      setBeam(creds)
+      const creds = await generateShootsCredentials(eventId)
+      setShoots(creds)
       load()
     } catch (e) {
       setError(e.message)
     } finally {
-      setSettingUpBeam(false)
+      setSettingUpShoots(false)
     }
   }
 
-  const handleShowBeamCredentials = async () => {
+  const handleShowShootsCredentials = async () => {
     setError('')
     try {
-      const creds = await getBeamCredentials(eventId)
-      setBeam(creds)
+      const creds = await getShootsCredentials(eventId)
+      setShoots(creds)
     } catch (e) {
       setError(e.message)
     }
   }
 
-  const handleRegenerateBeam = async () => {
+  const handleRegenerateShoots = async () => {
     if (!window.confirm("This invalidates the current username/password — you'll need to re-enter the new ones into your camera. Continue?")) return
-    setRegeneratingBeam(true)
+    setRegeneratingShoots(true)
     setError('')
     try {
-      const creds = await generateBeamCredentials(eventId)
-      setBeam(creds)
+      const creds = await generateShootsCredentials(eventId)
+      setShoots(creds)
     } catch (e) {
       setError(e.message)
     } finally {
-      setRegeneratingBeam(false)
+      setRegeneratingShoots(false)
     }
   }
 
-  const handleDisconnectBeam = async () => {
+  const handleDisconnectShoots = async () => {
     if (!window.confirm('Turn off camera upload for this event? Your camera\'s saved settings will stop working.')) return
-    setDisconnectingBeam(true)
+    setDisconnectingShoots(true)
     setError('')
     try {
-      await disconnectBeam(eventId)
-      setBeam(null)
+      await disconnectShoots(eventId)
+      setShoots(null)
       load()
     } catch (e) {
       setError(e.message)
     } finally {
-      setDisconnectingBeam(false)
+      setDisconnectingShoots(false)
     }
   }
 
@@ -549,8 +549,8 @@ export default function EventDetail() {
           </button>
           <button
             type="button"
-            className={uploadTab === 'beam' ? 'upload-tab active' : 'upload-tab'}
-            onClick={() => setUploadTab('beam')}
+            className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
+            onClick={() => setUploadTab('shoots')}
           >
             Live from camera
           </button>
@@ -563,7 +563,7 @@ export default function EventDetail() {
             disabled={uploading}
             hint="JPG, PNG, or WebP — drop multiple photos at once"
           />
-        ) : uploadTab === 'beam' ? (
+        ) : uploadTab === 'shoots' ? (
           <div className="drive-import">
             {!event?.beam_connected ? (
               <>
@@ -572,34 +572,34 @@ export default function EventDetail() {
                   and thumbnailed — while the shoot is still happening. This needs a camera with built-in FTP
                   transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.
                 </p>
-                <button className="btn" type="button" onClick={handleSetupBeam} disabled={settingUpBeam}>
-                  {settingUpBeam ? 'Setting up…' : 'Set up camera upload'}
+                <button className="btn" type="button" onClick={handleSetupShoots} disabled={settingUpShoots}>
+                  {settingUpShoots ? 'Setting up…' : 'Set up camera upload'}
                 </button>
               </>
             ) : (
               <>
                 <p className="hint">Camera upload is on for this event.</p>
-                {!beam ? (
-                  <button className="btn" type="button" onClick={handleShowBeamCredentials}>
+                {!shoots ? (
+                  <button className="btn" type="button" onClick={handleShowShootsCredentials}>
                     Show camera setup details
                   </button>
                 ) : (
-                  <div className="beam-credentials">
-                    <div className="beam-field"><span>Host</span><code>{beam.ftp_host}</code></div>
-                    <div className="beam-field"><span>Port</span><code>{beam.ftp_port}</code></div>
-                    <div className="beam-field"><span>Username</span><code>{beam.ftp_username}</code></div>
-                    <div className="beam-field"><span>Password</span><code>{beam.ftp_password}</code></div>
+                  <div className="shoots-credentials">
+                    <div className="shoots-field"><span>Host</span><code>{shoots.ftp_host}</code></div>
+                    <div className="shoots-field"><span>Port</span><code>{shoots.ftp_port}</code></div>
+                    <div className="shoots-field"><span>Username</span><code>{shoots.ftp_username}</code></div>
+                    <div className="shoots-field"><span>Password</span><code>{shoots.ftp_password}</code></div>
                     <p className="hint">
                       Enter these into your camera's FTP transfer settings menu, and set it to upload on capture.
                     </p>
                   </div>
                 )}
                 <div className="row">
-                  <button className="btn secondary" type="button" onClick={handleRegenerateBeam} disabled={regeneratingBeam}>
-                    {regeneratingBeam ? 'Regenerating…' : 'Regenerate credentials'}
+                  <button className="btn secondary" type="button" onClick={handleRegenerateShoots} disabled={regeneratingShoots}>
+                    {regeneratingShoots ? 'Regenerating…' : 'Regenerate credentials'}
                   </button>
-                  <button className="btn danger-btn" type="button" onClick={handleDisconnectBeam} disabled={disconnectingBeam}>
-                    {disconnectingBeam ? 'Turning off…' : 'Turn off camera upload'}
+                  <button className="btn danger-btn" type="button" onClick={handleDisconnectShoots} disabled={disconnectingShoots}>
+                    {disconnectingShoots ? 'Turning off…' : 'Turn off camera upload'}
                   </button>
                 </div>
               </>
