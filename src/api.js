@@ -259,6 +259,30 @@ export const deleteAdminUser = (userId, confirmEmail) =>
 export const listAdminEvents = (search, page = 1) =>
   request(`/admin/events?search=${encodeURIComponent(search || "")}&page=${page}`)
 
+export const getAdminEvent = (eventId) => request(`/admin/events/${eventId}`)
+
+export const deleteAdminEvent = (eventId) => request(`/admin/events/${eventId}`, { method: "DELETE" })
+
+export const setAdminEventExpiry = (eventId, expiresAt) =>
+  request(`/admin/events/${eventId}/expiry`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expires_at: expiresAt }),
+  })
+
+export const disableAdminEventShoots = (eventId) =>
+  request(`/admin/events/${eventId}/disable-shoots`, { method: "POST" })
+
+export const disableAdminEventDriveBackup = (eventId) =>
+  request(`/admin/events/${eventId}/disable-drive-backup`, { method: "POST" })
+
+export const resendAdminUserVerification = (userId) =>
+  request(`/admin/users/${userId}/resend-verification`, { method: "POST" })
+
+export const verifyAdminUser = (userId) => request(`/admin/users/${userId}/verify`, { method: "POST" })
+
+export const getAdminMetrics = (sort) => request(`/admin/metrics?sort=${encodeURIComponent(sort || "storage")}`)
+
 // --- Guest (public, no auth) ---
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)

@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   deleteAdminUser,
   getAdminUser,
+  resendAdminUserVerification,
   setAdminUserLimits,
   suspendAdminUser,
   unsuspendAdminUser,
+  verifyAdminUser,
 } from '../api.js'
 
 function formatBytes(bytes) {
@@ -24,6 +26,9 @@ export default function AdminClientDetail() {
   const [limitsMessage, setLimitsMessage] = useState('')
   const [confirmEmailInput, setConfirmEmailInput] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [verifyActionMessage, setVerifyActionMessage] = useState('')
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [forceVerifying, setForceVerifying] = useState(false)
 
   const load = useCallback(() => {
     getAdminUser(userId)
@@ -48,6 +53,35 @@ export default function AdminClientDetail() {
       setError(e.message)
     } finally {
       setTogglingSuspend(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setResendingVerification(true)
+    setError('')
+    setVerifyActionMessage('')
+    try {
+      const result = await resendAdminUserVerification(userId)
+      setVerifyActionMessage(result.already_verified ? 'Already verified.' : 'Verification email sent.')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setResendingVerification(false)
+    }
+  }
+
+  const handleForceVerify = async () => {
+    setForceVerifying(true)
+    setError('')
+    setVerifyActionMessage('')
+    try {
+      await verifyAdminUser(userId)
+      setVerifyActionMessage('Marked verified.')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setForceVerifying(false)
     }
   }
 
@@ -105,9 +139,22 @@ export default function AdminClientDetail() {
         <p className="hint">
           Joined {new Date(client.created_at).toLocaleDateString()} · Email {client.email_verified ? 'verified' : 'not verified'}
         </p>
-        <button className={`btn ${client.is_suspended ? 'secondary' : 'danger-btn'}`} type="button" onClick={handleToggleSuspend} disabled={togglingSuspend}>
-          {togglingSuspend ? 'Working…' : client.is_suspended ? 'Reactivate account' : 'Suspend account'}
-        </button>
+        <div className="row">
+          <button className={`btn ${client.is_suspended ? 'secondary' : 'danger-btn'}`} type="button" onClick={handleToggleSuspend} disabled={togglingSuspend}>
+            {togglingSuspend ? 'Working…' : client.is_suspended ? 'Reactivate account' : 'Suspend account'}
+          </button>
+          {!client.email_verified && (
+            <>
+              <button className="btn secondary" type="button" onClick={handleResendVerification} disabled={resendingVerification}>
+                {resendingVerification ? 'Sending…' : 'Resend verification email'}
+              </button>
+              <button className="btn secondary" type="button" onClick={handleForceVerify} disabled={forceVerifying}>
+                {forceVerifying ? 'Working…' : 'Mark verified'}
+              </button>
+            </>
+          )}
+        </div>
+        {verifyActionMessage && <p className="hint">{verifyActionMessage}</p>}
       </div>
 
       <h2 className="section-title">Events ({client.events.length})</h2>

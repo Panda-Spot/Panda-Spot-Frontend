@@ -33,6 +33,9 @@ import Billing from './pages/Billing.jsx'
 import Admin from './pages/Admin.jsx'
 import AdminClients from './pages/AdminClients.jsx'
 import AdminClientDetail from './pages/AdminClientDetail.jsx'
+import AdminEvents from './pages/AdminEvents.jsx'
+import AdminEventDetail from './pages/AdminEventDetail.jsx'
+import AdminMetrics from './pages/AdminMetrics.jsx'
 import InviteAccept from './pages/InviteAccept.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
@@ -212,6 +215,36 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <AdminClientDetail />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/events"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminEvents />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/events/:eventId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminEventDetail />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/metrics"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminMetrics />
             </ProtectedRoute>
           </AppShell>
         }

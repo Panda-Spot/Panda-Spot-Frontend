@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import {
+  BarChart3,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,9 @@ const PAGE_TITLES = [
   { test: (p) => p === '/admin', title: 'Admin' },
   { test: (p) => p === '/admin/clients', title: 'Clients' },
   { test: (p) => p.startsWith('/admin/clients/'), title: 'Client' },
+  { test: (p) => p === '/admin/events', title: 'Events (admin)' },
+  { test: (p) => p.startsWith('/admin/events/'), title: 'Event (admin)' },
+  { test: (p) => p === '/admin/metrics', title: 'Metrics' },
 ]
 
 function pageTitleFor(pathname) {
@@ -146,6 +150,8 @@ export default function AppShell({ children }) {
             <SidebarSection label="Platform" defaultOpen>
               <SidebarLink to="/admin" icon={LayoutDashboard} onNavigate={closeMobile}>Overview</SidebarLink>
               <SidebarLink to="/admin/clients" icon={Users} onNavigate={closeMobile}>Clients</SidebarLink>
+              <SidebarLink to="/admin/events" icon={Calendar} onNavigate={closeMobile}>Events</SidebarLink>
+              <SidebarLink to="/admin/metrics" icon={BarChart3} onNavigate={closeMobile}>Metrics</SidebarLink>
             </SidebarSection>
           )}
         </nav>

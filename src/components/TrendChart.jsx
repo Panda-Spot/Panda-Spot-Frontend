@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useTheme } from '../theme.jsx'
 
 // Validated categorical pair (blue, orange) — passes CVD/contrast/lightness
 // checks in both light and dark mode. Do not swap these for brand purple/pink;
@@ -11,24 +11,14 @@ const SERIES_COLORS = {
 const GRID_COLOR = { light: '#e1e0d9', dark: '#2c2c2a' }
 const AXIS_COLOR = { light: '#898781', dark: '#898781' }
 
-function useIsDarkMode() {
-  // matches the existing prefers-color-scheme approach this codebase already
-  // uses in CSS — mirror it in JS for recharts (which needs real color values,
-  // not CSS custom properties, since it renders to SVG)
-  const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e) => setDark(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-  return dark
-}
-
 // series: [{ key: 'daily_searches', name: 'Searches', data: [{date,count}] }, ...]
 // If there's only one series, recharts still gets a single Line — no legend needed (title names it).
 export default function TrendChart({ series, height = 220 }) {
-  const dark = useIsDarkMode()
+  // recharts needs real color values, not CSS custom properties (it renders
+  // to SVG) — read the actual manually-selected theme (src/theme.jsx),
+  // not the OS preference, so chart colors always match the page.
+  const { theme } = useTheme()
+  const dark = theme === 'dark'
   const colors = dark ? SERIES_COLORS.dark : SERIES_COLORS.light
 
   // Merge series (which all share the same date range) into one array of
