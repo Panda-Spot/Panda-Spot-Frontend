@@ -119,7 +119,7 @@ export default function EventDetail() {
       liveStreamCleanupRef.current()
       liveStreamCleanupRef.current = null
     }
-    if (!event?.beam_connected) return undefined
+    if (!event?.shoots_connected) return undefined
 
     liveStreamCleanupRef.current = subscribeToLiveEvents(eventId, {
       onPhotoAdded: (data) => {
@@ -138,7 +138,7 @@ export default function EventDetail() {
         liveStreamCleanupRef.current = null
       }
     }
-  }, [eventId, event?.beam_connected])
+  }, [eventId, event?.shoots_connected])
 
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
@@ -552,7 +552,7 @@ export default function EventDetail() {
             className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
             onClick={() => setUploadTab('shoots')}
           >
-            Live from camera
+            PandaShoots
           </button>
         </div>
 
@@ -565,7 +565,7 @@ export default function EventDetail() {
           />
         ) : uploadTab === 'shoots' ? (
           <div className="drive-import">
-            {!event?.beam_connected ? (
+            {!event?.shoots_connected ? (
               <>
                 <p className="hint drive-import-notice">
                   Connect your camera's own WiFi/FTP transfer so photos land in this gallery — scanned for faces

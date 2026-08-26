@@ -29,7 +29,7 @@ export default function Admin() {
             photographer connects individually. Shoots captures get mirrored into an event's Drive folder using this
             one account (works because the folder is shared as "Anyone with the link — Editor"). Since uploads count
             against this single account's own Drive quota, they're only kept there for 2 days before being reclaimed
-            back to the server (into a separate beam/ subfolder, kept apart from directly-uploaded photos), and 7
+            back to the server (into a separate shoots/ subfolder, kept apart from directly-uploaded photos), and 7
             days total before permanent deletion — photographers are notified to make their own copy well before
             then.
           </p>
