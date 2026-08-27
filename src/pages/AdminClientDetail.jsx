@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useConfirm } from '../confirm.jsx'
 import {
   deleteAdminUser,
   getAdminUser,
@@ -17,6 +18,7 @@ function formatBytes(bytes) {
 export default function AdminClientDetail() {
   const { userId } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [client, setClient] = useState(null)
   const [error, setError] = useState('')
   const [togglingSuspend, setTogglingSuspend] = useState(false)
@@ -104,7 +106,11 @@ export default function AdminClientDetail() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm(`Permanently delete ${client.email}'s account and every event they own? This can't be undone.`)) return
+    const confirmed = await confirm(
+      `Permanently delete ${client.email}'s account and every event they own? This can't be undone.`,
+      { title: 'Delete this client?', confirmLabel: 'Delete' }
+    )
+    if (!confirmed) return
     setDeleting(true)
     setError('')
     try {

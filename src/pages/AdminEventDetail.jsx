@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useConfirm } from '../confirm.jsx'
 import {
   deleteAdminEvent,
   disableAdminEventDriveBackup,
@@ -19,6 +20,7 @@ function toDateInputValue(iso) {
 export default function AdminEventDetail() {
   const { eventId } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [event, setEvent] = useState(null)
   const [error, setError] = useState('')
   const [expiryInput, setExpiryInput] = useState('')
@@ -82,7 +84,11 @@ export default function AdminEventDetail() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`)) return
+    const confirmed = await confirm(
+      `Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`,
+      { title: 'Delete this event?', confirmLabel: 'Delete' }
+    )
+    if (!confirmed) return
     setDeleting(true)
     setError('')
     try {

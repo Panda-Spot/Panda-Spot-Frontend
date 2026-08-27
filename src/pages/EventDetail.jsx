@@ -25,14 +25,25 @@ import {
   syncDriveFolder,
 } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import { useConfirm } from '../confirm.jsx'
+import { useToast } from '../toast.jsx'
+import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
 import GuestCard from '../GuestCard.jsx'
-import Modal from '../components/Modal.jsx'
 import Dropzone from '../components/Dropzone.jsx'
 import StatTile from '../components/StatTile.jsx'
 import TrendChart from '../components/TrendChart.jsx'
+import JobProgressLog from '../components/JobProgressLog.jsx'
 
 function guestLink(slug) {
   return `${window.location.origin}/e/${slug}`
+}
+
+function progressLine(data) {
+  let line = `Processed ${data.completed} of ${data.total}`
+  if (data.current_file) line += ` — ${data.current_file}`
+  const eta = formatEta(data.eta_seconds)
+  if (eta) line += ` (${eta})`
+  return line
 }
 
 function formatEta(seconds) {
@@ -53,7 +64,6 @@ export default function EventDetail() {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState('')
-  const [lastResult, setLastResult] = useState(null)
   const [copied, setCopied] = useState(false)
   const [showGuestCard, setShowGuestCard] = useState(false)
   const [collaborators, setCollaborators] = useState([])
@@ -64,8 +74,8 @@ export default function EventDetail() {
   const [teamError, setTeamError] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [deletingEvent, setDeletingEvent] = useState(false)
-  const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
+  const [logLines, setLogLines] = useState([])
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [syncingDrive, setSyncingDrive] = useState(false)
@@ -80,6 +90,12 @@ export default function EventDetail() {
   const [liveNotice, setLiveNotice] = useState('')
   const cleanupRef = useRef(null)
   const liveStreamCleanupRef = useRef(null)
+  const confirm = useConfirm()
+  const { showToast } = useToast()
+
+  const appendLog = useCallback((line) => {
+    setLogLines((prev) => [...prev, line])
+  }, [])
 
   const loadTeam = useCallback(() => {
     listCollaborators(eventId)
@@ -112,6 +128,39 @@ export default function EventDetail() {
     }
   }, [])
 
+  // A job (upload / Drive import / Drive sync) keeps running server-side
+  // regardless of whether anyone's watching — see server's lib/jobQueue.js.
+  // If one was left running when this page was last closed/reloaded,
+  // reconnect to it now instead of showing a blank upload section.
+  useEffect(() => {
+    const jobId = getActiveJob(eventId)
+    if (!jobId) return undefined
+
+    setUploading(true)
+    setLogLines(['Reconnected — checking status…'])
+    cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+      onProgress: (data) => {
+        setProgress(data)
+        appendLog(progressLine(data))
+      },
+      onDone: (data) => {
+        setUploading(false)
+        setProgress(null)
+        appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        clearActiveJob(eventId)
+        load()
+      },
+      onError: (data) => {
+        setUploading(false)
+        setProgress(null)
+        appendLog(`Failed — ${data.message || 'unknown error'}`)
+        clearActiveJob(eventId)
+      },
+    })
+    return undefined
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
   // Keeps the gallery updating live while a camera is streaming photos in
   // via Shoots — independent of whether the upload modal is open.
   useEffect(() => {
@@ -140,67 +189,72 @@ export default function EventDetail() {
     }
   }, [eventId, event?.shoots_connected])
 
+  function watchJob(jobId, { failedLabel }) {
+    saveActiveJob(eventId, jobId)
+    cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+      onProgress: (data) => {
+        setProgress(data)
+        appendLog(progressLine(data))
+      },
+      onDone: (data) => {
+        setUploading(false)
+        setProgress(null)
+        let summary = `Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`
+        if (data.removed_count > 0) summary += ` ${data.removed_count} photo(s) removed (no longer in Drive).`
+        if (data.skipped?.length > 0) summary += ` Skipped: ${data.skipped.join(', ')}`
+        appendLog(summary)
+        clearActiveJob(eventId)
+        showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        load()
+      },
+      onError: (data) => {
+        setUploading(false)
+        setProgress(null)
+        const message = data.message || failedLabel
+        appendLog(`Failed — ${message}`)
+        clearActiveJob(eventId)
+        showToast(message, { type: 'error' })
+      },
+    })
+  }
+
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
     setUploading(true)
-    setError('')
-    setLastResult(null)
+    setError('')
     setProgress(null)
+    setLogLines([`Starting upload — ${files.length} file(s)`])
     try {
       const { job_id: jobId } = await startPhotoUpload(eventId, files)
-      cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
-        onProgress: (data) => setProgress(data),
-        onDone: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setLastResult(data)
-          load()
-        },
-        onError: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setError(data.message || 'Upload failed')
-        },
-      })
+      watchJob(jobId, { failedLabel: 'Upload failed' })
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
       setUploading(false)
     }
   }
 
   const handleDriveConnect = async () => {
     if (!driveUrl.trim()) return
-    const confirmed = window.confirm(
+    const confirmed = await confirm(
       "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
       "PandaSpot only keeps a thumbnail and face data for each photo; the originals stay in Drive and are fetched " +
-      "live when a guest downloads or shares one. Continue?"
+      "live when a guest downloads or shares one.",
+      { title: 'Connect this Drive folder?', confirmLabel: 'Connect', danger: false }
     )
     if (!confirmed) return
 
     setConnectingDrive(true)
     setUploading(true)
-    setError('')
-    setLastResult(null)
+    setError('')
     setProgress(null)
+    setLogLines([])
     try {
-      const { job_id: jobId } = await connectDriveFolder(eventId, driveUrl.trim())
+      const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, driveUrl.trim())
       setDriveUrl('')
-      cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
-        onProgress: (data) => setProgress(data),
-        onDone: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setLastResult(data)
-          load()
-        },
-        onError: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setError(data.message || 'Import failed')
-        },
-      })
+      setLogLines([`Connected — found ${filesFound} file(s) in the folder`])
+      watchJob(jobId, { failedLabel: 'Import failed' })
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
       setUploading(false)
     } finally {
       setConnectingDrive(false)
@@ -210,27 +264,14 @@ export default function EventDetail() {
   const handleDriveSync = async () => {
     setSyncingDrive(true)
     setUploading(true)
-    setError('')
-    setLastResult(null)
+    setError('')
     setProgress(null)
+    setLogLines(['Checking the Drive folder for changes…'])
     try {
       const { job_id: jobId } = await syncDriveFolder(eventId)
-      cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
-        onProgress: (data) => setProgress(data),
-        onDone: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setLastResult(data)
-          load()
-        },
-        onError: (data) => {
-          setUploading(false)
-          setProgress(null)
-          setError(data.message || 'Sync failed')
-        },
-      })
+      watchJob(jobId, { failedLabel: 'Sync failed' })
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
       setUploading(false)
     } finally {
       setSyncingDrive(false)
@@ -251,10 +292,10 @@ export default function EventDetail() {
   }
 
   const handleSetupShoots = async () => {
-    const confirmed = window.confirm(
-      "This turns on live camera upload for this event: any photo your camera sends will be scanned for faces " +
-      "and added to the gallery automatically, the same as a regular upload. You'll get a host/username/password " +
-      "to enter into your camera's FTP transfer settings next. Continue?"
+    const confirmed = await confirm(
+      "Any photo your camera sends will be scanned for faces and added to the gallery automatically, the same as " +
+      "a regular upload. You'll get a host/username/password to enter into your camera's FTP transfer settings next.",
+      { title: 'Turn on camera upload?', confirmLabel: 'Turn on', danger: false }
     )
     if (!confirmed) return
     setSettingUpShoots(true)
@@ -264,7 +305,7 @@ export default function EventDetail() {
       setShoots(creds)
       load()
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
     } finally {
       setSettingUpShoots(false)
     }
@@ -281,29 +322,39 @@ export default function EventDetail() {
   }
 
   const handleRegenerateShoots = async () => {
-    if (!window.confirm("This invalidates the current username/password — you'll need to re-enter the new ones into your camera. Continue?")) return
+    const confirmed = await confirm(
+      "This invalidates the current username/password — you'll need to re-enter the new ones into your camera.",
+      { title: 'Regenerate camera credentials?', confirmLabel: 'Regenerate' }
+    )
+    if (!confirmed) return
     setRegeneratingShoots(true)
     setError('')
     try {
       const creds = await generateShootsCredentials(eventId)
       setShoots(creds)
+      showToast('New credentials generated.')
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
     } finally {
       setRegeneratingShoots(false)
     }
   }
 
   const handleDisconnectShoots = async () => {
-    if (!window.confirm('Turn off camera upload for this event? Your camera\'s saved settings will stop working.')) return
+    const confirmed = await confirm(
+      "Your camera's saved FTP settings will stop working.",
+      { title: 'Turn off camera upload?', confirmLabel: 'Turn off' }
+    )
+    if (!confirmed) return
     setDisconnectingShoots(true)
     setError('')
     try {
       await disconnectShoots(eventId)
       setShoots(null)
       load()
+      showToast('Camera upload turned off.')
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
     } finally {
       setDisconnectingShoots(false)
     }
@@ -390,14 +441,15 @@ export default function EventDetail() {
   }
 
   const handleDeletePhoto = async (photoId, filename) => {
-    if (!window.confirm(`Delete "${filename}"? This can't be undone.`)) return
+    const confirmed = await confirm(`Delete "${filename}"? This can't be undone.`, { title: 'Delete photo?', confirmLabel: 'Delete' })
+    if (!confirmed) return
     setDeletingPhotoId(photoId)
     setError('')
     try {
       await deletePhoto(eventId, photoId)
       setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
     } finally {
       setDeletingPhotoId(null)
     }
@@ -405,19 +457,21 @@ export default function EventDetail() {
 
   const handleDeleteEvent = async () => {
     if (!event) return
-    if (!window.confirm(`Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`)) return
+    const confirmed = await confirm(
+      `Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`,
+      { title: 'Delete event?', confirmLabel: 'Delete' }
+    )
+    if (!confirmed) return
     setDeletingEvent(true)
     setError('')
     try {
       await deleteEvent(eventId)
       navigate('/events')
     } catch (e) {
-      setError(e.message)
+      showToast(e.message, { type: 'error' })
       setDeletingEvent(false)
     }
   }
-
-  const eta = progress ? formatEta(progress.eta_seconds) : null
 
   return (
     <div>
@@ -527,11 +581,8 @@ export default function EventDetail() {
         </div>
       )}
 
-      <button className="btn upload-trigger-btn" type="button" onClick={() => setUploadModalOpen(true)}>
-        Upload Photos
-      </button>
-
-      <Modal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title="Upload photos">
+      <div className="card upload-section">
+        <div className="guest-link-label">Upload photos</div>
         <div className="upload-tabs">
           <button
             type="button"
@@ -567,11 +618,10 @@ export default function EventDetail() {
           <div className="drive-import">
             {!event?.shoots_connected ? (
               <>
-                <p className="hint drive-import-notice">
-                  Connect your camera's own WiFi/FTP transfer so photos land in this gallery — scanned for faces
-                  and thumbnailed — while the shoot is still happening. This needs a camera with built-in FTP
-                  transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.
-                </p>
+                <ul className="notice-list">
+                  <li>Photos land in this gallery — scanned for faces and thumbnailed — while the shoot is still happening.</li>
+                  <li>Needs a camera with built-in FTP transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.</li>
+                </ul>
                 <button className="btn" type="button" onClick={handleSetupShoots} disabled={settingUpShoots}>
                   {settingUpShoots ? 'Setting up…' : 'Set up camera upload'}
                 </button>
@@ -615,10 +665,10 @@ export default function EventDetail() {
                 ? `Last synced ${new Date(event.last_drive_sync_at).toLocaleString()}.`
                 : 'Not synced yet.'}
             </p>
-            <p className="hint drive-import-notice">
-              Syncing checks for photos added or removed in the folder since the last sync — new ones are
-              imported, and ones deleted from Drive are removed from PandaSpot too.
-            </p>
+            <ul className="notice-list">
+              <li>Syncing checks for photos added or removed in the folder since the last sync.</li>
+              <li>New photos are imported; ones deleted from Drive are removed from PandaSpot too.</li>
+            </ul>
             <div className="row">
               <button className="btn" type="button" onClick={handleDriveSync} disabled={uploading}>
                 {syncingDrive ? 'Syncing…' : 'Sync now'}
@@ -655,23 +705,22 @@ export default function EventDetail() {
               </div>
             )}
             {event.drive_backup_enabled && (
-              <p className="hint drive-import-notice">
-                Backed-up captures live in this Drive folder for only 2 days before being pulled back to PandaSpot's
-                server and removed from Drive, and 7 days total before permanent deletion everywhere. Make your own
-                copy in Drive (select all, "Make a copy") well before then.
-              </p>
+              <ul className="notice-list">
+                <li>Backed-up captures live in this Drive folder for only 2 days before being pulled back to PandaSpot's server and removed from Drive.</li>
+                <li>7 days total before permanent deletion everywhere.</li>
+                <li>Make your own copy in Drive (select all, "Make a copy") well before then.</li>
+              </ul>
             )}
             {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
           </div>
         ) : (
           <div className="drive-import">
-            <p className="hint drive-import-notice">
-              Imported photos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails and face-search data are kept.
-              Downloads and shares fetch the original from your Drive folder live, so keep it shared as
-              &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific
-              photos can no longer be downloaded through PandaSpot (search still works fine). Connecting scans and
-              imports every photo currently in the folder, so it can take a while for a large one.
-            </p>
+            <ul className="notice-list">
+              <li>Imported photos aren't stored on PandaSpot's server — only thumbnails and face-search data are kept.</li>
+              <li>Downloads and shares fetch the original from your Drive folder live.</li>
+              <li>Keep the folder shared as "Anyone with the link can view" — if you later restrict or delete files there, those specific photos can no longer be downloaded through PandaSpot (search still works fine).</li>
+              <li>Connecting scans and imports every photo currently in the folder, so it can take a while for a large one.</li>
+            </ul>
             <div className="row">
               <input
                 className="text-input"
@@ -688,50 +737,10 @@ export default function EventDetail() {
           </div>
         )}
 
-        {uploading && (
-          <div className="card upload-progress-card">
-            {progress ? (
-              <>
-                <p className="hint">
-                  Processing {progress.completed} of {progress.total} photos…
-                </p>
-                <div className="progress-bar">
-                  <div
-                    className="progress-bar-fill"
-                    style={{ width: `${progress.total ? Math.round((progress.completed / progress.total) * 100) : 0}%` }}
-                  />
-                </div>
-                {progress.current_file && <p className="hint">Now processing: {progress.current_file}</p>}
-                <p className="hint">
-                  {progress.photos_per_second != null && `${progress.photos_per_second.toFixed(1)} photos/sec`}
-                  {eta && ` · ${eta}`}
-                </p>
-                <p className="hint">
-                  Faces found so far: {progress.faces_found_so_far ?? 0} · Skipped: {progress.skipped_so_far?.length ?? 0}
-                </p>
-              </>
-            ) : (
-              <p className="hint">Starting upload…</p>
-            )}
-          </div>
-        )}
+        <JobProgressLog lines={logLines} progress={progress} />
+      </div>
 
-        {error && <p className="error">{error}</p>}
-
-        {lastResult && (
-          <p className="hint">
-            Processed {lastResult.photos_processed} photo(s), found {lastResult.faces_found} face(s).
-            {lastResult.removed_count > 0 && ` Removed ${lastResult.removed_count} photo(s) no longer in Drive.`}
-            {lastResult.skipped.length > 0 && (
-              <span className="skipped-list">
-                Skipped: {lastResult.skipped.join(', ')}
-              </span>
-            )}
-          </p>
-        )}
-      </Modal>
-
-      {error && !uploadModalOpen && <p className="error">{error}</p>}
+      {error && <p className="error">{error}</p>}
 
       {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
