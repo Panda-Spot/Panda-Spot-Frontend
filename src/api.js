@@ -215,6 +215,12 @@ export const setEventDriveBackup = (eventId, enabled) =>
 export const reclaimDriveBackupNow = (eventId) =>
   request(`/events/${eventId}/drive-backup/reclaim-now`, { method: "POST" })
 
+// Backs up every already-local photo not yet backed up (direct uploads, or
+// PandaShoots captures from before Drive backup was turned on) — same
+// job/progress shape as startPhotoUpload/connectDriveFolder/syncDriveFolder.
+export const backupExistingPhotosToDrive = (eventId) =>
+  request(`/events/${eventId}/drive-backup/backup-existing`, { method: "POST" })
+
 export const getBranding = () => request("/branding")
 
 export const saveBranding = (studioName, brandColor, logoFile) => {

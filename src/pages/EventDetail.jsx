@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Target, Flag } from 'lucide-react'
 import {
+  backupExistingPhotosToDrive,
   cancelInvite,
   connectDriveFolder,
   deleteEvent,
@@ -79,6 +80,7 @@ export default function EventDetail() {
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [syncingDrive, setSyncingDrive] = useState(false)
+  const [backingUpExisting, setBackingUpExisting] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
   const [togglingDriveBackup, setTogglingDriveBackup] = useState(false)
   const [reclaimingDriveBackup, setReclaimingDriveBackup] = useState(false)
@@ -145,7 +147,7 @@ export default function EventDetail() {
       },
       onDone: (data) => {
         setUploading(false)
-        setProgress(null)
+        setProgress(null)
         appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
         clearActiveJob(eventId)
         load()
@@ -198,7 +200,7 @@ export default function EventDetail() {
       },
       onDone: (data) => {
         setUploading(false)
-        setProgress(null)
+        setProgress(null)
         let summary = `Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`
         if (data.removed_count > 0) summary += ` ${data.removed_count} photo(s) removed (no longer in Drive).`
         if (data.skipped?.length > 0) summary += ` Skipped: ${data.skipped.join(', ')}`
@@ -221,7 +223,7 @@ export default function EventDetail() {
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
     setUploading(true)
-    setError('')
+    setError('')
     setProgress(null)
     setLogLines([`Starting upload — ${files.length} file(s)`])
     try {
@@ -245,7 +247,7 @@ export default function EventDetail() {
 
     setConnectingDrive(true)
     setUploading(true)
-    setError('')
+    setError('')
     setProgress(null)
     setLogLines([])
     try {
@@ -264,7 +266,7 @@ export default function EventDetail() {
   const handleDriveSync = async () => {
     setSyncingDrive(true)
     setUploading(true)
-    setError('')
+    setError('')
     setProgress(null)
     setLogLines(['Checking the Drive folder for changes…'])
     try {
@@ -275,6 +277,24 @@ export default function EventDetail() {
       setUploading(false)
     } finally {
       setSyncingDrive(false)
+    }
+  }
+
+  const handleBackupExisting = async () => {
+    setBackingUpExisting(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([])
+    try {
+      const { job_id: jobId, files_found: filesFound } = await backupExistingPhotosToDrive(eventId)
+      setLogLines([`Found ${filesFound} photo(s) not yet backed up`])
+      watchJob(jobId, { failedLabel: 'Backup failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setBackingUpExisting(false)
     }
   }
 
@@ -695,19 +715,25 @@ export default function EventDetail() {
                     disabled={togglingDriveBackup || !event.drive_backup_available}
                     onChange={(e) => handleToggleDriveBackup(e.target.checked)}
                   />
-                  Back up camera captures to this Drive folder <span className="hint">(advanced, beta)</span>
+                  Back up photos to this Drive folder <span className="hint">(advanced, beta)</span>
                 </label>
                 {event.drive_backup_enabled && (
-                  <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
-                    {reclaimingDriveBackup ? 'Reclaiming…' : "I've made my copies — free up space"}
-                  </button>
+                  <>
+                    <button className="btn secondary" type="button" onClick={handleBackupExisting} disabled={backingUpExisting || uploading}>
+                      {backingUpExisting ? 'Starting…' : 'Back up existing photos too'}
+                    </button>
+                    <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
+                      {reclaimingDriveBackup ? 'Reclaiming…' : "I've made my copies — free up space"}
+                    </button>
+                  </>
                 )}
               </div>
             )}
             {event.drive_backup_enabled && (
               <ul className="notice-list">
-                <li>Backed-up captures live in this Drive folder for only 2 days before being pulled back to PandaSpot's server and removed from Drive.</li>
-                <li>7 days total before permanent deletion everywhere.</li>
+                <li>Applies to any photo backed up this way — new PandaShoots captures, and any existing photo (direct uploads included) you back up with the button above.</li>
+                <li>Backed-up photos live in this Drive folder for only 2 days before being pulled back to PandaSpot's server and removed from Drive.</li>
+                <li>7 days total before permanent deletion everywhere — including the PandaSpot copy, even for a photo you originally uploaded directly.</li>
                 <li>Make your own copy in Drive (select all, "Make a copy") well before then.</li>
               </ul>
             )}
