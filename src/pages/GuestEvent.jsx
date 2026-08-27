@@ -12,6 +12,7 @@ import {
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
+import Lightbox from '../components/Lightbox.jsx'
 
 const MAX_SELFIES = 3
 
@@ -37,6 +38,7 @@ export default function GuestEvent() {
   const [alertSubscribed, setAlertSubscribed] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [sendingLink, setSendingLink] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -260,9 +262,11 @@ export default function GuestEvent() {
             )}
           </div>
           <div className="match-grid">
-            {result.matches.map((m) => (
+            {result.matches.map((m, i) => (
               <div className="photo-card match-card" key={m.photo_id}>
-                <img src={fileUrl(m.thumbnail_url || m.url)} alt={m.filename} />
+                <button className="match-thumb-btn" type="button" onClick={() => setLightboxIndex(i)} aria-label={`View ${m.filename} full screen`}>
+                  <img src={fileUrl(m.thumbnail_url || m.url)} alt={m.filename} />
+                </button>
                 <div className="meta">
                   <span>Match</span>
                   <span>{Math.round(m.similarity * 100)}%</span>
@@ -342,6 +346,17 @@ export default function GuestEvent() {
             {alertMessage && <p className="hint feedback-note">{alertMessage}</p>}
           </div>
         </>
+      )}
+
+      {lightboxIndex != null && result?.matches?.length > 0 && (
+        <Lightbox
+          matches={result.matches}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndexChange={setLightboxIndex}
+          onShare={handleShare}
+          sharingId={sharingId}
+        />
       )}
     </div>
   )
