@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react'
-import { fileUrl } from '../api.js'
+import { ChevronLeft, ChevronRight, Heart, Share2, X } from 'lucide-react'
+import { addPhotoComment, fileUrl, getPhotoComments } from '../api.js'
+import { getGuestClientId, getGuestName, setGuestName } from '../guestId.js'
 
 const SWIPE_THRESHOLD_PX = 50
 
@@ -8,15 +9,46 @@ const SWIPE_THRESHOLD_PX = 50
 // same thumbnail already loaded in the grid (not the full-res original —
 // that's only ever fetched on download/share, see server's files.js), so a
 // small caption makes clear a sharper copy is what actually gets downloaded.
-export default function Lightbox({ matches, index, onClose, onIndexChange, onShare, sharingId }) {
+export default function Lightbox({ slug, matches, index, onClose, onIndexChange, onShare, sharingId, onToggleLike }) {
   const touchStartX = useRef(null)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const [comments, setComments] = useState([])
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [nameInput, setNameInput] = useState(getGuestName())
+  const [postingComment, setPostingComment] = useState(false)
 
   const match = matches[index]
 
   useEffect(() => {
     setImgLoaded(false)
   }, [index])
+
+  useEffect(() => {
+    if (!match) return
+    setLoadingComments(true)
+    getPhotoComments(slug, match.photo_id)
+      .then((data) => setComments(data.comments || []))
+      .catch(() => setComments([]))
+      .finally(() => setLoadingComments(false))
+  }, [slug, match])
+
+  const handlePostComment = async (e) => {
+    e.preventDefault()
+    if (!commentText.trim()) return
+    setPostingComment(true)
+    try {
+      const comment = await addPhotoComment(slug, match.photo_id, getGuestClientId(), nameInput.trim(), commentText.trim())
+      setComments((prev) => [...prev, comment])
+      setCommentText('')
+      setGuestName(nameInput.trim())
+    } catch {
+      // Silently drop — the comment box just keeps the typed text so the
+      // guest can retry, no need for a hard error state in a lightbox.
+    } finally {
+      setPostingComment(false)
+    }
+  }
 
   useEffect(() => {
     const onKey = (e) => {
@@ -88,11 +120,57 @@ export default function Lightbox({ matches, index, onClose, onIndexChange, onSha
           Preview quality — {Math.round(match.similarity * 100)}% match. The downloaded/shared copy will be sharper.
         </p>
         <div className="row">
+          <button
+            className={match.liked_by_me ? 'like-btn liked' : 'like-btn'}
+            type="button"
+            onClick={() => onToggleLike(match)}
+            aria-label={match.liked_by_me ? 'Unlike' : 'Like'}
+          >
+            <Heart size={14} fill={match.liked_by_me ? 'currentColor' : 'none'} />
+            {match.like_count > 0 ? match.like_count : ''}
+          </button>
           <button className="btn secondary" type="button" onClick={() => onShare(match)} disabled={sharingId === match.photo_id}>
             <Share2 size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
             {sharingId === match.photo_id ? 'Preparing…' : 'Share'}
           </button>
           <span className="hint">{index + 1} of {matches.length}</span>
+        </div>
+
+        <div className="lightbox-comments">
+          {loadingComments ? (
+            <p className="hint">Loading comments…</p>
+          ) : comments.length === 0 ? (
+            <p className="hint">No comments yet — be the first!</p>
+          ) : (
+            <ul className="lightbox-comment-list">
+              {comments.map((c) => (
+                <li key={c.id}>
+                  <strong>{c.guest_name}</strong> {c.text}
+                </li>
+              ))}
+            </ul>
+          )}
+          <form className="row" onSubmit={handlePostComment} style={{ marginTop: 8 }}>
+            <input
+              className="text-input lightbox-name-input"
+              type="text"
+              placeholder="Your name (optional)"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              maxLength={60}
+            />
+            <input
+              className="text-input"
+              type="text"
+              placeholder="Add a comment…"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              maxLength={500}
+            />
+            <button className="btn" type="submit" disabled={postingComment || !commentText.trim()}>
+              {postingComment ? 'Posting…' : 'Post'}
+            </button>
+          </form>
         </div>
       </div>
     </div>

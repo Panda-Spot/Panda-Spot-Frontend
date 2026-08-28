@@ -26,6 +26,8 @@ import NotFound from './pages/public/NotFound.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import EventDetail from './pages/EventDetail.jsx'
 import GuestEvent from './pages/GuestEvent.jsx'
+import GuestUpload from './pages/GuestUpload.jsx'
+import GuestSlideshow from './pages/GuestSlideshow.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Branding from './pages/Branding.jsx'
@@ -93,6 +95,8 @@ function App() {
 
       {/* 2. Public Guest Photo Discovery Route */}
       <Route path="/e/:slug" element={<GuestEvent />} />
+      <Route path="/e/:slug/upload" element={<GuestUpload />} />
+      <Route path="/e/:slug/slideshow" element={<GuestSlideshow />} />
 
       {/* 3. Authentication & Account Recovery Routes */}
       <Route

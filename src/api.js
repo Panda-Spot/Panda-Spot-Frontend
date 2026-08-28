@@ -357,6 +357,61 @@ export const sendGalleryLinkViaWhatsApp = (slug, phone) =>
     body: JSON.stringify({ phone }),
   })
 
+// Guest-contributed photo upload — lands as pending until the owner
+// approves it (see toggleGuestUploads/approvePhoto below).
+export const uploadGuestPhotos = (slug, files, guestClientId) => {
+  const form = new FormData()
+  for (const file of files) form.append("files", file)
+  if (guestClientId) form.append("guest_client_id", guestClientId)
+  return request(`/e/${slug}/upload`, { method: "POST", body: form })
+}
+
+// Public gallery of approved photos — powers the live slideshow view.
+export const getPublicGallery = (slug) => request(`/e/${slug}/gallery`)
+
+// Public SSE feed of new approved photos landing — same event shape as
+// subscribeToLiveEvents above, just unauthenticated and scoped by
+// guestSlug instead of a token. Powers the live slideshow view.
+export const subscribeToPublicLiveEvents = (slug, { onPhotoAdded }) => {
+  const source = new EventSource(`${BASE_URL}/e/${slug}/live/stream`)
+  source.onmessage = (e) => {
+    const data = JSON.parse(e.data)
+    if (data.type === "photo_added") onPhotoAdded(data)
+  }
+  return () => source.close()
+}
+
+export const toggleLikePhoto = (slug, photoId, guestClientId) =>
+  request(`/e/${slug}/photos/${photoId}/like`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guest_client_id: guestClientId }),
+  })
+
+export const getPhotoComments = (slug, photoId) => request(`/e/${slug}/photos/${photoId}/comments`)
+
+export const addPhotoComment = (slug, photoId, guestClientId, guestName, text) =>
+  request(`/e/${slug}/photos/${photoId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guest_client_id: guestClientId, guest_name: guestName, text }),
+  })
+
+// --- Guest uploads / moderation (photographer, authenticated) ---
+
+export const toggleGuestUploads = (eventId, enabled) =>
+  request(`/events/${eventId}/guest-uploads/toggle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+
+export const approvePhoto = (eventId, photoId) =>
+  request(`/events/${eventId}/photos/${photoId}/approve`, { method: "POST" })
+
+export const deletePhotoComment = (eventId, photoId, commentId) =>
+  request(`/events/${eventId}/photos/${photoId}/comments/${commentId}`, { method: "DELETE" })
+
 // --- Collaborators / invites (photographer, authenticated) ---
 
 export const listCollaborators = (eventId) => request(`/events/${eventId}/collaborators`)

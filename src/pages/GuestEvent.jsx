@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Share2, Download, X } from 'lucide-react'
+import { Share2, Download, Heart, X } from 'lucide-react'
 import {
   downloadMatches,
   fileUrl,
@@ -9,6 +9,7 @@ import {
   sendGalleryLinkViaWhatsApp,
   sendMatchFeedback,
   subscribeToMatchAlerts,
+  toggleLikePhoto,
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
@@ -132,6 +133,20 @@ export default function GuestEvent() {
       setFeedbackNote("Thanks — we'll fine-tune matching for this event.")
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current)
       feedbackTimer.current = setTimeout(() => setFeedbackNote(''), 2500)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const handleToggleLike = async (match) => {
+    try {
+      const { liked, like_count: likeCount } = await toggleLikePhoto(slug, match.photo_id, getGuestClientId())
+      setResult((prev) => ({
+        ...prev,
+        matches: prev.matches.map((m) =>
+          m.photo_id === match.photo_id ? { ...m, liked_by_me: liked, like_count: likeCount } : m
+        ),
+      }))
     } catch (e) {
       setError(e.message)
     }
@@ -273,6 +288,15 @@ export default function GuestEvent() {
                 </div>
                 <div className="match-card-actions">
                   <button
+                    className={m.liked_by_me ? 'like-btn liked' : 'like-btn'}
+                    type="button"
+                    onClick={() => handleToggleLike(m)}
+                    aria-label={m.liked_by_me ? 'Unlike' : 'Like'}
+                  >
+                    <Heart size={13} fill={m.liked_by_me ? 'currentColor' : 'none'} />
+                    {m.like_count > 0 ? m.like_count : ''}
+                  </button>
+                  <button
                     className="share-btn"
                     type="button"
                     onClick={() => handleShare(m)}
@@ -350,12 +374,14 @@ export default function GuestEvent() {
 
       {lightboxIndex != null && result?.matches?.length > 0 && (
         <Lightbox
+          slug={slug}
           matches={result.matches}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onIndexChange={setLightboxIndex}
           onShare={handleShare}
           sharingId={sharingId}
+          onToggleLike={handleToggleLike}
         />
       )}
     </div>

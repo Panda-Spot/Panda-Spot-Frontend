@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Target, Flag, CheckCircle2, XCircle } from 'lucide-react'
 import {
+  approvePhoto,
   backupExistingPhotosToDrive,
   cancelInvite,
   connectDriveFolder,
@@ -26,6 +27,7 @@ import {
   subscribeToUploadProgress,
   syncDriveFolder,
   testDriveFolderConnection,
+  toggleGuestUploads,
 } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useConfirm } from '../confirm.jsx'
@@ -92,6 +94,10 @@ export default function EventDetail() {
   const [exportConnectionTest, setExportConnectionTest] = useState(null)
   const [exportTestedUrl, setExportTestedUrl] = useState('')
   const [exportSource, setExportSource] = useState('')
+  const [togglingGuestUploads, setTogglingGuestUploads] = useState(false)
+  const [showGuestUploadCard, setShowGuestUploadCard] = useState(false)
+  const [showSlideshowCard, setShowSlideshowCard] = useState(false)
+  const [approvingId, setApprovingId] = useState(null)
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [backingUpExisting, setBackingUpExisting] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
@@ -269,6 +275,47 @@ export default function EventDetail() {
       showToast(e.message, { type: 'error' })
     } finally {
       setStartingEvent(false)
+    }
+  }
+
+  const handleToggleGuestUploads = async (enabled) => {
+    setTogglingGuestUploads(true)
+    setError('')
+    try {
+      await toggleGuestUploads(eventId, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingGuestUploads(false)
+    }
+  }
+
+  const handleApprovePhoto = async (photoId) => {
+    setApprovingId(photoId)
+    try {
+      await approvePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, approval_status: 'approved' } : p)))
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleRejectPhoto = async (photoId, filename) => {
+    const confirmed = await confirm(`Reject and delete "${filename}"? This can't be undone.`, { title: 'Reject photo?', confirmLabel: 'Reject' })
+    if (!confirmed) return
+    setApprovingId(photoId)
+    try {
+      await deletePhoto(eventId, photoId)
+      setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setApprovingId(null)
     }
   }
 
@@ -695,10 +742,107 @@ export default function EventDetail() {
                 Export to Google Drive
               </button>
             )}
+            {event.started && (
+              <button className="btn secondary" type="button" onClick={() => setShowGuestUploadCard((v) => !v)}>
+                Guest uploads
+                {event.pending_guest_upload_count > 0 && (
+                  <span className="pending-badge">{event.pending_guest_upload_count}</span>
+                )}
+              </button>
+            )}
+            {event.started && (
+              <button className="btn secondary" type="button" onClick={() => setShowSlideshowCard((v) => !v)}>
+                Live slideshow
+              </button>
+            )}
           </div>
           {showGuestCard && (
             <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
           )}
+        </div>
+      )}
+
+      {event?.started && showGuestUploadCard && (
+        <div className="card">
+          <div className="guest-link-label">Guest uploads</div>
+          <p className="hint">
+            Let guests add their own shots to the gallery via a separate link/QR — each one is scanned for
+            faces the same as a regular upload, but stays hidden until you approve it below.
+          </p>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={!!event.guest_upload_enabled}
+              disabled={togglingGuestUploads}
+              onChange={(e) => handleToggleGuestUploads(e.target.checked)}
+            />
+            Allow guests to upload photos
+          </label>
+
+          {event.guest_upload_enabled && (
+            <>
+              <GuestCard
+                eventName={event.name}
+                guestSlug={event.guestSlug}
+                urlPath="/upload"
+                instruction="Scan to share your photos"
+                filenameSuffix="upload-card"
+              />
+
+              <div className="guest-link-label" style={{ marginTop: 20 }}>
+                Pending approval ({photos.filter((p) => p.approval_status === 'pending').length})
+              </div>
+              {photos.filter((p) => p.approval_status === 'pending').length === 0 ? (
+                <p className="hint">No guest uploads waiting for review.</p>
+              ) : (
+                <div className="photo-grid">
+                  {photos.filter((p) => p.approval_status === 'pending').map((p) => (
+                    <div className="photo-card" key={p.photo_id}>
+                      <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                      <div className="meta">
+                        <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                      </div>
+                      <div className="match-card-actions">
+                        <button
+                          className="btn secondary"
+                          type="button"
+                          onClick={() => handleApprovePhoto(p.photo_id)}
+                          disabled={approvingId === p.photo_id}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="dismiss-btn"
+                          type="button"
+                          onClick={() => handleRejectPhoto(p.photo_id, p.filename)}
+                          disabled={approvingId === p.photo_id}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {event?.started && showSlideshowCard && (
+        <div className="card">
+          <div className="guest-link-label">Live slideshow</div>
+          <p className="hint">
+            A full-screen, auto-advancing carousel for a venue TV/screen — updates live as photos land from any
+            source. No login needed to view it.
+          </p>
+          <GuestCard
+            eventName={event.name}
+            guestSlug={event.guestSlug}
+            urlPath="/slideshow"
+            instruction="Scan to open the live slideshow"
+            filenameSuffix="slideshow-card"
+          />
         </div>
       )}
 
@@ -1063,7 +1207,7 @@ export default function EventDetail() {
 
       {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
-      {photos.length === 0 ? (
+      {photos.filter((p) => p.approval_status !== 'pending').length === 0 ? (
         <p className="hint">No photos uploaded yet.</p>
       ) : (
         <>
@@ -1073,6 +1217,7 @@ export default function EventDetail() {
             { key: 'upload', label: 'Uploaded' },
             { key: 'shoots', label: 'PandaShoots' },
             { key: 'drive_import', label: 'Drive import' },
+            { key: 'guest', label: 'Guest uploads' },
           ].map((opt) => (
             <button
               key={opt.key}
@@ -1085,7 +1230,10 @@ export default function EventDetail() {
           ))}
         </div>
         <div className="photo-grid">
-          {photos.filter((p) => sourceFilter === 'all' || p.source === sourceFilter).map((p) => (
+          {photos
+            .filter((p) => p.approval_status !== 'pending')
+            .filter((p) => sourceFilter === 'all' || p.source === sourceFilter)
+            .map((p) => (
             <div className="photo-card" key={p.photo_id}>
               <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">

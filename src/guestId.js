@@ -11,3 +11,15 @@ export function getGuestClientId() {
   }
   return id
 }
+
+// Remembers the display name a guest types when leaving a comment, so they
+// don't have to re-type it on every comment within the same browser.
+const NAME_STORAGE_KEY = 'pandaspot_guest_name'
+
+export function getGuestName() {
+  return localStorage.getItem(NAME_STORAGE_KEY) || ''
+}
+
+export function setGuestName(name) {
+  if (name) localStorage.setItem(NAME_STORAGE_KEY, name)
+}

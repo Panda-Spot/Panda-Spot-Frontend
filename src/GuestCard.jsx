@@ -16,13 +16,19 @@ function loadImage(src) {
   })
 }
 
-export default function GuestCard({ eventName, guestSlug }) {
+export default function GuestCard({
+  eventName,
+  guestSlug,
+  urlPath = '',
+  instruction = 'Scan to find your photos',
+  filenameSuffix = 'guest-card',
+}) {
   const canvasRef = useRef(null)
   const [branding, setBranding] = useState(null)
   const [brandingError, setBrandingError] = useState('')
   const [ready, setReady] = useState(false)
 
-  const guestUrl = `${window.location.origin}/e/${guestSlug}`
+  const guestUrl = `${window.location.origin}/e/${guestSlug}${urlPath}`
 
   useEffect(() => {
     getBranding()
@@ -67,7 +73,7 @@ export default function GuestCard({ eventName, guestSlug }) {
       // Instruction line
       ctx.fillStyle = '#6b6375'
       ctx.font = '400 22px system-ui, sans-serif'
-      ctx.fillText('Scan to find your photos', 60, CARD_HEIGHT - 140)
+      ctx.fillText(instruction, 60, CARD_HEIGHT - 140)
 
       // QR code
       const qrSize = 340
@@ -118,7 +124,7 @@ export default function GuestCard({ eventName, guestSlug }) {
     return () => {
       cancelled = true
     }
-  }, [branding, eventName, guestUrl])
+  }, [branding, eventName, guestUrl, instruction])
 
   const handleDownload = () => {
     const canvas = canvasRef.current
@@ -129,7 +135,7 @@ export default function GuestCard({ eventName, guestSlug }) {
       const a = document.createElement('a')
       const safeName = (eventName || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
       a.href = url
-      a.download = `${safeName}-guest-card.png`
+      a.download = `${safeName}-${filenameSuffix}.png`
       document.body.appendChild(a)
       a.click()
       a.remove()
