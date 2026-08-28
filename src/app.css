@@ -803,6 +803,18 @@
 .connection-test-fail svg {
   flex-shrink: 0;
 }
+.skipped-files-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--danger-bg, #fdeeee);
+  border: 1px solid var(--danger-border, #f0c8c8);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.skipped-files-box .notice-list {
+  margin-bottom: 0;
+}
 .drive-import-notice {
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);

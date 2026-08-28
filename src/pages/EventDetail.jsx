@@ -80,6 +80,7 @@ export default function EventDetail() {
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
   const [logLines, setLogLines] = useState([])
+  const [skippedFiles, setSkippedFiles] = useState([])
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
@@ -170,11 +171,13 @@ export default function EventDetail() {
       onProgress: (data) => {
         setProgress(data)
         appendLog(progressLine(data))
+        addPhotoFromProgress(data)
       },
       onDone: (data) => {
         setUploading(false)
         setProgress(null)
         appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        setSkippedFiles(data.skipped || [])
         clearActiveJob(eventId)
         load()
       },
@@ -217,20 +220,30 @@ export default function EventDetail() {
     }
   }, [eventId, event?.shoots_connected])
 
+  // Each progress event may carry the photo that was just processed (see
+  // server's emitProgress) — added to the gallery immediately so a laymen
+  // user watching the page can see it's actually working file by file, not
+  // just trust a progress bar.
+  const addPhotoFromProgress = useCallback((data) => {
+    if (!data.photo) return
+    setPhotos((prev) => (prev.some((p) => p.photo_id === data.photo.photo_id) ? prev : [data.photo, ...prev]))
+  }, [])
+
   function watchJob(jobId, { failedLabel }) {
     saveActiveJob(eventId, jobId)
     cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
       onProgress: (data) => {
         setProgress(data)
         appendLog(progressLine(data))
+        addPhotoFromProgress(data)
       },
       onDone: (data) => {
         setUploading(false)
         setProgress(null)
         let summary = `Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`
         if (data.removed_count > 0) summary += ` ${data.removed_count} photo(s) removed (no longer in Drive).`
-        if (data.skipped?.length > 0) summary += ` Skipped: ${data.skipped.join(', ')}`
         appendLog(summary)
+        setSkippedFiles(data.skipped || [])
         clearActiveJob(eventId)
         showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
         load()
@@ -265,6 +278,7 @@ export default function EventDetail() {
     setError('')
     setProgress(null)
     setLogLines([`Starting upload — ${files.length} file(s)`])
+    setSkippedFiles([])
     try {
       const { job_id: jobId } = await startPhotoUpload(eventId, files)
       watchJob(jobId, { failedLabel: 'Upload failed' })
@@ -316,6 +330,7 @@ export default function EventDetail() {
     setError('')
     setProgress(null)
     setLogLines([])
+    setSkippedFiles([])
     try {
       const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, driveUrl.trim())
       setDriveUrl('')
@@ -337,6 +352,7 @@ export default function EventDetail() {
     setError('')
     setProgress(null)
     setLogLines(['Checking the Drive folder for changes…'])
+    setSkippedFiles([])
     try {
       const { job_id: jobId } = await syncDriveFolder(eventId)
       watchJob(jobId, { failedLabel: 'Sync failed' })
@@ -354,6 +370,7 @@ export default function EventDetail() {
     setError('')
     setProgress(null)
     setLogLines([])
+    setSkippedFiles([])
     try {
       const { job_id: jobId, files_found: filesFound } = await backupExistingPhotosToDrive(eventId, exportSource || undefined)
       setLogLines([`Found ${filesFound} photo(s) not yet backed up`])
@@ -404,6 +421,7 @@ export default function EventDetail() {
     setError('')
     setProgress(null)
     setLogLines([])
+    setSkippedFiles([])
     try {
       const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, exportUrl.trim())
       setExportUrl('')
@@ -736,6 +754,14 @@ export default function EventDetail() {
                   </ul>
 
                   <JobProgressLog lines={logLines} progress={progress} />
+                  {skippedFiles.length > 0 && (
+                    <div className="skipped-files-box">
+                      <p className="hint">Skipped {skippedFiles.length} file(s) — not exported:</p>
+                      <ul className="notice-list">
+                        {skippedFiles.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  )}
                   {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
                 </>
               )}
@@ -1022,6 +1048,14 @@ export default function EventDetail() {
         )}
 
         <JobProgressLog lines={logLines} progress={progress} />
+        {skippedFiles.length > 0 && (
+          <div className="skipped-files-box">
+            <p className="hint">Skipped {skippedFiles.length} file(s) — not imported/uploaded:</p>
+            <ul className="notice-list">
+              {skippedFiles.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </div>
+        )}
       </div>
       )}
 
