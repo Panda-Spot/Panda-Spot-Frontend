@@ -100,6 +100,11 @@ export const listEvents = () => request("/events")
 
 export const getEvent = (eventId) => request(`/events/${eventId}`)
 
+// Required before any upload/import/Shoots activity can happen on this
+// event — see the "started" field on getEvent()'s response.
+export const startEvent = (eventId) =>
+  request(`/events/${eventId}/start`, { method: "POST" })
+
 export const listPhotos = (eventId) => request(`/events/${eventId}/photos`)
 
 export const deletePhoto = (eventId, photoId) =>
@@ -122,6 +127,16 @@ export const startPhotoUpload = (eventId, files) => {
 // startPhotoUpload(). `confirm: true` is required — the server rejects the
 // request without it, since this scans and imports every photo currently in
 // the folder; the UI must warn the photographer before calling this.
+// Read-only pre-check — verifies the folder link resolves and is
+// reachable, and reports the "anyone with the link" access level, before
+// committing to connectDriveFolder()'s full scan/import.
+export const testDriveFolderConnection = (eventId, folderUrl) =>
+  request(`/events/${eventId}/drive/test-connection`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder_url: folderUrl }),
+  })
+
 export const connectDriveFolder = (eventId, folderUrl) =>
   request(`/events/${eventId}/drive/connect`, {
     method: "POST",
@@ -248,11 +263,15 @@ export const suspendAdminUser = (userId) => request(`/admin/users/${userId}/susp
 
 export const unsuspendAdminUser = (userId) => request(`/admin/users/${userId}/unsuspend`, { method: "POST" })
 
-export const setAdminUserLimits = (userId, eventLimit, storageLimitBytes) =>
+export const setAdminUserLimits = (userId, eventLimit, storageLimitBytes, photoRetentionDays) =>
   request(`/admin/users/${userId}/limits`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_limit: eventLimit, storage_limit_bytes: storageLimitBytes }),
+    body: JSON.stringify({
+      event_limit: eventLimit,
+      storage_limit_bytes: storageLimitBytes,
+      photo_retention_days: photoRetentionDays,
+    }),
   })
 
 export const deleteAdminUser = (userId, confirmEmail) =>

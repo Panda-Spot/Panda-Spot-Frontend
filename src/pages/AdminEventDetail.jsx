@@ -132,8 +132,14 @@ export default function AdminEventDetail() {
         <p className="hint" style={{ marginTop: 12 }}>
           Guest slug: {event.guest_slug} · Drive import: {event.drive_folder_url ? 'connected' : 'not connected'}
           {event.drive_sync_enabled ? ' (auto-sync on)' : ''} · Shoots: {event.shoots_connected ? 'connected' : 'not connected'}
-          {' '}· Drive backup: {event.drive_backup_enabled ? 'on' : 'off'}
+          {' '}· Drive backup: {event.drive_backup_enabled ? 'on' : 'off'} · Started: {event.started ? 'yes' : 'no'}
         </p>
+        {event.photo_source_counts && (
+          <p className="hint">
+            {event.photo_source_counts.upload} uploaded · {event.photo_source_counts.shoots} PandaShoots ·{' '}
+            {event.photo_source_counts.drive_import} Drive import
+          </p>
+        )}
         {event.collaborators.length > 0 && (
           <p className="hint">Collaborators: {event.collaborators.map((c) => c.email).join(', ')}</p>
         )}

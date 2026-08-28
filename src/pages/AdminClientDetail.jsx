@@ -24,6 +24,7 @@ export default function AdminClientDetail() {
   const [togglingSuspend, setTogglingSuspend] = useState(false)
   const [eventLimitInput, setEventLimitInput] = useState('')
   const [storageLimitInput, setStorageLimitInput] = useState('')
+  const [retentionDaysInput, setRetentionDaysInput] = useState('')
   const [savingLimits, setSavingLimits] = useState(false)
   const [limitsMessage, setLimitsMessage] = useState('')
   const [confirmEmailInput, setConfirmEmailInput] = useState('')
@@ -38,6 +39,7 @@ export default function AdminClientDetail() {
         setClient(c)
         setEventLimitInput(c.custom_event_limit != null ? String(c.custom_event_limit) : '')
         setStorageLimitInput(c.custom_storage_limit_bytes != null ? String(c.custom_storage_limit_bytes / 1e9) : '')
+        setRetentionDaysInput(c.custom_photo_retention_days != null ? String(c.custom_photo_retention_days) : '')
       })
       .catch((e) => setError(e.message))
   }, [userId])
@@ -95,7 +97,8 @@ export default function AdminClientDetail() {
     try {
       const eventLimit = eventLimitInput.trim() === '' ? null : parseInt(eventLimitInput, 10)
       const storageLimitBytes = storageLimitInput.trim() === '' ? null : Math.round(parseFloat(storageLimitInput) * 1e9)
-      await setAdminUserLimits(userId, eventLimit, storageLimitBytes)
+      const photoRetentionDays = retentionDaysInput.trim() === '' ? null : parseInt(retentionDaysInput, 10)
+      await setAdminUserLimits(userId, eventLimit, storageLimitBytes, photoRetentionDays)
       setLimitsMessage('Limits updated.')
       load()
     } catch (e) {
@@ -198,7 +201,8 @@ export default function AdminClientDetail() {
       <form className="card" onSubmit={handleSaveLimits}>
         <p className="subtle">
           Leave a field blank to use the platform default (currently {client.default_event_limit} events /{' '}
-          {formatBytes(client.default_storage_limit_bytes)} per event).
+          {formatBytes(client.default_storage_limit_bytes)} per event /{' '}
+          {client.default_photo_retention_days} day originals).
         </p>
         <label className="field-label" htmlFor="event-limit">Event limit</label>
         <input
@@ -221,6 +225,19 @@ export default function AdminClientDetail() {
           value={storageLimitInput}
           onChange={(e) => setStorageLimitInput(e.target.value)}
         />
+        <label className="field-label" htmlFor="retention-days">Photo retention (days)</label>
+        <input
+          id="retention-days"
+          className="text-input"
+          type="number"
+          min="1"
+          placeholder={String(client.default_photo_retention_days)}
+          value={retentionDaysInput}
+          onChange={(e) => setRetentionDaysInput(e.target.value)}
+        />
+        <p className="hint" style={{ marginTop: 4 }}>
+          Full-resolution originals are removed after this many days — thumbnails and face search keep working forever.
+        </p>
         <button className="btn" type="submit" disabled={savingLimits} style={{ marginTop: 12 }}>
           {savingLimits ? 'Saving…' : 'Save limits'}
         </button>

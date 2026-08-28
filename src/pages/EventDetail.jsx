@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Search, Users, Target, Flag } from 'lucide-react'
+import { Search, Users, Target, Flag, CheckCircle2, XCircle } from 'lucide-react'
 import {
   backupExistingPhotosToDrive,
   cancelInvite,
@@ -18,12 +18,14 @@ import {
   listPhotos,
   removeCollaborator,
   setDriveAutoSync,
+  startEvent,
   startPhotoUpload,
   subscribeToLiveEvents,
   reclaimDriveBackupNow,
   setEventDriveBackup,
   subscribeToUploadProgress,
   syncDriveFolder,
+  testDriveFolderConnection,
 } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useConfirm } from '../confirm.jsx'
@@ -79,6 +81,9 @@ export default function EventDetail() {
   const [logLines, setLogLines] = useState([])
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionTest, setConnectionTest] = useState(null)
+  const [testedUrl, setTestedUrl] = useState('')
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [backingUpExisting, setBackingUpExisting] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
@@ -90,8 +95,11 @@ export default function EventDetail() {
   const [regeneratingShoots, setRegeneratingShoots] = useState(false)
   const [disconnectingShoots, setDisconnectingShoots] = useState(false)
   const [liveNotice, setLiveNotice] = useState('')
+  const [startingEvent, setStartingEvent] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState('all')
   const cleanupRef = useRef(null)
   const liveStreamCleanupRef = useRef(null)
+  const initialTabAppliedRef = useRef(false)
   const confirm = useConfirm()
   const { showToast } = useToast()
 
@@ -123,6 +131,17 @@ export default function EventDetail() {
   }, [eventId, loadTeam])
 
   useEffect(load, [load])
+
+  // If this event already has a Drive folder connected, open straight to
+  // that tab instead of always defaulting to "Upload files" — otherwise
+  // the Drive-backup checkbox (which only renders on this tab) is easy to
+  // miss on every page load. Only applied once, so manually switching
+  // tabs afterward isn't fought.
+  useEffect(() => {
+    if (!event || initialTabAppliedRef.current) return
+    initialTabAppliedRef.current = true
+    if (event.drive_folder_url) setUploadTab('drive')
+  }, [event])
 
   useEffect(() => {
     return () => {
@@ -220,6 +239,19 @@ export default function EventDetail() {
     })
   }
 
+  const handleStartEvent = async () => {
+    setStartingEvent(true)
+    setError('')
+    try {
+      await startEvent(eventId)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setStartingEvent(false)
+    }
+  }
+
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
     setUploading(true)
@@ -235,8 +267,35 @@ export default function EventDetail() {
     }
   }
 
+  const handleDriveUrlChange = (value) => {
+    setDriveUrl(value)
+    // Any edit invalidates a prior test result — it was only ever a
+    // statement about the exact link that was tested.
+    if (value.trim() !== testedUrl) {
+      setConnectionTest(null)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    const url = driveUrl.trim()
+    if (!url) return
+    setTestingConnection(true)
+    setConnectionTest(null)
+    try {
+      const result = await testDriveFolderConnection(eventId, url)
+      setConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
+      setTestedUrl(url)
+    } catch (e) {
+      setConnectionTest({ ok: false, message: e.message })
+      setTestedUrl(url)
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+
   const handleDriveConnect = async () => {
     if (!driveUrl.trim()) return
+    if (!(connectionTest?.ok && testedUrl === driveUrl.trim())) return
     const confirmed = await confirm(
       "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
       "PandaSpot only keeps a thumbnail and face data for each photo; the originals stay in Drive and are fetched " +
@@ -253,6 +312,8 @@ export default function EventDetail() {
     try {
       const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, driveUrl.trim())
       setDriveUrl('')
+      setConnectionTest(null)
+      setTestedUrl('')
       setLogLines([`Connected — found ${filesFound} file(s) in the folder`])
       watchJob(jobId, { failedLabel: 'Import failed' })
     } catch (e) {
@@ -601,6 +662,18 @@ export default function EventDetail() {
         </div>
       )}
 
+      {event && !event.started ? (
+        <div className="card upload-section">
+          <div className="guest-link-label">Start this event</div>
+          <p className="hint">
+            Uploading, Google Drive import, and PandaShoots camera upload all unlock once you start the event.
+            Everything else — the guest link, analytics, and team — is ready already.
+          </p>
+          <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
+            {startingEvent ? 'Starting…' : 'Start event'}
+          </button>
+        </div>
+      ) : (
       <div className="card upload-section">
         <div className="guest-link-label">Upload photos</div>
         <div className="upload-tabs">
@@ -753,18 +826,54 @@ export default function EventDetail() {
                 type="url"
                 placeholder="https://drive.google.com/drive/folders/..."
                 value={driveUrl}
-                onChange={(e) => setDriveUrl(e.target.value)}
+                onChange={(e) => handleDriveUrlChange(e.target.value)}
                 disabled={uploading}
               />
-              <button className="btn" type="button" onClick={handleDriveConnect} disabled={uploading || !driveUrl.trim()}>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={handleTestConnection}
+                disabled={uploading || testingConnection || !driveUrl.trim()}
+              >
+                {testingConnection ? 'Testing…' : 'Test connection'}
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={handleDriveConnect}
+                disabled={uploading || !(connectionTest?.ok && testedUrl === driveUrl.trim())}
+                title={!(connectionTest?.ok && testedUrl === driveUrl.trim()) ? 'Test the connection first' : undefined}
+              >
                 {connectingDrive ? 'Connecting…' : 'Connect folder'}
               </button>
             </div>
+            {connectionTest && (
+              <p className={connectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
+                {connectionTest.ok ? (
+                  <>
+                    <CheckCircle2 size={14} /> Reachable — "{connectionTest.folderName}"
+                    {' · '}
+                    {connectionTest.permission === 'writer'
+                      ? 'Editor access given to anyone with the link'
+                      : connectionTest.permission === 'commenter'
+                        ? 'Commenter access given to anyone with the link'
+                        : connectionTest.permission === 'reader'
+                          ? 'Viewer access given to anyone with the link'
+                          : "Accessible, but the exact permission level couldn't be read"}
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={14} /> {connectionTest.message}
+                  </>
+                )}
+              </p>
+            )}
           </div>
         )}
 
         <JobProgressLog lines={logLines} progress={progress} />
       </div>
+      )}
 
       {error && <p className="error">{error}</p>}
 
@@ -773,8 +882,26 @@ export default function EventDetail() {
       {photos.length === 0 ? (
         <p className="hint">No photos uploaded yet.</p>
       ) : (
+        <>
+        <div className="row source-filter-row">
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'upload', label: 'Uploaded' },
+            { key: 'shoots', label: 'PandaShoots' },
+            { key: 'drive_import', label: 'Drive import' },
+          ].map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+              onClick={() => setSourceFilter(opt.key)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <div className="photo-grid">
-          {photos.map((p) => (
+          {photos.filter((p) => sourceFilter === 'all' || p.source === sourceFilter).map((p) => (
             <div className="photo-card" key={p.photo_id}>
               <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">
@@ -791,6 +918,7 @@ export default function EventDetail() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {event?.role === 'owner' && (

@@ -777,6 +777,26 @@
   background: var(--accent-bg);
   color: var(--accent);
 }
+.source-filter-row {
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.source-filter-row .upload-tab {
+  flex: none;
+  border: 1px solid var(--border);
+}
+.connection-test-ok, .connection-test-fail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.connection-test-ok svg {
+  color: var(--success, #2fa86b);
+  flex-shrink: 0;
+}
+.connection-test-fail svg {
+  flex-shrink: 0;
+}
 .drive-import-notice {
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
