@@ -1,24 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Share2, Download, Heart, X } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Share2, Download, X } from 'lucide-react'
 import {
   downloadMatches,
   fileUrl,
   getPublicEvent,
+  reactToPhoto,
   searchBySelfies,
+  searchGroupBySelfies,
   sendGalleryLinkViaWhatsApp,
   sendMatchFeedback,
   subscribeToMatchAlerts,
-  toggleLikePhoto,
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
 import Lightbox from '../components/Lightbox.jsx'
+import ReactionBar from '../components/ReactionBar.jsx'
 
 const MAX_SELFIES = 3
+const MAX_GROUP_SELFIES = 8
 
 export default function GuestEvent() {
   const { slug } = useParams()
+  const navigate = useNavigate()
   const [event, setEvent] = useState(null)
   const [loadError, setLoadError] = useState('')
   const [selfies, setSelfies] = useState([])
@@ -40,6 +44,7 @@ export default function GuestEvent() {
   const [alertMessage, setAlertMessage] = useState('')
   const [sendingLink, setSendingLink] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [groupMode, setGroupMode] = useState(false)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -86,21 +91,36 @@ export default function GuestEvent() {
 
   const handleSelfies = (e) => {
     const files = Array.from(e.target.files || [])
-    const capped = files.slice(0, MAX_SELFIES)
-    setSelfieHint(files.length > MAX_SELFIES ? `Using the first ${MAX_SELFIES} selfies` : '')
+    const max = groupMode ? MAX_GROUP_SELFIES : MAX_SELFIES
+    const capped = files.slice(0, max)
+    setSelfieHint(files.length > max ? `Using the first ${max} selfies` : '')
     setSelfies(capped)
     setPreviews(capped.map((file) => URL.createObjectURL(file)))
     setResult(null)
   }
 
+  const handleToggleGroupMode = () => {
+    setGroupMode((v) => !v)
+    setSelfies([])
+    setPreviews([])
+    setSelfieHint('')
+    setResult(null)
+  }
+
   const handleSearch = async (e) => {
     e.preventDefault()
-    if (selfies.length === 0) return
+    if (groupMode && selfies.length < 2) {
+      setError('Group search needs at least 2 selfies — one per person.')
+      return
+    }
+    if (!groupMode && selfies.length === 0) return
     setSearching(true)
     setError('')
     setResult(null)
     try {
-      const data = await searchBySelfies(slug, selfies, getGuestClientId())
+      const data = groupMode
+        ? await searchGroupBySelfies(slug, selfies, getGuestClientId())
+        : await searchBySelfies(slug, selfies, getGuestClientId())
       setResult(data)
     } catch (e) {
       setError(e.message)
@@ -138,13 +158,13 @@ export default function GuestEvent() {
     }
   }
 
-  const handleToggleLike = async (match) => {
+  const handleReact = async (match, reaction) => {
     try {
-      const { liked, like_count: likeCount } = await toggleLikePhoto(slug, match.photo_id, getGuestClientId())
+      const { reactions, my_reaction: myReaction } = await reactToPhoto(slug, match.photo_id, getGuestClientId(), reaction)
       setResult((prev) => ({
         ...prev,
         matches: prev.matches.map((m) =>
-          m.photo_id === match.photo_id ? { ...m, liked_by_me: liked, like_count: likeCount } : m
+          m.photo_id === match.photo_id ? { ...m, reactions, my_reaction: myReaction } : m
         ),
       }))
     } catch (e) {
@@ -235,13 +255,36 @@ export default function GuestEvent() {
         {event?.logo_url && <p className="guest-powered-by">Powered by PandaSpot</p>}
       </div>
 
-      {event?.expired ? (
+      {event?.sub_galleries?.length > 0 ? (
+        <div className="card">
+          <p className="subtle">This event has separate galleries — pick one to search:</p>
+          <div className="sub-gallery-picker">
+            {event.sub_galleries.map((g) => (
+              <button
+                key={g.slug}
+                type="button"
+                className="btn secondary sub-gallery-btn"
+                onClick={() => navigate(`/e/${g.slug}`)}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : event?.expired ? (
         <div className="card">
           <p className="subtle">This event's search window has closed. Contact the photographer if you still need help finding your photos.</p>
         </div>
       ) : (
         <form className="card" onSubmit={handleSearch}>
-          <p className="subtle">Upload up to {MAX_SELFIES} selfies — we'll find every photo you're in.</p>
+          <p className="subtle">
+            {groupMode
+              ? `Upload one selfie per person, up to ${MAX_GROUP_SELFIES} — we'll find every photo with any of you in it.`
+              : `Upload up to ${MAX_SELFIES} selfies — we'll find every photo you're in.`}
+          </p>
+          <button type="button" className="group-mode-toggle" onClick={handleToggleGroupMode}>
+            {groupMode ? '← Search for just me instead' : 'Searching with friends? Search as a group →'}
+          </button>
           <div className="file-drop">
             <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleSelfies} />
             {selfieHint && <p className="hint">{selfieHint}</p>}
@@ -253,8 +296,13 @@ export default function GuestEvent() {
               </div>
             )}
           </div>
-          <button className="btn" type="submit" disabled={searching || selfies.length === 0 || !event} style={{ marginTop: 16 }}>
-            {searching ? 'Searching…' : 'Find My Photos'}
+          <button
+            className="btn"
+            type="submit"
+            disabled={searching || selfies.length === 0 || (groupMode && selfies.length < 2) || !event}
+            style={{ marginTop: 16 }}
+          >
+            {searching ? 'Searching…' : groupMode ? 'Find Our Photos' : 'Find My Photos'}
           </button>
         </form>
       )}
@@ -267,7 +315,9 @@ export default function GuestEvent() {
         <>
           <div className="row match-summary">
             <p className="hint">
-              Detected {result.faces_detected_in_selfie} face(s) in your selfie(s) — found {result.matches.length} matching photo(s).
+              {result.people_detected != null
+                ? `Detected ${result.people_detected} people in your selfies — found ${result.matches.length} matching photo(s).`
+                : `Detected ${result.faces_detected_in_selfie} face(s) in your selfie(s) — found ${result.matches.length} matching photo(s).`}
             </p>
             {result.matches.length > 0 && (
               <button className="btn secondary" type="button" onClick={handleDownloadAll} disabled={downloading}>
@@ -283,19 +333,15 @@ export default function GuestEvent() {
                   <img src={fileUrl(m.thumbnail_url || m.url)} alt={m.filename} />
                 </button>
                 <div className="meta">
-                  <span>Match</span>
+                  <span>{m.people_matched != null ? `${m.people_matched} of your group` : 'Match'}</span>
                   <span>{Math.round(m.similarity * 100)}%</span>
                 </div>
+                <ReactionBar
+                  reactions={m.reactions}
+                  myReaction={m.my_reaction}
+                  onReact={(reaction) => handleReact(m, reaction)}
+                />
                 <div className="match-card-actions">
-                  <button
-                    className={m.liked_by_me ? 'like-btn liked' : 'like-btn'}
-                    type="button"
-                    onClick={() => handleToggleLike(m)}
-                    aria-label={m.liked_by_me ? 'Unlike' : 'Like'}
-                  >
-                    <Heart size={13} fill={m.liked_by_me ? 'currentColor' : 'none'} />
-                    {m.like_count > 0 ? m.like_count : ''}
-                  </button>
                   <button
                     className="share-btn"
                     type="button"
@@ -381,7 +427,7 @@ export default function GuestEvent() {
           onIndexChange={setLightboxIndex}
           onShare={handleShare}
           sharingId={sharingId}
-          onToggleLike={handleToggleLike}
+          onReact={handleReact}
         />
       )}
     </div>

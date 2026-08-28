@@ -28,6 +28,8 @@ import {
   syncDriveFolder,
   testDriveFolderConnection,
   toggleGuestUploads,
+  setGuestUploadWindow,
+  createSubGallery,
 } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useConfirm } from '../confirm.jsx'
@@ -98,6 +100,11 @@ export default function EventDetail() {
   const [showGuestUploadCard, setShowGuestUploadCard] = useState(false)
   const [showSlideshowCard, setShowSlideshowCard] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
+  const [windowDaysInput, setWindowDaysInput] = useState('')
+  const [savingWindow, setSavingWindow] = useState(false)
+  const [subGalleryName, setSubGalleryName] = useState('')
+  const [creatingSubGallery, setCreatingSubGallery] = useState(false)
+  const [showSubGalleryCard, setShowSubGalleryCard] = useState(false)
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [backingUpExisting, setBackingUpExisting] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
@@ -316,6 +323,35 @@ export default function EventDetail() {
       showToast(e.message, { type: 'error' })
     } finally {
       setApprovingId(null)
+    }
+  }
+
+  const handleSaveWindowDays = async (e) => {
+    e.preventDefault()
+    setSavingWindow(true)
+    try {
+      await setGuestUploadWindow(eventId, windowDaysInput.trim() === '' ? null : parseInt(windowDaysInput, 10))
+      load()
+      showToast('Guest upload window updated.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setSavingWindow(false)
+    }
+  }
+
+  const handleCreateSubGallery = async (e) => {
+    e.preventDefault()
+    if (!subGalleryName.trim()) return
+    setCreatingSubGallery(true)
+    try {
+      await createSubGallery(eventId, subGalleryName.trim())
+      setSubGalleryName('')
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setCreatingSubGallery(false)
     }
   }
 
@@ -743,7 +779,14 @@ export default function EventDetail() {
               </button>
             )}
             {event.started && (
-              <button className="btn secondary" type="button" onClick={() => setShowGuestUploadCard((v) => !v)}>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => {
+                  setShowGuestUploadCard((v) => !v)
+                  setWindowDaysInput(event.guest_upload_window_days != null ? String(event.guest_upload_window_days) : '')
+                }}
+              >
                 Guest uploads
                 {event.pending_guest_upload_count > 0 && (
                   <span className="pending-badge">{event.pending_guest_upload_count}</span>
@@ -753,6 +796,11 @@ export default function EventDetail() {
             {event.started && (
               <button className="btn secondary" type="button" onClick={() => setShowSlideshowCard((v) => !v)}>
                 Live slideshow
+              </button>
+            )}
+            {event.started && !event.is_sub_gallery && (
+              <button className="btn secondary" type="button" onClick={() => setShowSubGalleryCard((v) => !v)}>
+                Sub-galleries
               </button>
             )}
           </div>
@@ -781,6 +829,28 @@ export default function EventDetail() {
 
           {event.guest_upload_enabled && (
             <>
+              <form className="row" onSubmit={handleSaveWindowDays} style={{ marginTop: 10, alignItems: 'flex-end' }}>
+                <div>
+                  <label className="field-label" htmlFor="guest-upload-window">Upload window (days)</label>
+                  <input
+                    id="guest-upload-window"
+                    className="text-input"
+                    type="number"
+                    min="1"
+                    placeholder="Same as guest access (90 days)"
+                    value={windowDaysInput}
+                    onChange={(e) => setWindowDaysInput(e.target.value)}
+                  />
+                </div>
+                <button className="btn secondary" type="submit" disabled={savingWindow}>
+                  {savingWindow ? 'Saving…' : 'Save'}
+                </button>
+              </form>
+              <p className="hint">
+                How many days guests can keep uploading, separate from the event's main guest-access window. Leave
+                blank to use the same window as everything else.
+              </p>
+
               <GuestCard
                 eventName={event.name}
                 guestSlug={event.guestSlug}
@@ -796,11 +866,15 @@ export default function EventDetail() {
                 <p className="hint">No guest uploads waiting for review.</p>
               ) : (
                 <div className="photo-grid">
-                  {photos.filter((p) => p.approval_status === 'pending').map((p) => (
-                    <div className="photo-card" key={p.photo_id}>
+                  {photos
+                    .filter((p) => p.approval_status === 'pending')
+                    .sort((a, b) => (b.moderation_flagged ? 1 : 0) - (a.moderation_flagged ? 1 : 0))
+                    .map((p) => (
+                    <div className={p.moderation_flagged ? 'photo-card flagged-card' : 'photo-card'} key={p.photo_id}>
                       <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
                       <div className="meta">
                         <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                        {p.moderation_flagged && <span className="flagged-label">Flagged — review first</span>}
                       </div>
                       <div className="match-card-actions">
                         <button
@@ -843,6 +917,40 @@ export default function EventDetail() {
             instruction="Scan to open the live slideshow"
             filenameSuffix="slideshow-card"
           />
+        </div>
+      )}
+
+      {event?.started && !event.is_sub_gallery && showSubGalleryCard && (
+        <div className="card">
+          <div className="guest-link-label">Sub-galleries</div>
+          <p className="hint">
+            Split this event into separate galleries (e.g. "Ceremony" / "Reception") — guests scan the one shared
+            link above, then pick a sub-gallery before searching or uploading.
+          </p>
+
+          {event.sub_galleries?.length > 0 && (
+            <ul className="team-list">
+              {event.sub_galleries.map((g) => (
+                <li key={g.id} className="team-list-item">
+                  <span>{g.name} <span className="hint">({g.photo_count} photos)</span></span>
+                  <Link className="btn secondary" to={`/events/${g.id}`}>Open</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form className="row" onSubmit={handleCreateSubGallery} style={{ marginTop: 10 }}>
+            <input
+              className="text-input"
+              type="text"
+              placeholder="e.g. Ceremony"
+              value={subGalleryName}
+              onChange={(e) => setSubGalleryName(e.target.value)}
+            />
+            <button className="btn" type="submit" disabled={creatingSubGallery || !subGalleryName.trim()}>
+              {creatingSubGallery ? 'Adding…' : 'Add sub-gallery'}
+            </button>
+          </form>
         </div>
       )}
 

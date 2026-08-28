@@ -594,6 +594,32 @@
   color: #fff;
 }
 
+.group-mode-toggle {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 4px 0 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.group-mode-toggle:hover {
+  opacity: 0.8;
+}
+
+.sub-gallery-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.sub-gallery-btn {
+  width: 100%;
+  font-size: 16px;
+  padding: 14px;
+}
+
 .match-summary {
   justify-content: space-between;
   margin-top: 20px;
@@ -724,6 +750,59 @@
   opacity: 1;
 }
 
+.reaction-bar {
+  display: flex;
+  gap: 1px;
+  flex-wrap: wrap;
+}
+.reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.55;
+  transition: opacity var(--transition), transform var(--transition);
+}
+.reaction-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.1);
+}
+.reaction-btn.active {
+  opacity: 1;
+}
+.lightbox-footer .reaction-btn {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.reaction-burst-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 300;
+}
+.reaction-burst-particle {
+  position: absolute;
+  bottom: -10%;
+  opacity: 0;
+  animation-name: reaction-burst-fly;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes reaction-burst-fly {
+  0% { opacity: 0; transform: translateY(0) scale(0.5) rotate(0deg); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-110vh) scale(1.15) rotate(25deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction-burst-particle { animation: none !important; opacity: 0 !important; }
+}
+
 /* --- Billing --- */
 
 .billing-card {
@@ -834,6 +913,16 @@
 }
 .skipped-files-box .notice-list {
   margin-bottom: 0;
+}
+.flagged-card {
+  outline: 2px solid #e0592f;
+  outline-offset: 2px;
+  border-radius: var(--radius, 8px);
+}
+.flagged-label {
+  color: #e0592f;
+  font-weight: 700;
+  font-size: 10.5px;
 }
 .pending-badge {
   display: inline-flex;

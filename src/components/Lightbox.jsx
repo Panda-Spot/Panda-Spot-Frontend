@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Heart, Share2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react'
 import { addPhotoComment, fileUrl, getPhotoComments } from '../api.js'
 import { getGuestClientId, getGuestName, setGuestName } from '../guestId.js'
+import ReactionBar from './ReactionBar.jsx'
 
 const SWIPE_THRESHOLD_PX = 50
 
@@ -9,7 +10,7 @@ const SWIPE_THRESHOLD_PX = 50
 // same thumbnail already loaded in the grid (not the full-res original —
 // that's only ever fetched on download/share, see server's files.js), so a
 // small caption makes clear a sharper copy is what actually gets downloaded.
-export default function Lightbox({ slug, matches, index, onClose, onIndexChange, onShare, sharingId, onToggleLike }) {
+export default function Lightbox({ slug, matches, index, onClose, onIndexChange, onShare, sharingId, onReact }) {
   const touchStartX = useRef(null)
   const [imgLoaded, setImgLoaded] = useState(false)
   const [comments, setComments] = useState([])
@@ -119,16 +120,13 @@ export default function Lightbox({ slug, matches, index, onClose, onIndexChange,
         <p className="lightbox-caption">
           Preview quality — {Math.round(match.similarity * 100)}% match. The downloaded/shared copy will be sharper.
         </p>
+        <ReactionBar
+          reactions={match.reactions}
+          myReaction={match.my_reaction}
+          onReact={(reaction) => onReact(match, reaction)}
+          size={16}
+        />
         <div className="row">
-          <button
-            className={match.liked_by_me ? 'like-btn liked' : 'like-btn'}
-            type="button"
-            onClick={() => onToggleLike(match)}
-            aria-label={match.liked_by_me ? 'Unlike' : 'Like'}
-          >
-            <Heart size={14} fill={match.liked_by_me ? 'currentColor' : 'none'} />
-            {match.like_count > 0 ? match.like_count : ''}
-          </button>
           <button className="btn secondary" type="button" onClick={() => onShare(match)} disabled={sharingId === match.photo_id}>
             <Share2 size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
             {sharingId === match.photo_id ? 'Preparing…' : 'Share'}

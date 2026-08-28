@@ -381,12 +381,28 @@ export const subscribeToPublicLiveEvents = (slug, { onPhotoAdded }) => {
   return () => source.close()
 }
 
-export const toggleLikePhoto = (slug, photoId, guestClientId) =>
-  request(`/e/${slug}/photos/${photoId}/like`, {
+// Sets/switches/removes a guest's reaction — reaction is one of
+// REACTION_TYPES (heart/laugh/wow/clap/fire); tapping the same one again
+// removes it, tapping a different one switches to it.
+export const reactToPhoto = (slug, photoId, guestClientId, reaction) =>
+  request(`/e/${slug}/photos/${photoId}/react`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ guest_client_id: guestClientId }),
+    body: JSON.stringify({ guest_client_id: guestClientId, reaction }),
   })
+
+// A guest's own reaction history within this event.
+export const getMyReactions = (slug, guestClientId) =>
+  request(`/e/${slug}/my-reactions?guest_client_id=${encodeURIComponent(guestClientId)}`)
+
+// Group search — one selfie per person, returns photos matching ANY of
+// them (not the same person from multiple angles, see searchBySelfies).
+export const searchGroupBySelfies = (slug, selfieFiles, guestClientId) => {
+  const form = new FormData()
+  for (const file of selfieFiles) form.append("selfies", file)
+  if (guestClientId) form.append("guest_client_id", guestClientId)
+  return request(`/e/${slug}/search/group`, { method: "POST", body: form })
+}
 
 export const getPhotoComments = (slug, photoId) => request(`/e/${slug}/photos/${photoId}/comments`)
 
@@ -411,6 +427,24 @@ export const approvePhoto = (eventId, photoId) =>
 
 export const deletePhotoComment = (eventId, photoId, commentId) =>
   request(`/events/${eventId}/photos/${photoId}/comments/${commentId}`, { method: "DELETE" })
+
+// Independent of the event's main 90-day guest-access window — null resets
+// to "same as everyone else".
+export const setGuestUploadWindow = (eventId, windowDays) =>
+  request(`/events/${eventId}/guest-uploads/window`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ window_days: windowDays }),
+  })
+
+// --- Sub-galleries (photographer, authenticated) ---
+
+export const createSubGallery = (eventId, name) =>
+  request(`/events/${eventId}/sub-galleries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
 
 // --- Collaborators / invites (photographer, authenticated) ---
 
