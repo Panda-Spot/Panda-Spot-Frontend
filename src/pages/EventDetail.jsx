@@ -32,6 +32,7 @@ import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
 import GuestCard from '../GuestCard.jsx'
+import Modal from '../components/Modal.jsx'
 import Dropzone from '../components/Dropzone.jsx'
 import StatTile from '../components/StatTile.jsx'
 import TrendChart from '../components/TrendChart.jsx'
@@ -84,6 +85,12 @@ export default function EventDetail() {
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionTest, setConnectionTest] = useState(null)
   const [testedUrl, setTestedUrl] = useState('')
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportUrl, setExportUrl] = useState('')
+  const [exportTesting, setExportTesting] = useState(false)
+  const [exportConnectionTest, setExportConnectionTest] = useState(null)
+  const [exportTestedUrl, setExportTestedUrl] = useState('')
+  const [exportSource, setExportSource] = useState('')
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [backingUpExisting, setBackingUpExisting] = useState(false)
   const [togglingAutoSync, setTogglingAutoSync] = useState(false)
@@ -348,7 +355,7 @@ export default function EventDetail() {
     setProgress(null)
     setLogLines([])
     try {
-      const { job_id: jobId, files_found: filesFound } = await backupExistingPhotosToDrive(eventId)
+      const { job_id: jobId, files_found: filesFound } = await backupExistingPhotosToDrive(eventId, exportSource || undefined)
       setLogLines([`Found ${filesFound} photo(s) not yet backed up`])
       watchJob(jobId, { failedLabel: 'Backup failed' })
     } catch (e) {
@@ -356,6 +363,59 @@ export default function EventDetail() {
       setUploading(false)
     } finally {
       setBackingUpExisting(false)
+    }
+  }
+
+  const handleExportUrlChange = (value) => {
+    setExportUrl(value)
+    if (value.trim() !== exportTestedUrl) {
+      setExportConnectionTest(null)
+    }
+  }
+
+  const handleExportTestConnection = async () => {
+    const url = exportUrl.trim()
+    if (!url) return
+    setExportTesting(true)
+    setExportConnectionTest(null)
+    try {
+      const result = await testDriveFolderConnection(eventId, url)
+      setExportConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
+      setExportTestedUrl(url)
+    } catch (e) {
+      setExportConnectionTest({ ok: false, message: e.message })
+      setExportTestedUrl(url)
+    } finally {
+      setExportTesting(false)
+    }
+  }
+
+  const handleExportConnect = async () => {
+    if (!(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())) return
+    const confirmed = await confirm(
+      "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
+      "Once connected, you can back up your existing PandaSpot photos into this same folder.",
+      { title: 'Connect this Drive folder?', confirmLabel: 'Connect', danger: false }
+    )
+    if (!confirmed) return
+
+    setConnectingDrive(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([])
+    try {
+      const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, exportUrl.trim())
+      setExportUrl('')
+      setExportConnectionTest(null)
+      setExportTestedUrl('')
+      setLogLines([`Connected — found ${filesFound} file(s) in the folder`])
+      watchJob(jobId, { failedLabel: 'Import failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setConnectingDrive(false)
     }
   }
 
@@ -608,13 +668,138 @@ export default function EventDetail() {
 
       {event && (
         <div className="card guest-card-section">
-          <button className="btn secondary" type="button" onClick={() => setShowGuestCard((v) => !v)}>
-            {showGuestCard ? 'Hide guest card' : 'Generate guest card'}
-          </button>
+          <div className="row">
+            <button className="btn secondary" type="button" onClick={() => setShowGuestCard((v) => !v)}>
+              {showGuestCard ? 'Hide guest card' : 'Generate guest card'}
+            </button>
+            {user?.drive_backup_beta && event.started && (
+              <button className="btn secondary" type="button" onClick={() => setShowExportModal(true)}>
+                Export to Google Drive
+              </button>
+            )}
+          </div>
           {showGuestCard && (
             <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
           )}
         </div>
+      )}
+
+      {event && (
+        <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Export to Google Drive">
+          {event.drive_folder_url ? (
+            <div className="export-modal-body">
+              <p className="hint">
+                Connected to{' '}
+                <a href={event.drive_folder_url} target="_blank" rel="noreferrer">this Drive folder</a>.
+              </p>
+              <label
+                className="checkbox-row"
+                title={!event.drive_backup_available ? 'Drive backup is not set up on this PandaSpot instance yet' : undefined}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!event.drive_backup_enabled}
+                  disabled={togglingDriveBackup || !event.drive_backup_available}
+                  onChange={(e) => handleToggleDriveBackup(e.target.checked)}
+                />
+                Back up photos to this Drive folder <span className="hint">(advanced, beta)</span>
+              </label>
+
+              {event.drive_backup_enabled && (
+                <>
+                  <label className="field-label" htmlFor="export-source-filter">Which photos to export</label>
+                  <select
+                    id="export-source-filter"
+                    className="text-input"
+                    value={exportSource}
+                    onChange={(e) => setExportSource(e.target.value)}
+                  >
+                    <option value="">All local photos (uploaded + PandaShoots)</option>
+                    <option value="upload">Uploaded only</option>
+                    <option value="shoots">PandaShoots only</option>
+                  </select>
+
+                  <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+                    <button className="btn secondary" type="button" onClick={handleBackupExisting} disabled={backingUpExisting || uploading}>
+                      {backingUpExisting ? 'Starting…' : 'Start export'}
+                    </button>
+                    <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
+                      {reclaimingDriveBackup ? 'Reclaiming…' : "I've made my copies — free up space"}
+                    </button>
+                  </div>
+
+                  <ul className="notice-list">
+                    <li>Applies to any photo exported this way — new PandaShoots captures, and any existing photo (direct uploads included) you export above.</li>
+                    <li>Exported photos live in this Drive folder for only 2 days before being pulled back to PandaSpot's server and removed from Drive.</li>
+                    <li>7 days total before permanent deletion everywhere — including the PandaSpot copy, even for a photo you originally uploaded directly.</li>
+                    <li>Make your own copy in Drive (select all, "Make a copy") well before then.</li>
+                  </ul>
+
+                  <JobProgressLog lines={logLines} progress={progress} />
+                  {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="export-modal-body">
+              <p className="hint">No Drive folder is connected to this event yet — paste one below to enable export.</p>
+              <ul className="notice-list">
+                <li>The folder must be shared as "Anyone with the link can view" (or better) so PandaSpot can write to it.</li>
+                <li>Connecting also scans and imports every photo already in the folder, so it can take a while for a large one.</li>
+              </ul>
+              <div className="row">
+                <input
+                  className="text-input"
+                  type="url"
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  value={exportUrl}
+                  onChange={(e) => handleExportUrlChange(e.target.value)}
+                  disabled={uploading}
+                />
+              </div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={handleExportTestConnection}
+                  disabled={uploading || exportTesting || !exportUrl.trim()}
+                >
+                  {exportTesting ? 'Testing…' : 'Test connection'}
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={handleExportConnect}
+                  disabled={uploading || !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())}
+                  title={!(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim()) ? 'Test the connection first' : undefined}
+                >
+                  {connectingDrive ? 'Connecting…' : 'Connect & enable export'}
+                </button>
+              </div>
+              {exportConnectionTest && (
+                <p className={exportConnectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
+                  {exportConnectionTest.ok ? (
+                    <>
+                      <CheckCircle2 size={14} /> Reachable — "{exportConnectionTest.folderName}"
+                      {' · '}
+                      {exportConnectionTest.permission === 'writer'
+                        ? 'Editor access given to anyone with the link'
+                        : exportConnectionTest.permission === 'commenter'
+                          ? 'Commenter access given to anyone with the link'
+                          : exportConnectionTest.permission === 'reader'
+                            ? 'Viewer access given to anyone with the link'
+                            : "Accessible, but the exact permission level couldn't be read"}
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={14} /> {exportConnectionTest.message}
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+        </Modal>
       )}
 
       {event?.role === 'owner' && (
@@ -776,41 +961,6 @@ export default function EventDetail() {
                 Auto-sync once a day
               </label>
             </div>
-            {user?.drive_backup_beta && (
-              <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                <label
-                  className="checkbox-row"
-                  title={!event.drive_backup_available ? 'Drive backup is not set up on this PandaSpot instance yet' : undefined}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!event.drive_backup_enabled}
-                    disabled={togglingDriveBackup || !event.drive_backup_available}
-                    onChange={(e) => handleToggleDriveBackup(e.target.checked)}
-                  />
-                  Back up photos to this Drive folder <span className="hint">(advanced, beta)</span>
-                </label>
-                {event.drive_backup_enabled && (
-                  <>
-                    <button className="btn secondary" type="button" onClick={handleBackupExisting} disabled={backingUpExisting || uploading}>
-                      {backingUpExisting ? 'Starting…' : 'Back up existing photos too'}
-                    </button>
-                    <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
-                      {reclaimingDriveBackup ? 'Reclaiming…' : "I've made my copies — free up space"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            {event.drive_backup_enabled && (
-              <ul className="notice-list">
-                <li>Applies to any photo backed up this way — new PandaShoots captures, and any existing photo (direct uploads included) you back up with the button above.</li>
-                <li>Backed-up photos live in this Drive folder for only 2 days before being pulled back to PandaSpot's server and removed from Drive.</li>
-                <li>7 days total before permanent deletion everywhere — including the PandaSpot copy, even for a photo you originally uploaded directly.</li>
-                <li>Make your own copy in Drive (select all, "Make a copy") well before then.</li>
-              </ul>
-            )}
-            {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
           </div>
         ) : (
           <div className="drive-import">
