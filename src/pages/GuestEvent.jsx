@@ -45,6 +45,14 @@ export default function GuestEvent() {
   const [sendingLink, setSendingLink] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [groupMode, setGroupMode] = useState(false)
+  // Holds { key, promise } for a search already kicked off the instant the
+  // guest finished picking selfies — before they've even tapped "Find My
+  // Photos". By the time they do tap it, the upload + face-detect + match
+  // work is often already done, so the button click just reveals a result
+  // that's already sitting there instead of starting the whole round trip
+  // fresh. Never shown in the UI directly — from the guest's perspective
+  // nothing happens until they tap the button.
+  const prefetchRef = useRef(null)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -89,6 +97,16 @@ export default function GuestEvent() {
     }
   }, [event, slug])
 
+  // A stable fingerprint for one selfie selection (+ which mode it was
+  // taken in) — lets handleSearch recognize "this is the exact same
+  // selection a prefetch already started for" without keeping the actual
+  // File objects around as the comparison key.
+  const selfiesKey = (files, isGroup) =>
+    `${isGroup ? 'group' : 'solo'}:${files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join('|')}`
+
+  const startSearch = (files, isGroup) =>
+    isGroup ? searchGroupBySelfies(slug, files, getGuestClientId()) : searchBySelfies(slug, files, getGuestClientId())
+
   const handleSelfies = (e) => {
     const files = Array.from(e.target.files || [])
     const max = groupMode ? MAX_GROUP_SELFIES : MAX_SELFIES
@@ -97,6 +115,20 @@ export default function GuestEvent() {
     setSelfies(capped)
     setPreviews(capped.map((file) => URL.createObjectURL(file)))
     setResult(null)
+
+    // Already have enough selfies to run a real search — start it now in
+    // the background rather than waiting for the button tap. If the
+    // selection isn't search-ready yet (e.g. group mode with only 1
+    // selfie so far), there's nothing valid to prefetch.
+    const ready = capped.length > 0 && (!groupMode || capped.length >= 2)
+    if (ready) {
+      const key = selfiesKey(capped, groupMode)
+      const promise = startSearch(capped, groupMode)
+      promise.catch(() => {}) // Surfaced by handleSearch instead, not here.
+      prefetchRef.current = { key, promise }
+    } else {
+      prefetchRef.current = null
+    }
   }
 
   const handleToggleGroupMode = () => {
@@ -105,6 +137,7 @@ export default function GuestEvent() {
     setPreviews([])
     setSelfieHint('')
     setResult(null)
+    prefetchRef.current = null
   }
 
   const handleSearch = async (e) => {
@@ -118,9 +151,12 @@ export default function GuestEvent() {
     setError('')
     setResult(null)
     try {
-      const data = groupMode
-        ? await searchGroupBySelfies(slug, selfies, getGuestClientId())
-        : await searchBySelfies(slug, selfies, getGuestClientId())
+      const key = selfiesKey(selfies, groupMode)
+      // If the background prefetch from handleSelfies already covers this
+      // exact selection, just wait on it (often already resolved) instead
+      // of firing a second, redundant request.
+      const data =
+        prefetchRef.current?.key === key ? await prefetchRef.current.promise : await startSearch(selfies, groupMode)
       setResult(data)
     } catch (e) {
       setError(e.message)
