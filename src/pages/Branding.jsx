@@ -6,6 +6,7 @@ const DEFAULT_ACCENT = '#0e8a8a'
 export default function Branding() {
   const [studioName, setStudioName] = useState('')
   const [brandColor, setBrandColor] = useState(DEFAULT_ACCENT)
+  const [watermarkIntensity, setWatermarkIntensity] = useState(0.75)
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState('')
   const [currentLogoUrl, setCurrentLogoUrl] = useState(null)
@@ -20,6 +21,7 @@ export default function Branding() {
       .then((b) => {
         setStudioName(b.studio_name || '')
         setBrandColor(b.brand_color || DEFAULT_ACCENT)
+        setWatermarkIntensity(Number.isFinite(Number(b.watermark_intensity)) ? Number(b.watermark_intensity) : 0.75)
         setCurrentLogoUrl(b.logo_url || null)
       })
       .catch((e) => setError(e.message))
@@ -38,9 +40,10 @@ export default function Branding() {
     setError('')
     setSaved(false)
     try {
-      const b = await saveBranding(studioName, brandColor, logoFile)
+      const b = await saveBranding(studioName, brandColor, logoFile, watermarkIntensity)
       setStudioName(b.studio_name || '')
       setBrandColor(b.brand_color || DEFAULT_ACCENT)
+      setWatermarkIntensity(Number.isFinite(Number(b.watermark_intensity)) ? Number(b.watermark_intensity) : 0.75)
       setCurrentLogoUrl(b.logo_url || null)
       setLogoFile(null)
       setLogoPreview('')
@@ -95,6 +98,24 @@ export default function Branding() {
             />
           )}
           <input id="logo" ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoChange} />
+        </div>
+
+        <label className="field-label" htmlFor="watermark-intensity">Watermark intensity</label>
+        <div className="watermark-control">
+          <input
+            id="watermark-intensity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={watermarkIntensity}
+            onChange={(e) => setWatermarkIntensity(Number(e.target.value))}
+          />
+          <span className="hint">{Math.round(watermarkIntensity * 100)}%</span>
+        </div>
+
+        <div className="watermark-preview protected-photo-frame" data-watermark={studioName || 'PandaSpot'} style={{ '--watermark-opacity': watermarkIntensity }}>
+          <div className="watermark-preview-image" style={{ background: `linear-gradient(135deg, ${brandColor} 0%, #263238 55%, #f2c94c 100%)` }} />
         </div>
 
         <button className="btn auth-submit" type="submit" disabled={saving}>

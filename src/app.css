@@ -197,7 +197,7 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   transform: rotate(-22deg);
   pointer-events: none;
-  opacity: 0.75;
+  opacity: var(--watermark-opacity, 0.75);
 }
 .photo-card .meta {
   padding: 8px 10px;
@@ -1214,6 +1214,25 @@
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
+}
+.watermark-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 10px;
+  align-items: center;
+}
+.watermark-control input {
+  width: 100%;
+}
+.watermark-preview {
+  height: 180px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #111;
+}
+.watermark-preview-image {
+  width: 100%;
+  height: 100%;
 }
 
 /* --- Danger zone (event detail) --- */

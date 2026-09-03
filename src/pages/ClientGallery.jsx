@@ -53,10 +53,15 @@ export default function ClientGallery() {
 
   const favouriteCount = photos.filter((p) => p.is_favourite).length
   const locked = !!event.submitted_at
-  const watermarkText = event.event_name || 'PandaSpot'
+  const watermarkText = event.watermark_text || event.event_name || 'PandaSpot'
+  const watermarkIntensity = Number.isFinite(Number(event.watermark_intensity)) ? Number(event.watermark_intensity) : 0.75
 
   return (
-    <div className="protected-gallery" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="protected-gallery"
+      style={{ '--watermark-opacity': watermarkIntensity }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <h1 className="section-title">{event.event_name}</h1>
       <p className="subtle">
         {event.favourite_cap ? `${favouriteCount} / ${event.favourite_cap} favourited` : `${favouriteCount} favourited`}

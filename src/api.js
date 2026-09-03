@@ -276,10 +276,11 @@ export const backupExistingPhotosToDrive = (eventId, source) =>
 
 export const getBranding = () => request("/branding")
 
-export const saveBranding = (studioName, brandColor, logoFile) => {
+export const saveBranding = (studioName, brandColor, logoFile, watermarkIntensity) => {
   const form = new FormData()
   form.append("studio_name", studioName || "")
   form.append("brand_color", brandColor || "")
+  form.append("watermark_intensity", String(watermarkIntensity ?? 0.75))
   if (logoFile) form.append("logo", logoFile)
   return request("/branding", { method: "POST", body: form })
 }
