@@ -152,6 +152,7 @@ export default function AdminPlans() {
         trial_photo_quota: Number(settingsDraft.trialPhotoQuota),
         monthly_grace_days: Number(settingsDraft.monthlyGraceDays),
         yearly_grace_days: Number(settingsDraft.yearlyGraceDays),
+        free_access_enabled: !!settingsDraft.freeAccessEnabled,
       })
       load()
     } catch (e) {
@@ -171,7 +172,7 @@ export default function AdminPlans() {
 
       <div className="card billing-card">
         <div className="guest-link-label">Trial & grace period defaults</div>
-        <p className="hint">Applied to every new trial/subscription going forward — doesn't affect subscriptions already in progress.</p>
+        <p className="hint">Trial/grace values apply to new subscriptions. Free platform access bypasses upload quota enforcement until disabled.</p>
         <form onSubmit={handleSaveSettings}>
           <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
             <label>
@@ -189,6 +190,10 @@ export default function AdminPlans() {
             <label>
               <div className="field-label">Yearly-plan grace (days)</div>
               <input className="text-input" type="number" value={settingsDraft.yearlyGraceDays} onChange={(e) => setSettingsDraft((s) => ({ ...s, yearlyGraceDays: e.target.value }))} />
+            </label>
+            <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 22 }}>
+              <input type="checkbox" checked={!!settingsDraft.freeAccessEnabled} onChange={(e) => setSettingsDraft((s) => ({ ...s, freeAccessEnabled: e.target.checked }))} />
+              Free access for all studios
             </label>
           </div>
           <button className="btn" type="submit" disabled={busy} style={{ marginTop: 8 }}>Save</button>

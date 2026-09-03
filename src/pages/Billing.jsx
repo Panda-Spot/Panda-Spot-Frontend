@@ -14,16 +14,13 @@ import {
 
 const FREE_EVENT_LIMIT = 15
 
-// MERGE (Studio-Verse Billing & Subscriptions): the free-tier event/
-// storage meter below predates this merge and is the system that's
-// actually enforced today (see lib/planLimits.js) — kept as-is. The
-// subscription/wallet sections are new; see lib/subscriptionAccess.js's
-// own safety note for why they're not wired into any upload gate yet —
-// this page is honest about that: a subscription's quota is informational
-// right now, not an enforced limit.
+// MERGE (Studio-Verse Billing & Subscriptions): subscription quota gates
+// are wired into uploads/imports/Shoots. Super Admin can temporarily keep
+// global free access enabled from the platform settings page.
 export default function Billing() {
   const [eventCount, setEventCount] = useState(null)
   const [subscription, setSubscription] = useState(null)
+  const [freeAccessEnabled, setFreeAccessEnabled] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [plans, setPlans] = useState(null)
   const [transactions, setTransactions] = useState([])
@@ -36,6 +33,7 @@ export default function Billing() {
       .then((data) => {
         setSubscription(data.subscription)
         setWalletBalance(data.wallet_balance)
+        setFreeAccessEnabled(!!data.free_access_enabled)
       })
       .catch(() => {})
     listSubscriptionPlans().then(setPlans).catch(() => setPlans([]))
@@ -64,6 +62,9 @@ export default function Billing() {
   return (
     <div>
       <h1 className="section-title">Billing</h1>
+      {freeAccessEnabled && (
+        <p className="hint">Platform free access is currently enabled. Upload quota tracking is wired but not enforced until the platform turns free access off.</p>
+      )}
 
       <div className="card billing-card">
         <div className="guest-link-label">Free plan (event limits)</div>
