@@ -180,6 +180,18 @@
   justify-content: space-between;
 }
 
+.photo-feature-membership {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--accent-bg);
+}
+
+.photo-feature-membership .checkbox-row {
+  font-size: 12px;
+}
+
 .match-card .meta {
   font-weight: 600;
   color: var(--accent);

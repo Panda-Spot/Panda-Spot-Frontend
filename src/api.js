@@ -107,6 +107,13 @@ export const startEvent = (eventId) =>
 
 export const listPhotos = (eventId) => request(`/events/${eventId}/photos`)
 
+export const updatePhotoFeatureMembership = (eventId, photoId, patch) =>
+  request(`/events/${eventId}/photos/${photoId}/features`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
 export const deletePhoto = (eventId, photoId) =>
   request(`/events/${eventId}/photos/${photoId}`, { method: "DELETE" })
 

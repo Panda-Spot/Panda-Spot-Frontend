@@ -29,6 +29,7 @@ import {
   testDriveFolderConnection,
   toggleGuestUploads,
   toggleEventFeature,
+  updatePhotoFeatureMembership,
   inviteClient,
   listClients,
   removeClient,
@@ -92,6 +93,7 @@ export default function EventDetail() {
   const [clientInviteMessage, setClientInviteMessage] = useState('')
   const [clientError, setClientError] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
+  const [savingPhotoFeatures, setSavingPhotoFeatures] = useState({})
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
   const [logLines, setLogLines] = useState([])
@@ -766,6 +768,37 @@ export default function EventDetail() {
       showToast(e.message, { type: 'error' })
     } finally {
       setDeletingPhotoId(null)
+    }
+  }
+
+  const handlePhotoFeatureMembership = async (photoId, patch) => {
+    setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: true }))
+    const previous = photos
+    setPhotos((prev) => prev.map((p) => (
+      p.photo_id === photoId
+        ? {
+            ...p,
+            face_search_visible: patch.face_search_visible ?? p.face_search_visible,
+            photo_selection_visible: patch.photo_selection_visible ?? p.photo_selection_visible,
+          }
+        : p
+    )))
+    try {
+      const updated = await updatePhotoFeatureMembership(eventId, photoId, patch)
+      setPhotos((prev) => prev.map((p) => (
+        p.photo_id === photoId
+          ? {
+              ...p,
+              face_search_visible: updated.face_search_visible,
+              photo_selection_visible: updated.photo_selection_visible,
+            }
+          : p
+      )))
+    } catch (e) {
+      setPhotos(previous)
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: false }))
     }
   }
 
@@ -1512,6 +1545,26 @@ export default function EventDetail() {
                 >
                   {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
                 </button>
+              </div>
+              <div className="photo-feature-membership">
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={p.face_search_visible !== false}
+                    disabled={!!savingPhotoFeatures[p.photo_id]}
+                    onChange={(e) => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: e.target.checked })}
+                  />
+                  Face Search
+                </label>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={p.photo_selection_visible !== false}
+                    disabled={!!savingPhotoFeatures[p.photo_id]}
+                    onChange={(e) => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: e.target.checked })}
+                  />
+                  Photo Selection
+                </label>
               </div>
             </div>
           ))}
