@@ -826,7 +826,7 @@ export default function EventDetail() {
     <div>
       <Link className="back-link" to="/events">&larr; All events</Link>
       <h1 className="section-title">{event?.name || 'Event'}</h1>
-      <p className="subtle">Bulk-upload the event photos here. Each photo is scanned for faces so guests can find themselves later.</p>
+      <p className="subtle">Bulk-upload the event photos here. Face indexing runs only when Face Search is enabled for this event.</p>
 
       {event && (
         <div className="card guest-link-card">
@@ -948,8 +948,8 @@ export default function EventDetail() {
         <div className="card">
           <div className="guest-link-label">Guest uploads</div>
           <p className="hint">
-            Let guests add their own shots to the gallery via a separate link/QR — each one is scanned for
-            faces the same as a regular upload, but stays hidden until you approve it below.
+            Let guests add their own shots to the gallery via a separate link/QR. Face indexing runs after approval
+            only when Face Search is enabled for this event.
           </p>
           <label className="checkbox-row">
             <input
