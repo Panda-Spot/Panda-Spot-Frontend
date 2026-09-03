@@ -5,6 +5,9 @@ import {
   createBillingService,
   createQuotation,
   deleteQuotation,
+  downloadBillPdf,
+  downloadQuotationPdf,
+  downloadReceiptPdf,
   getBill,
   listBillingServices,
   listBills,
@@ -101,6 +104,7 @@ export default function BillingDocuments() {
 
   const handleConfirm = (id) => withBusy(() => confirmQuotation(id))
   const handleDelete = (id) => withBusy(() => deleteQuotation(id))
+  const handlePdf = (fn) => withBusy(fn)
 
   const openBill = async (id) => {
     setError('')
@@ -184,12 +188,15 @@ export default function BillingDocuments() {
               <span>
                 #{q.quotation_number} — {q.client?.email} — ₹{q.payable} <span className="hint">({q.status})</span>
               </span>
-              {q.status === 'DRAFT' && (
-                <span>
+              <span>
+                <button className="btn secondary" type="button" onClick={() => handlePdf(() => downloadQuotationPdf(q.id, q.quotation_number))} disabled={busy}>PDF</button>
+                {q.status === 'DRAFT' && (
+                  <>
                   <button className="btn secondary" type="button" onClick={() => handleConfirm(q.id)} disabled={busy}>Confirm → Bill</button>
                   <button className="btn secondary" type="button" onClick={() => handleDelete(q.id)} disabled={busy}>Delete</button>
-                </span>
-              )}
+                  </>
+                )}
+              </span>
             </li>
           ))}
           {quotations.length === 0 && <li className="hint">No quotations yet.</li>}
@@ -202,7 +209,10 @@ export default function BillingDocuments() {
           {bills.map((b) => (
             <li key={b.id} className="team-list-item">
               <span>#{b.bill_number} — {b.client?.email} — ₹{b.paid} / ₹{b.payable} <span className="hint">({b.status})</span></span>
-              <button className="btn secondary" type="button" onClick={() => openBill(b.id)}>Open</button>
+              <span>
+                <button className="btn secondary" type="button" onClick={() => handlePdf(() => downloadBillPdf(b.id, b.bill_number))} disabled={busy}>PDF</button>
+                <button className="btn secondary" type="button" onClick={() => openBill(b.id)}>Open</button>
+              </span>
             </li>
           ))}
           {bills.length === 0 && <li className="hint">No bills yet.</li>}
@@ -214,11 +224,17 @@ export default function BillingDocuments() {
           <div className="guest-link-label">Bill #{selectedBill.bill_number}</div>
           <p className="subtle">{selectedBill.client?.email} — {selectedBill.status}</p>
           <p className="hint">Payable ₹{selectedBill.payable} — Paid ₹{selectedBill.paid} — Remaining ₹{selectedBill.remaining}</p>
+          <button className="btn secondary" type="button" onClick={() => handlePdf(() => downloadBillPdf(selectedBill.id, selectedBill.bill_number))} disabled={busy}>
+            Download bill PDF
+          </button>
           <ul className="team-list">
             {selectedBill.payments.map((p) => (
               <li key={p.receipt_number} className="team-list-item">
                 <span>Receipt #{p.receipt_number} — ₹{p.amount} ({p.method})</span>
-                <span className="hint">{new Date(p.created_at).toLocaleDateString()}</span>
+                <span>
+                  <span className="hint">{new Date(p.created_at).toLocaleDateString()}</span>
+                  <button className="btn secondary" type="button" onClick={() => handlePdf(() => downloadReceiptPdf(p.receipt_number))} disabled={busy}>PDF</button>
+                </span>
               </li>
             ))}
           </ul>

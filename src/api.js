@@ -28,6 +28,31 @@ async function request(path, options) {
 
 export const fileUrl = (path) => `${BASE_URL}${path}`
 
+export async function downloadFile(path, filename) {
+  const token = getToken()
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await fetch(`${BASE_URL}${path}`, { credentials: "include", headers })
+  if (!res.ok) {
+    let message = `Download failed (${res.status})`
+    try {
+      const body = await res.json()
+      message = body.detail || body.message || body.error || message
+    } catch {
+      // PDF/file errors may not be JSON.
+    }
+    throw new Error(message)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 // --- Auth ---
 
 export const register = async (email, password, name) => {
@@ -584,6 +609,15 @@ export const recordPayment = (billId, amount, method, remark) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount, method, remark }),
   })
+
+export const downloadQuotationPdf = (quotationId, number) =>
+  downloadFile(`/billing/quotations/${quotationId}/pdf`, `Quotation-${number}.pdf`)
+
+export const downloadBillPdf = (billId, number) =>
+  downloadFile(`/billing/bills/${billId}/pdf`, `Bill-${number}.pdf`)
+
+export const downloadReceiptPdf = (receiptNumber) =>
+  downloadFile(`/billing/payments/${receiptNumber}/pdf`, `Receipt-${receiptNumber}.pdf`)
 
 // --- Support tickets (MERGE: Studio-Verse, Phase 13) ---
 
