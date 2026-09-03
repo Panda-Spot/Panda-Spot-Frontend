@@ -28,6 +28,10 @@ import {
   syncDriveFolder,
   testDriveFolderConnection,
   toggleGuestUploads,
+  toggleEventFeature,
+  inviteClient,
+  listClients,
+  removeClient,
   setGuestUploadWindow,
   createSubGallery,
 } from '../api.js'
@@ -80,6 +84,13 @@ export default function EventDetail() {
   const [inviting, setInviting] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
   const [teamError, setTeamError] = useState('')
+  const [clients, setClients] = useState([])
+  const [pendingClientInvites, setPendingClientInvites] = useState([])
+  const [clientInviteEmail, setClientInviteEmail] = useState('')
+  const [clientInviteCap, setClientInviteCap] = useState('')
+  const [invitingClient, setInvitingClient] = useState(false)
+  const [clientInviteMessage, setClientInviteMessage] = useState('')
+  const [clientError, setClientError] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
@@ -97,6 +108,7 @@ export default function EventDetail() {
   const [exportTestedUrl, setExportTestedUrl] = useState('')
   const [exportSource, setExportSource] = useState('')
   const [togglingGuestUploads, setTogglingGuestUploads] = useState(false)
+  const [togglingFeature, setTogglingFeature] = useState(null) // "faceSearch" | "photoSelection" | null
   const [showGuestUploadCard, setShowGuestUploadCard] = useState(false)
   const [showSlideshowCard, setShowSlideshowCard] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
@@ -140,16 +152,29 @@ export default function EventDetail() {
       })
   }, [eventId])
 
+  const loadClients = useCallback(() => {
+    listClients(eventId)
+      .then((data) => {
+        setClients(data.clients)
+        setPendingClientInvites(data.pending_invites)
+      })
+      .catch(() => {
+        setClients([])
+        setPendingClientInvites([])
+      })
+  }, [eventId])
+
   const load = useCallback(() => {
     getEvent(eventId)
       .then((ev) => {
         setEvent(ev)
         if (ev.role === 'owner') loadTeam()
+        if (ev.photo_selection_enabled) loadClients()
       })
       .catch((e) => setError(e.message))
     listPhotos(eventId).then(setPhotos).catch((e) => setError(e.message))
     getEventAnalytics(eventId).then(setAnalytics).catch(() => setAnalytics(null))
-  }, [eventId, loadTeam])
+  }, [eventId, loadTeam, loadClients])
 
   useEffect(load, [load])
 
@@ -295,6 +320,53 @@ export default function EventDetail() {
       showToast(e.message, { type: 'error' })
     } finally {
       setTogglingGuestUploads(false)
+    }
+  }
+
+  const handleToggleFeature = async (feature, enabled) => {
+    setTogglingFeature(feature)
+    setError('')
+    try {
+      await toggleEventFeature(eventId, feature, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingFeature(null)
+    }
+  }
+
+  const handleInviteClient = async (e) => {
+    e.preventDefault()
+    if (!clientInviteEmail.trim()) return
+    setInvitingClient(true)
+    setClientError('')
+    setClientInviteMessage('')
+    try {
+      const cap = clientInviteCap.trim() ? parseInt(clientInviteCap, 10) : undefined
+      const res = await inviteClient(eventId, clientInviteEmail.trim(), cap)
+      setClientInviteMessage(
+        res.status === 'added'
+          ? 'Added — they can view this event immediately.'
+          : "Invite sent — they'll get access once they set a password."
+      )
+      setClientInviteEmail('')
+      setClientInviteCap('')
+      loadClients()
+    } catch (e) {
+      setClientError(e.message)
+    } finally {
+      setInvitingClient(false)
+    }
+  }
+
+  const handleRemoveClient = async (userId) => {
+    setClientError('')
+    try {
+      await removeClient(eventId, userId)
+      loadClients()
+    } catch (e) {
+      setClientError(e.message)
     }
   }
 
@@ -747,6 +819,33 @@ export default function EventDetail() {
         </div>
       )}
 
+      {event && (
+        <div className="card">
+          <div className="guest-link-label">Features</div>
+          <p className="hint">
+            Turn on either or both — they run independently on this same event and gallery.
+          </p>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={!!event.face_search_enabled}
+              disabled={togglingFeature === 'faceSearch'}
+              onChange={(e) => handleToggleFeature('faceSearch', e.target.checked)}
+            />
+            Face Search — guests find their own photos with a selfie
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={!!event.photo_selection_enabled}
+              disabled={togglingFeature === 'photoSelection'}
+              onChange={(e) => handleToggleFeature('photoSelection', e.target.checked)}
+            />
+            Photo Selection — clients log in to browse, favourite, and submit picks
+          </label>
+        </div>
+      )}
+
       {analytics && (
         <div className="card analytics-card">
           <div className="guest-link-label">Analytics</div>
@@ -1120,6 +1219,65 @@ export default function EventDetail() {
             ))}
             {collaborators.length === 0 && pendingInvites.length === 0 && (
               <li className="hint">No collaborators yet — invite someone above.</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* MERGE (Studio-Verse Photo Selection): only shown once the studio
+          has turned this feature on for the event (see the Features card
+          above) — inviting clients to a feature that isn't active would
+          just be confusing. */}
+      {event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+        <div className="card team-card">
+          <div className="guest-link-label">Clients</div>
+          <p className="hint">Invite a client to log in and favourite their photos from this event.</p>
+
+          <form className="row" onSubmit={handleInviteClient}>
+            <input
+              className="text-input"
+              type="email"
+              placeholder="client@example.com"
+              value={clientInviteEmail}
+              onChange={(e) => setClientInviteEmail(e.target.value)}
+            />
+            <input
+              className="text-input"
+              type="number"
+              min="1"
+              placeholder="Favourite cap (optional)"
+              style={{ maxWidth: 180 }}
+              value={clientInviteCap}
+              onChange={(e) => setClientInviteCap(e.target.value)}
+            />
+            <button className="btn" type="submit" disabled={invitingClient || !clientInviteEmail.trim()}>
+              {invitingClient ? 'Inviting…' : 'Invite'}
+            </button>
+          </form>
+
+          {clientInviteMessage && <p className="hint">{clientInviteMessage}</p>}
+          {clientError && <p className="error">{clientError}</p>}
+
+          <ul className="team-list">
+            {clients.map((c) => (
+              <li key={c.user_id} className="team-list-item">
+                <span>
+                  {c.name} <span className="hint">({c.email})</span>
+                  {c.favourite_cap != null && <span className="hint"> · cap {c.favourite_cap}</span>}
+                  {c.submitted_at && <span className="hint"> · submitted</span>}
+                </span>
+                <button className="btn secondary" type="button" onClick={() => handleRemoveClient(c.user_id)}>
+                  Remove
+                </button>
+              </li>
+            ))}
+            {pendingClientInvites.map((inv) => (
+              <li key={inv.invite_id} className="team-list-item team-list-item-pending">
+                <span>{inv.email} <span className="hint">(pending)</span></span>
+              </li>
+            ))}
+            {clients.length === 0 && pendingClientInvites.length === 0 && (
+              <li className="hint">No clients yet — invite one above.</li>
             )}
           </ul>
         </div>

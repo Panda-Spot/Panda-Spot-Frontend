@@ -4,7 +4,7 @@ import { fileUrl, getBranding } from './api.js'
 
 const CARD_WIDTH = 1050
 const CARD_HEIGHT = 600
-const DEFAULT_ACCENT = '#aa3bff'
+const DEFAULT_ACCENT = '#0e8a8a'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {

@@ -32,18 +32,26 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Branding from './pages/Branding.jsx'
 import Billing from './pages/Billing.jsx'
+import BillingDocuments from './pages/BillingDocuments.jsx'
+import Support from './pages/Support.jsx'
 import Admin from './pages/Admin.jsx'
 import AdminClients from './pages/AdminClients.jsx'
 import AdminClientDetail from './pages/AdminClientDetail.jsx'
 import AdminEvents from './pages/AdminEvents.jsx'
 import AdminEventDetail from './pages/AdminEventDetail.jsx'
 import AdminMetrics from './pages/AdminMetrics.jsx'
+import AdminPlans from './pages/AdminPlans.jsx'
 import InviteAccept from './pages/InviteAccept.jsx'
+import AcceptClientInvite from './pages/AcceptClientInvite.jsx'
+import ClientEvents from './pages/ClientEvents.jsx'
+import ClientGallery from './pages/ClientGallery.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import AppShell from './components/AppShell.jsx'
+import CameraShutter from './components/CameraShutter.jsx'
+import RouteTransition from './components/RouteTransition.jsx'
 
 // Styles
 import './app.css'
@@ -58,7 +66,8 @@ function AuthLayout({ children }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <CameraShutter size="sm" mark />
           PandaSpot
           <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 9999, marginLeft: 8 }}>
             STUDIO
@@ -80,6 +89,7 @@ function App() {
   return (
     <>
       <ScrollToTop />
+      <RouteTransition />
       <Routes>
       {/* 1. Public Marketing Routes (PDF Plan) */}
       <Route path="/" element={<Home />} />
@@ -147,6 +157,38 @@ function App() {
           </AuthLayout>
         }
       />
+      <Route
+        path="/client-invites/:token"
+        element={
+          <AuthLayout>
+            <AcceptClientInvite />
+          </AuthLayout>
+        }
+      />
+
+      {/* Photo Selection: client-facing pages (MERGE: Studio-Verse) — a
+          USER-role login, same ProtectedRoute/AppShell as the studio side;
+          the API itself enforces the role/access-grant boundary. */}
+      <Route
+        path="/client"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientEvents />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/client/:eventId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientGallery />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
 
       {/* 4. Authenticated Photographer Studio Dashboard Routes */}
       <Route
@@ -189,6 +231,26 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <Billing />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/billing/documents"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <BillingDocuments />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/support"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Support />
             </ProtectedRoute>
           </AppShell>
         }
@@ -249,6 +311,16 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <AdminMetrics />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/admin/plans"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AdminPlans />
             </ProtectedRoute>
           </AppShell>
         }

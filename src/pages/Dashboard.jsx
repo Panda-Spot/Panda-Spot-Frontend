@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createEvent, listEvents } from '../api.js'
+import CameraShutter from '../components/CameraShutter.jsx'
 
 function guestLink(slug) {
   return `${window.location.origin}/e/${slug}`
@@ -83,7 +84,7 @@ export default function Dashboard() {
       {error && <p className="error">{error}</p>}
 
       {loading ? (
-        <p className="hint">Loading events…</p>
+        <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><CameraShutter size="sm" /> Loading events…</p>
       ) : events.length === 0 ? (
         <p className="hint">No events yet — create one above.</p>
       ) : (

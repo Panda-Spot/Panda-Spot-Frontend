@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fileUrl, getBranding, saveBranding } from '../api.js'
 
-const DEFAULT_ACCENT = '#aa3bff'
+const DEFAULT_ACCENT = '#0e8a8a'
 
 export default function Branding() {
   const [studioName, setStudioName] = useState('')

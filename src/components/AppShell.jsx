@@ -6,7 +6,9 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Heart,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Menu,
   Palette,
@@ -17,6 +19,7 @@ import { useAuth } from '../auth.jsx'
 import { requestEmailVerification } from '../api.js'
 import SidebarSection from './SidebarSection.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import CameraShutter from './CameraShutter.jsx'
 
 const SIDEBAR_COLLAPSED_KEY = 'pandaspot_sidebar_collapsed'
 
@@ -25,12 +28,15 @@ const PAGE_TITLES = [
   { test: (p) => p.startsWith('/events/'), title: 'Event' },
   { test: (p) => p === '/branding', title: 'Branding' },
   { test: (p) => p === '/billing', title: 'Billing' },
+  { test: (p) => p === '/billing/documents', title: 'Billing documents' },
+  { test: (p) => p === '/support', title: 'Support' },
   { test: (p) => p === '/admin', title: 'Admin' },
   { test: (p) => p === '/admin/clients', title: 'Clients' },
   { test: (p) => p.startsWith('/admin/clients/'), title: 'Client' },
   { test: (p) => p === '/admin/events', title: 'Events (admin)' },
   { test: (p) => p.startsWith('/admin/events/'), title: 'Event (admin)' },
   { test: (p) => p === '/admin/metrics', title: 'Metrics' },
+  { test: (p) => p === '/admin/plans', title: 'Plans & settings' },
 ]
 
 function pageTitleFor(pathname) {
@@ -115,9 +121,10 @@ export default function AppShell({ children }) {
     <div className="app-shell" data-sidebar={collapsed ? 'collapsed' : 'expanded'} data-mobile-nav={mobileOpen ? 'open' : 'closed'}>
       <aside className="app-sidebar">
         <div className="app-sidebar-brand">
-          <Link to="/events" className="app-sidebar-brand-link">
+          <Link to={user?.role === 'USER' ? '/client' : '/events'} className="app-sidebar-brand-link">
+            <CameraShutter size="sm" mark />
             <span className="app-sidebar-brand-name">PandaSpot</span>
-            <span className="app-sidebar-brand-badge">STUDIO</span>
+            <span className="app-sidebar-brand-badge">{user?.role === 'USER' ? 'CLIENT' : 'STUDIO'}</span>
           </Link>
           <button
             type="button"
@@ -139,20 +146,34 @@ export default function AppShell({ children }) {
         </div>
 
         <nav className="app-sidebar-nav">
-          <SidebarSection label="Workspace" defaultOpen>
-            <SidebarLink to="/events" icon={Calendar} onNavigate={closeMobile}>Events</SidebarLink>
-          </SidebarSection>
-          <SidebarSection label="Studio" defaultOpen>
-            <SidebarLink to="/branding" icon={Palette} onNavigate={closeMobile}>Branding</SidebarLink>
-            <SidebarLink to="/billing" icon={CreditCard} onNavigate={closeMobile}>Billing</SidebarLink>
-          </SidebarSection>
-          {user?.is_admin && (
-            <SidebarSection label="Platform" defaultOpen>
-              <SidebarLink to="/admin" icon={LayoutDashboard} onNavigate={closeMobile}>Overview</SidebarLink>
-              <SidebarLink to="/admin/clients" icon={Users} onNavigate={closeMobile}>Clients</SidebarLink>
-              <SidebarLink to="/admin/events" icon={Calendar} onNavigate={closeMobile}>Events</SidebarLink>
-              <SidebarLink to="/admin/metrics" icon={BarChart3} onNavigate={closeMobile}>Metrics</SidebarLink>
+          {/* MERGE (Studio-Verse Photo Selection): a USER-role client gets
+              a minimal nav — the studio sidebar below (Events/Branding/
+              Billing/Admin) would just be a wall of 403s for them. */}
+          {user?.role === 'USER' ? (
+            <SidebarSection label="Your Photos" defaultOpen>
+              <SidebarLink to="/client" icon={Heart} onNavigate={closeMobile}>Events</SidebarLink>
             </SidebarSection>
+          ) : (
+            <>
+              <SidebarSection label="Workspace" defaultOpen>
+                <SidebarLink to="/events" icon={Calendar} onNavigate={closeMobile}>Events</SidebarLink>
+              </SidebarSection>
+              <SidebarSection label="Studio" defaultOpen>
+                <SidebarLink to="/branding" icon={Palette} onNavigate={closeMobile}>Branding</SidebarLink>
+                <SidebarLink to="/billing" icon={CreditCard} onNavigate={closeMobile}>Billing</SidebarLink>
+                {!user?.is_admin && <SidebarLink to="/support" icon={LifeBuoy} onNavigate={closeMobile}>Support</SidebarLink>}
+              </SidebarSection>
+              {user?.is_admin && (
+                <SidebarSection label="Platform" defaultOpen>
+                  <SidebarLink to="/admin" icon={LayoutDashboard} onNavigate={closeMobile}>Overview</SidebarLink>
+                  <SidebarLink to="/admin/clients" icon={Users} onNavigate={closeMobile}>Clients</SidebarLink>
+                  <SidebarLink to="/admin/events" icon={Calendar} onNavigate={closeMobile}>Events</SidebarLink>
+                  <SidebarLink to="/admin/metrics" icon={BarChart3} onNavigate={closeMobile}>Metrics</SidebarLink>
+                  <SidebarLink to="/admin/plans" icon={CreditCard} onNavigate={closeMobile}>Plans & settings</SidebarLink>
+                  <SidebarLink to="/support" icon={LifeBuoy} onNavigate={closeMobile}>Support tickets</SidebarLink>
+                </SidebarSection>
+              )}
+            </>
           )}
         </nav>
 

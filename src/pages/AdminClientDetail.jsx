@@ -166,6 +166,21 @@ export default function AdminClientDetail() {
         {verifyActionMessage && <p className="hint">{verifyActionMessage}</p>}
       </div>
 
+      {/* MERGE (Studio-Verse Billing & Subscriptions, Phase 14): informational
+          only — see server/src/lib/subscriptionAccess.js's safety note on
+          why this isn't enforced against uploads yet. */}
+      <div className="card">
+        <div className="guest-link-label">Subscription</div>
+        {client.subscription ? (
+          <p className="hint">
+            {client.subscription.plan_name || 'Trial'} — {client.subscription.status} · {client.subscription.photo_quota_used} / {client.subscription.photo_quota_total} photos
+            {client.subscription.expires_at && ` · expires ${new Date(client.subscription.expires_at).toLocaleDateString()}`}
+          </p>
+        ) : (
+          <p className="hint">No subscription.</p>
+        )}
+      </div>
+
       <h2 className="section-title">Events ({client.events.length})</h2>
       <div className="data-table-wrap">
         <table className="data-table">

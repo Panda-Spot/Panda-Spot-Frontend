@@ -314,6 +314,33 @@ export const verifyAdminUser = (userId) => request(`/admin/users/${userId}/verif
 
 export const getAdminMetrics = (sort) => request(`/admin/metrics?sort=${encodeURIComponent(sort || "storage")}`)
 
+// --- Admin: subscription plan catalog + platform settings (MERGE: Studio-Verse, Phase 14) ---
+
+export const listAdminPlans = () => request(`/admin/plans`)
+
+export const createAdminPlan = (plan) =>
+  request(`/admin/plans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(plan),
+  })
+
+export const updateAdminPlan = (planId, patch) =>
+  request(`/admin/plans/${planId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const getAdminPlatformSettings = () => request(`/admin/platform-settings`)
+
+export const updateAdminPlatformSettings = (patch) =>
+  request(`/admin/platform-settings`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
 // --- Guest (public, no auth) ---
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)
@@ -420,6 +447,160 @@ export const toggleGuestUploads = (eventId, enabled) =>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabled }),
+  })
+
+// MERGE (Studio-Verse): independent Face Search / Photo Selection toggles
+// on the same event — see MERGE_PLAN.md D6. feature is "faceSearch" or
+// "photoSelection".
+export const toggleEventFeature = (eventId, feature, enabled) =>
+  request(`/events/${eventId}/features/toggle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feature, enabled }),
+  })
+
+// --- Photo Selection: studio-side client management ---
+
+export const inviteClient = (eventId, email, favouriteCap) =>
+  request(`/events/${eventId}/clients/invite`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, favourite_cap: favouriteCap || undefined }),
+  })
+
+export const listClients = (eventId) => request(`/events/${eventId}/clients`)
+
+export const removeClient = (eventId, userId) =>
+  request(`/events/${eventId}/clients/${userId}`, { method: "DELETE" })
+
+// --- Photo Selection: client-invite acceptance (public, no auth yet) ---
+
+export const getClientInvite = (token) => request(`/client-invites/${token}`)
+
+export const acceptClientInvite = async (token, password, name) => {
+  const data = await request(`/client-invites/${token}/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, name }),
+  })
+  setToken(data.token)
+  return data
+}
+
+// --- Photo Selection: client-facing gallery (logged in as a USER-role client) ---
+
+export const listClientEvents = () => request(`/client/events`)
+
+export const getClientEvent = (eventId) => request(`/client/events/${eventId}`)
+
+export const listClientPhotos = (eventId) => request(`/client/events/${eventId}/photos`)
+
+export const toggleClientFavourite = (eventId, photoId, favourite) =>
+  request(`/client/events/${eventId}/photos/${photoId}/favourite`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ favourite }),
+  })
+
+export const submitClientSelection = (eventId) =>
+  request(`/client/events/${eventId}/submit`, { method: "POST" })
+
+// --- Billing & Subscriptions (MERGE: Studio-Verse, Phase 12) ---
+
+export const listSubscriptionPlans = () => request(`/subscriptions/plans`)
+
+export const getMySubscription = () => request(`/subscriptions/me`)
+
+export const activateTrial = () => request(`/subscriptions/trial`, { method: "POST" })
+
+export const subscribeToPlan = (planId) =>
+  request(`/subscriptions/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId }),
+  })
+
+export const upgradeSubscription = (planId) =>
+  request(`/subscriptions/upgrade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId }),
+  })
+
+export const downgradeSubscription = (planId) =>
+  request(`/subscriptions/downgrade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId }),
+  })
+
+export const rechargeWallet = (planId) =>
+  request(`/subscriptions/wallet/recharge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId }),
+  })
+
+export const listWalletTransactions = () => request(`/subscriptions/wallet/transactions`)
+
+export const listBillingServices = () => request(`/billing/services`)
+
+export const createBillingService = (name, price) =>
+  request(`/billing/services`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, price }),
+  })
+
+export const listQuotations = () => request(`/billing/quotations`)
+
+export const createQuotation = (clientEmail, clientName, items, discountAmount) =>
+  request(`/billing/quotations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_email: clientEmail, client_name: clientName, items, discount_amount: discountAmount }),
+  })
+
+export const confirmQuotation = (quotationId) =>
+  request(`/billing/quotations/${quotationId}/confirm`, { method: "POST" })
+
+export const deleteQuotation = (quotationId) =>
+  request(`/billing/quotations/${quotationId}`, { method: "DELETE" })
+
+export const listBills = () => request(`/billing/bills`)
+
+export const getBill = (billId) => request(`/billing/bills/${billId}`)
+
+export const recordPayment = (billId, amount, method, remark) =>
+  request(`/billing/bills/${billId}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount, method, remark }),
+  })
+
+// --- Support tickets (MERGE: Studio-Verse, Phase 13) ---
+
+export const listSupportTickets = () => request(`/support/tickets`)
+
+export const createSupportTicket = (subject, message) =>
+  request(`/support/tickets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject, message }),
+  })
+
+export const replySupportTicket = (ticketId, message) =>
+  request(`/support/tickets/${ticketId}/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  })
+
+export const setSupportTicketStatus = (ticketId, status) =>
+  request(`/support/tickets/${ticketId}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
   })
 
 export const approvePhoto = (eventId, photoId) =>

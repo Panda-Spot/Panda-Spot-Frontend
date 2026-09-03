@@ -16,6 +16,7 @@ import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
+import CameraShutter from '../components/CameraShutter.jsx'
 
 const MAX_SELFIES = 3
 const MAX_GROUP_SELFIES = 8
@@ -53,6 +54,10 @@ export default function GuestEvent() {
   // fresh. Never shown in the UI directly — from the guest's perspective
   // nothing happens until they tap the button.
   const prefetchRef = useRef(null)
+  // MERGE (Studio-Verse merge, Phase 16 — new design system): the camera-
+  // iris shutter plays once on first paint, then this flips true and the
+  // overlay unmounts — "the shutter opens, welcome" (see D4/CameraShutter.jsx).
+  const [shutterOpened, setShutterOpened] = useState(false)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -80,7 +85,7 @@ export default function GuestEvent() {
       scope: '/e/',
       display: 'standalone',
       background_color: '#ffffff',
-      theme_color: event.brand_color || '#aa3bff',
+      theme_color: event.brand_color || '#0e8a8a',
       icons: [
         { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
       ],
@@ -275,6 +280,11 @@ export default function GuestEvent() {
 
   return (
     <div className="guest-shell" style={accentStyle}>
+      {!shutterOpened && (
+        <div className="guest-shutter-overlay" style={{ background: heroStyle?.background || 'var(--bg)' }}>
+          <CameraShutter size="lg" reveal onOpened={() => setShutterOpened(true)} />
+        </div>
+      )}
       <div className="guest-hero" style={heroStyle}>
         {event?.logo_url ? (
           <img className="guest-logo" src={fileUrl(event.logo_url)} alt={event.studio_name || 'Studio logo'} />
@@ -310,6 +320,14 @@ export default function GuestEvent() {
       ) : event?.expired ? (
         <div className="card">
           <p className="subtle">This event's search window has closed. Contact the photographer if you still need help finding your photos.</p>
+        </div>
+      ) : event && !event.face_search_enabled ? (
+        <div className="card">
+          <p className="subtle">
+            {event.photo_selection_enabled
+              ? 'Selfie search isn’t turned on for this event — ask your photographer for your Photo Selection login instead.'
+              : 'Selfie search isn’t turned on for this event yet. Check back soon or contact your photographer.'}
+          </p>
         </div>
       ) : (
         <form className="card" onSubmit={handleSearch}>

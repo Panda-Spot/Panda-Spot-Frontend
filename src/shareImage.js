@@ -5,7 +5,7 @@
 // through to search for themselves.
 
 const MAX_DIMENSION = 1600
-const DEFAULT_ACCENT = '#aa3bff'
+const DEFAULT_ACCENT = '#0e8a8a'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {

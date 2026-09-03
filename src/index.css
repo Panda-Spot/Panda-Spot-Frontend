@@ -1,13 +1,26 @@
+/* MERGE (Studio-Verse merge, Phase 16 — new design system, MERGE_PLAN.md
+   D4): a fresh camera-circle + shutter identity, built from scratch —
+   neither PandaSpot's old purple/pink nor Studio-Verse's gold/glass
+   survives. The palette is a "lens" duotone: a deep teal (glass
+   anti-reflective coating) as the primary accent, paired with a warm
+   amber (flash/tungsten light) as the secondary — evoking a camera lens
+   with light passing through its iris, distinct from both source
+   products' identities. Every other file in this app already reads
+   colors through these same custom properties, so this single edit is
+   what actually re-themes the entire product — see components/
+   CameraShutter.jsx for this system's signature animated motif. */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
+  --text: #5b6169;
+  --text-h: #0d1115;
   --bg: #fff;
-  --border: #e5e4e7;
-  --card-bg: #f9f8fc;
-  --accent: #aa3bff;
-  --accent-2: #ff2f92;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --border: #e2e6e9;
+  --card-bg: #f6f8f9;
+  --accent: #0e8a8a;
+  --accent-2: #f0a020;
+  --accent-bg: rgba(14, 138, 138, 0.1);
+  --accent-border: rgba(14, 138, 138, 0.5);
   --danger: #d0342c;
 
   --gradient-brand: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -18,7 +31,7 @@
   --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-display: 'Sora', system-ui, sans-serif;
 
   font: 16px/145% var(--sans);
   color-scheme: light;
@@ -37,15 +50,15 @@
    on <html> only once the user explicitly switches, and index.html's inline
    script applies it synchronously before paint to avoid a flash. */
 :root[data-theme='dark'] {
-  --text: #9ca3af;
-  --text-h: #f3f4f6;
-  --bg: #16171d;
-  --border: #2e303a;
-  --card-bg: #1c1d24;
-  --accent: #c084fc;
-  --accent-2: #ff5fac;
-  --accent-bg: rgba(192, 132, 252, 0.15);
-  --accent-border: rgba(192, 132, 252, 0.5);
+  --text: #9aa5ab;
+  --text-h: #eef2f3;
+  --bg: #12181a;
+  --border: #263033;
+  --card-bg: #182022;
+  --accent: #2dd4c8;
+  --accent-2: #ffb84d;
+  --accent-bg: rgba(45, 212, 200, 0.15);
+  --accent-border: rgba(45, 212, 200, 0.5);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
@@ -77,4 +90,146 @@ button {
 
 input, button {
   font: inherit;
+}
+
+/* MERGE (Studio-Verse merge, Phase 16 — new design system): the camera-
+   iris shutter motif — see components/CameraShutter.jsx. A ring of
+   trapezoidal "blades" around a center lens circle, styled with the
+   brand gradient so the motif itself carries the new palette everywhere
+   it appears. */
+.camera-shutter {
+  position: relative;
+  display: inline-block;
+}
+
+.camera-shutter-sm { width: 28px; height: 28px; }
+.camera-shutter-lg { width: 140px; height: 140px; }
+
+.camera-shutter-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.camera-shutter-spin .camera-shutter-ring {
+  animation: camera-shutter-rotate 2.4s linear infinite;
+}
+
+.camera-shutter-blade {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 999px solid transparent;
+  border-right: 999px solid transparent;
+  border-bottom: 999px solid var(--accent);
+  transform-origin: 50% 100%;
+  opacity: 0.9;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.camera-shutter-blade:nth-child(odd) {
+  border-bottom-color: var(--accent-2);
+}
+
+.camera-shutter-lens {
+  position: absolute;
+  inset: 32%;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  box-shadow: var(--shadow-md);
+}
+
+.camera-shutter-reveal .camera-shutter-lens {
+  animation: camera-shutter-lens-pulse 0.6s ease-out;
+}
+
+@keyframes camera-shutter-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes camera-shutter-lens-pulse {
+  0% { transform: scale(0.6); opacity: 0.4; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* MERGE (Phase 16): the app-wide route-change shutter transition — see
+   components/RouteTransition.jsx. Closes to black, then opens to reveal
+   the page React Router has already swapped in underneath. */
+.route-shutter-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  opacity: 0;
+}
+
+.route-shutter-closing {
+  animation: route-shutter-fade-in 0.3s ease-out forwards;
+}
+
+.route-shutter-opening {
+  animation: route-shutter-fade-out 0.34s ease-in forwards;
+}
+
+.route-shutter-ring {
+  position: relative;
+  width: min(70vmax, 900px);
+  height: min(70vmax, 900px);
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.route-shutter-blade {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 999px solid transparent;
+  border-right: 999px solid transparent;
+  border-bottom: 999px solid var(--accent);
+  transform-origin: 50% 100%;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.route-shutter-blade:nth-child(odd) {
+  border-bottom-color: var(--accent-2);
+}
+
+@keyframes route-shutter-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes route-shutter-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* MERGE: the guest landing page's first-paint reveal — see GuestEvent.jsx. */
+.guest-shutter-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: guest-shutter-overlay-fade 0.65s ease-in forwards;
+  animation-delay: 0.55s;
+  pointer-events: none;
+}
+
+@keyframes guest-shutter-overlay-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
