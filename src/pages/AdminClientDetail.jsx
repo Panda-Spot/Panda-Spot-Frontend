@@ -4,11 +4,16 @@ import { useConfirm } from '../confirm.jsx'
 import {
   deleteAdminUser,
   getAdminUser,
+  grantAdminUserFreeAccess,
+  listAdminPlans,
   resendAdminUserVerification,
+  revokeAdminUserFreeAccess,
   setAdminUserLimits,
+  setAdminUserPlan,
   suspendAdminUser,
   unsuspendAdminUser,
   verifyAdminUser,
+  wipeAdminUserStorage,
 } from '../api.js'
 
 function formatBytes(bytes) {
@@ -20,8 +25,18 @@ export default function AdminClientDetail() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [client, setClient] = useState(null)
+  const [plans, setPlans] = useState([])
   const [error, setError] = useState('')
+  const [lifecycleMessage, setLifecycleMessage] = useState('')
   const [togglingSuspend, setTogglingSuspend] = useState(false)
+  const [planId, setPlanId] = useState('')
+  const [grantPlanId, setGrantPlanId] = useState('')
+  const [grantUntil, setGrantUntil] = useState('')
+  const [savingPlan, setSavingPlan] = useState(false)
+  const [granting, setGranting] = useState(false)
+  const [revokingGrant, setRevokingGrant] = useState(false)
+  const [storageConfirmInput, setStorageConfirmInput] = useState('')
+  const [wipingStorage, setWipingStorage] = useState(false)
   const [eventLimitInput, setEventLimitInput] = useState('')
   const [storageLimitInput, setStorageLimitInput] = useState('')
   const [retentionDaysInput, setRetentionDaysInput] = useState('')
@@ -37,6 +52,9 @@ export default function AdminClientDetail() {
     getAdminUser(userId)
       .then((c) => {
         setClient(c)
+        setPlanId(c.subscription?.plan_id || '')
+        setGrantPlanId('')
+        setGrantUntil('')
         setEventLimitInput(c.custom_event_limit != null ? String(c.custom_event_limit) : '')
         setStorageLimitInput(c.custom_storage_limit_bytes != null ? String(c.custom_storage_limit_bytes / 1e9) : '')
         setRetentionDaysInput(c.custom_photo_retention_days != null ? String(c.custom_photo_retention_days) : '')
@@ -45,6 +63,12 @@ export default function AdminClientDetail() {
   }, [userId])
 
   useEffect(load, [load])
+
+  useEffect(() => {
+    listAdminPlans()
+      .then((items) => setPlans(items.filter((p) => p.planType === 'SUBSCRIPTION' && p.isActive)))
+      .catch(() => setPlans([]))
+  }, [])
 
   const handleToggleSuspend = async () => {
     setTogglingSuspend(true)
@@ -108,6 +132,77 @@ export default function AdminClientDetail() {
     }
   }
 
+  const handleSetPlan = async () => {
+    setSavingPlan(true)
+    setError('')
+    setLifecycleMessage('')
+    try {
+      await setAdminUserPlan(userId, planId)
+      setLifecycleMessage('Plan assigned.')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+
+  const handleGrantFreeAccess = async () => {
+    setGranting(true)
+    setError('')
+    setLifecycleMessage('')
+    try {
+      await grantAdminUserFreeAccess(userId, grantPlanId, grantUntil)
+      setLifecycleMessage('Free access granted.')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGranting(false)
+    }
+  }
+
+  const handleRevokeFreeAccess = async () => {
+    const confirmed = await confirm(
+      `Revoke free access for ${client.email}? Their granted plan will be cancelled immediately.`,
+      { title: 'Revoke free access?', confirmLabel: 'Revoke' }
+    )
+    if (!confirmed) return
+    setRevokingGrant(true)
+    setError('')
+    setLifecycleMessage('')
+    try {
+      await revokeAdminUserFreeAccess(userId)
+      setLifecycleMessage('Free access revoked.')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setRevokingGrant(false)
+    }
+  }
+
+  const handleWipeStorage = async () => {
+    const confirmed = await confirm(
+      `Delete all photos, thumbnails, faces, guest searches, reactions, comments, and prepared ZIPs for ${client.email}? The studio account and event shells stay.`,
+      { title: 'Wipe studio storage?', confirmLabel: 'Wipe storage' }
+    )
+    if (!confirmed) return
+    setWipingStorage(true)
+    setError('')
+    setLifecycleMessage('')
+    try {
+      const result = await wipeAdminUserStorage(userId, storageConfirmInput)
+      setLifecycleMessage(`Storage wiped. Removed ${result.deleted_photo_count} photo${result.deleted_photo_count === 1 ? '' : 's'} across ${result.event_count} event${result.event_count === 1 ? '' : 's'}.`)
+      setStorageConfirmInput('')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setWipingStorage(false)
+    }
+  }
+
   const handleDelete = async () => {
     const confirmed = await confirm(
       `Permanently delete ${client.email}'s account and every event they own? This can't be undone.`,
@@ -143,10 +238,11 @@ export default function AdminClientDetail() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {lifecycleMessage && <p className="hint">{lifecycleMessage}</p>}
 
       <div className="card">
         <p className="hint">
-          Joined {new Date(client.created_at).toLocaleDateString()} · Email {client.email_verified ? 'verified' : 'not verified'}
+          Joined {new Date(client.created_at).toLocaleDateString()} · {client.role} · Email {client.email_verified ? 'verified' : 'not verified'}
         </p>
         <div className="row">
           <button className={`btn ${client.is_suspended ? 'secondary' : 'danger-btn'}`} type="button" onClick={handleToggleSuspend} disabled={togglingSuspend}>
@@ -175,9 +271,66 @@ export default function AdminClientDetail() {
           <p className="hint">
             {client.subscription.plan_name || 'Trial'} — {client.subscription.status} · {client.subscription.photo_quota_used} / {client.subscription.photo_quota_total} photos
             {client.subscription.expires_at && ` · expires ${new Date(client.subscription.expires_at).toLocaleDateString()}`}
+            {client.subscription.is_free_grant && ' · free grant'}
           </p>
         ) : (
           <p className="hint">No subscription.</p>
+        )}
+        {client.role === 'ADMIN' && (
+          <>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+              <select className="text-input" value={planId} onChange={(e) => setPlanId(e.target.value)}>
+                <option value="">Choose plan</option>
+                {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
+              </select>
+              <button className="btn secondary" type="button" onClick={handleSetPlan} disabled={savingPlan || !planId}>
+                {savingPlan ? 'Assigning…' : 'Force assign plan'}
+              </button>
+              {client.subscription?.is_free_grant && (
+                <button className="btn danger-btn" type="button" onClick={handleRevokeFreeAccess} disabled={revokingGrant}>
+                  {revokingGrant ? 'Revoking…' : 'Revoke free access'}
+                </button>
+              )}
+            </div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+              <select className="text-input" value={grantPlanId} onChange={(e) => setGrantPlanId(e.target.value)}>
+                <option value="">Free access plan</option>
+                {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
+              </select>
+              <input className="text-input" type="date" value={grantUntil} onChange={(e) => setGrantUntil(e.target.value)} />
+              <button className="btn" type="button" onClick={handleGrantFreeAccess} disabled={granting || !grantPlanId || !grantUntil}>
+                {granting ? 'Granting…' : 'Grant free access'}
+              </button>
+            </div>
+          </>
+        )}
+        {client.subscription_history?.length > 0 && (
+          <div className="data-table-wrap" style={{ marginTop: 12 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Change</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th>Quota</th>
+                  <th>Starts</th>
+                  <th>Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {client.subscription_history.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.change_type || '—'}</td>
+                    <td>{s.plan_name || 'Trial'}</td>
+                    <td>{s.status}{s.is_free_grant ? ' · Free' : ''}</td>
+                    <td>{s.photo_quota_used} / {s.photo_quota_total}</td>
+                    <td>{new Date(s.starts_at).toLocaleDateString()}</td>
+                    <td>{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -261,6 +414,28 @@ export default function AdminClientDetail() {
 
       <div className="card danger-zone">
         <h2 className="section-title" style={{ marginTop: 0 }}>Danger zone</h2>
+        {client.role === 'ADMIN' && (
+          <>
+            <p className="subtle">
+              Wipes every photo, thumbnail, face, search, reaction, comment, and prepared download for this studio. The studio account, events, clients, and subscription history stay.
+            </p>
+            <input
+              className="text-input"
+              placeholder={client.email}
+              value={storageConfirmInput}
+              onChange={(e) => setStorageConfirmInput(e.target.value)}
+            />
+            <button
+              className="btn danger-btn"
+              type="button"
+              onClick={handleWipeStorage}
+              disabled={wipingStorage || storageConfirmInput.trim().toLowerCase() !== client.email.toLowerCase()}
+              style={{ marginTop: 10 }}
+            >
+              {wipingStorage ? 'Wiping…' : 'Wipe studio storage'}
+            </button>
+          </>
+        )}
         <p className="subtle">
           Permanently deletes this client's account, every event they own, and every photo — irreversible. Type
           their email to confirm.

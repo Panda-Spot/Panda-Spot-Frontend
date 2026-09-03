@@ -292,14 +292,48 @@ export const getEventAnalytics = (eventId) => request(`/events/${eventId}/analyt
 
 export const getAdminOverview = () => request("/admin/overview")
 
-export const listAdminUsers = (search, page = 1) =>
-  request(`/admin/users?search=${encodeURIComponent(search || "")}&page=${page}`)
+export const listAdminUsers = (search, page = 1, role) => {
+  const params = new URLSearchParams({ search: search || "", page: String(page) })
+  if (role) params.set("role", role)
+  return request(`/admin/users?${params.toString()}`)
+}
 
 export const getAdminUser = (userId) => request(`/admin/users/${userId}`)
+
+export const createAdminStudio = (studio) =>
+  request(`/admin/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(studio),
+  })
 
 export const suspendAdminUser = (userId) => request(`/admin/users/${userId}/suspend`, { method: "POST" })
 
 export const unsuspendAdminUser = (userId) => request(`/admin/users/${userId}/unsuspend`, { method: "POST" })
+
+export const grantAdminUserFreeAccess = (userId, planId, expiresAt) =>
+  request(`/admin/users/${userId}/free-access`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId, expires_at: expiresAt }),
+  })
+
+export const revokeAdminUserFreeAccess = (userId) =>
+  request(`/admin/users/${userId}/free-access`, { method: "DELETE" })
+
+export const setAdminUserPlan = (userId, planId) =>
+  request(`/admin/users/${userId}/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: planId }),
+  })
+
+export const wipeAdminUserStorage = (userId, confirmEmail) =>
+  request(`/admin/users/${userId}/storage`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm_email: confirmEmail }),
+  })
 
 export const setAdminUserLimits = (userId, eventLimit, storageLimitBytes, photoRetentionDays) =>
   request(`/admin/users/${userId}/limits`, {
