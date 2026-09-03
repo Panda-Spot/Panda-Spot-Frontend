@@ -172,6 +172,33 @@
   object-fit: cover;
   display: block;
 }
+
+.protected-gallery,
+.protected-gallery img {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.protected-photo-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.protected-photo-frame::after {
+  content: attr(data-watermark);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transform: rotate(-22deg);
+  pointer-events: none;
+  opacity: 0.75;
+}
 .photo-card .meta {
   padding: 8px 10px;
   font-size: 12px;

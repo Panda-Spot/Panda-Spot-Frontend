@@ -53,9 +53,10 @@ export default function ClientGallery() {
 
   const favouriteCount = photos.filter((p) => p.is_favourite).length
   const locked = !!event.submitted_at
+  const watermarkText = event.event_name || 'PandaSpot'
 
   return (
-    <div>
+    <div className="protected-gallery" onContextMenu={(e) => e.preventDefault()}>
       <h1 className="section-title">{event.event_name}</h1>
       <p className="subtle">
         {event.favourite_cap ? `${favouriteCount} / ${event.favourite_cap} favourited` : `${favouriteCount} favourited`}
@@ -72,7 +73,15 @@ export default function ClientGallery() {
       <div className="photo-grid">
         {photos.map((p) => (
           <div className="photo-card" key={p.photo_id}>
-            <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+            <div className="protected-photo-frame" data-watermark={watermarkText}>
+              <img
+                src={fileUrl(p.protected_thumbnail_url || p.protected_url)}
+                alt={p.filename}
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            </div>
             <button
               className="dismiss-btn"
               type="button"
