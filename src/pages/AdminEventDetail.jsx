@@ -6,8 +6,11 @@ import {
   disableAdminEventDriveBackup,
   disableAdminEventShoots,
   getAdminEvent,
+  listAdminEventPhotos,
+  fileUrl,
   setAdminEventExpiry,
 } from '../api.js'
+import Lightbox from '../components/Lightbox.jsx'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
@@ -22,6 +25,10 @@ export default function AdminEventDetail() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [event, setEvent] = useState(null)
+  const [photos, setPhotos] = useState([])
+  const [loadingPhotos, setLoadingPhotos] = useState(true)
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [lightboxIndex, setLightboxIndex] = useState(null)
   const [error, setError] = useState('')
   const [expiryInput, setExpiryInput] = useState('')
   const [savingExpiry, setSavingExpiry] = useState(false)
@@ -37,6 +44,12 @@ export default function AdminEventDetail() {
         setExpiryInput(toDateInputValue(e.expires_at))
       })
       .catch((e) => setError(e.message))
+
+    setLoadingPhotos(true)
+    listAdminEventPhotos(eventId)
+      .then(setPhotos)
+      .catch((e) => console.error('Failed to load event photos for admin:', e))
+      .finally(() => setLoadingPhotos(false))
   }, [eventId])
 
   useEffect(load, [load])
@@ -144,6 +157,92 @@ export default function AdminEventDetail() {
           <p className="hint">Collaborators: {event.collaborators.map((c) => c.email).join(', ')}</p>
         )}
       </div>
+
+      <h2 className="section-title">Event Photos ({photos.length})</h2>
+      {loadingPhotos ? (
+        <p className="hint">Loading event photos…</p>
+      ) : photos.length === 0 ? (
+        <p className="hint">No photos in this event yet.</p>
+      ) : (
+        <>
+          <div className="row source-filter-row" style={{ marginTop: 8 }}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'upload', label: 'Uploaded' },
+              { key: 'shoots', label: 'PandaShoots' },
+              { key: 'drive_import', label: 'Drive import' },
+              { key: 'guest', label: 'Client / Guest uploads' },
+            ].map((opt) => {
+              const count = opt.key === 'all'
+                ? photos.length
+                : photos.filter((p) => (p.source || 'upload') === opt.key).length;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setSourceFilter(opt.key)}
+                >
+                  {opt.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const filtered = photos.filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter);
+            if (filtered.length === 0) {
+              return (
+                <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                  No photos found under the selected filter.
+                </p>
+              );
+            }
+            return (
+              <div className="photo-grid" style={{ marginTop: 12 }}>
+                {filtered.map((p, idx) => (
+                  <div className="photo-card" key={p.photo_id}>
+                    <img
+                      src={fileUrl(p.thumbnail_url || p.url)}
+                      alt={p.filename}
+                      style={{ cursor: 'pointer', height: 180, objectFit: 'cover' }}
+                      onClick={() => setLightboxIndex(idx)}
+                    />
+                    <div className="meta">
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>
+                        {p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
+                      </span>
+                      <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                    </div>
+                    {(p.client_favourites_count > 0 || p.likes_count > 0) && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
+                        {p.client_favourites_count > 0 && `★ ${p.client_favourites_count} client pick `}
+                        {p.likes_count > 0 && `♥ ${p.likes_count}`}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {lightboxIndex !== null && (
+            <Lightbox
+              matches={photos
+                .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+                .map((p) => ({
+                  photo_id: p.photo_id,
+                  filename: p.filename,
+                  url: p.url,
+                  thumbnail_url: p.thumbnail_url,
+                }))}
+              index={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+              onIndexChange={setLightboxIndex}
+            />
+          )}
+        </>
+      )}
 
       <h2 className="section-title">Guest-access expiry</h2>
       <form className="card row" onSubmit={handleSaveExpiry}>

@@ -1543,22 +1543,43 @@ export default function EventDetail() {
             { key: 'shoots', label: 'PandaShoots' },
             { key: 'drive_import', label: 'Drive import' },
             { key: 'guest', label: 'Guest uploads' },
-          ].map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-              onClick={() => setSourceFilter(opt.key)}
-            >
-              {opt.label}
-            </button>
-          ))}
+          ].map((opt) => {
+            const count = opt.key === 'all'
+              ? photos.filter((p) => p.approval_status !== 'pending').length
+              : photos.filter((p) => p.approval_status !== 'pending' && (p.source || 'upload') === opt.key).length
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+                onClick={() => setSourceFilter(opt.key)}
+              >
+                {opt.label} ({count})
+              </button>
+            )
+          })}
         </div>
-        <div className="photo-grid">
-          {photos
-            .filter((p) => p.approval_status !== 'pending')
-            .filter((p) => sourceFilter === 'all' || p.source === sourceFilter)
-            .map((p) => (
+        {photos
+          .filter((p) => p.approval_status !== 'pending')
+          .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+          .length === 0 ? (
+            <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+              No photos found under the "{
+                {
+                  all: 'All',
+                  upload: 'Uploaded',
+                  shoots: 'PandaShoots',
+                  drive_import: 'Drive import',
+                  guest: 'Guest uploads',
+                }[sourceFilter] || sourceFilter
+              }" filter.
+            </p>
+          ) : (
+            <div className="photo-grid">
+              {photos
+                .filter((p) => p.approval_status !== 'pending')
+                .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+                .map((p) => (
             <div className="photo-card" key={p.photo_id}>
               <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">
@@ -1595,8 +1616,9 @@ export default function EventDetail() {
             </div>
           ))}
         </div>
-        </>
       )}
+    </>
+  )}
 
       {event?.role === 'owner' && (
         <div className="card danger-zone">

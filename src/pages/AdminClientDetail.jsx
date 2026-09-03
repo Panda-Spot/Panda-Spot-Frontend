@@ -15,7 +15,10 @@ import {
   unsuspendAdminUser,
   verifyAdminUser,
   wipeAdminUserStorage,
+  listAdminUserPhotos,
+  fileUrl,
 } from '../api.js'
+import Lightbox from '../components/Lightbox.jsx'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
@@ -51,6 +54,10 @@ export default function AdminClientDetail() {
   const [verifyActionMessage, setVerifyActionMessage] = useState('')
   const [resendingVerification, setResendingVerification] = useState(false)
   const [forceVerifying, setForceVerifying] = useState(false)
+  const [userPhotos, setUserPhotos] = useState([])
+  const [loadingPhotos, setLoadingPhotos] = useState(true)
+  const [photoFilter, setPhotoFilter] = useState('all')
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const load = useCallback(() => {
     getAdminUser(userId)
@@ -65,6 +72,12 @@ export default function AdminClientDetail() {
         setWatermarkIntensity(Number.isFinite(Number(c.watermark_intensity)) ? Number(c.watermark_intensity) : 0.75)
       })
       .catch((e) => setError(e.message))
+
+    setLoadingPhotos(true)
+    listAdminUserPhotos(userId)
+      .then(setUserPhotos)
+      .catch((e) => console.error('Failed to load user photos for admin:', e))
+      .finally(() => setLoadingPhotos(false))
   }, [userId])
 
   useEffect(load, [load])
@@ -404,26 +417,121 @@ export default function AdminClientDetail() {
               <th>Storage</th>
               <th>Created</th>
               <th>Expires</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {client.events.map((e) => (
               <tr key={e.id}>
-                <td>{e.name}</td>
+                <td>
+                  <Link to={`/admin/events/${e.id}`} style={{ fontWeight: 600 }}>
+                    {e.name}
+                  </Link>
+                </td>
                 <td>{e.photo_count}</td>
                 <td>{formatBytes(e.storage_used_bytes)}</td>
                 <td>{new Date(e.created_at).toLocaleDateString()}</td>
                 <td>{new Date(e.expires_at).toLocaleDateString()}</td>
+                <td>
+                  <Link to={`/admin/events/${e.id}`} className="btn secondary" style={{ padding: '3px 8px', fontSize: 12 }}>
+                    View Photos
+                  </Link>
+                </td>
               </tr>
             ))}
             {client.events.length === 0 && (
               <tr>
-                <td colSpan={5} className="hint">No events yet.</td>
+                <td colSpan={6} className="hint">No events yet.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <h2 className="section-title">Client & Collaborator Photos ({userPhotos.length})</h2>
+      <p className="subtle">All photos across events owned by or shared with this studio — including client picks and collaborator captures.</p>
+      {loadingPhotos ? (
+        <p className="hint">Loading photos…</p>
+      ) : userPhotos.length === 0 ? (
+        <p className="hint">No photos found across this account's events.</p>
+      ) : (
+        <>
+          <div className="row source-filter-row" style={{ marginTop: 8 }}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'upload', label: 'Uploaded' },
+              { key: 'shoots', label: 'PandaShoots' },
+              { key: 'drive_import', label: 'Drive import' },
+              { key: 'guest', label: 'Client / Guest uploads' },
+            ].map((opt) => {
+              const count = opt.key === 'all'
+                ? userPhotos.length
+                : userPhotos.filter((p) => (p.source || 'upload') === opt.key).length
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={photoFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setPhotoFilter(opt.key)}
+                >
+                  {opt.label} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {(() => {
+            const filtered = userPhotos.filter((p) => photoFilter === 'all' || (p.source || 'upload') === photoFilter)
+            if (filtered.length === 0) {
+              return (
+                <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                  No photos found under the selected filter.
+                </p>
+              )
+            }
+            return (
+              <div className="photo-grid" style={{ marginTop: 12 }}>
+                {filtered.map((p, idx) => (
+                  <div className="photo-card" key={p.photo_id}>
+                    <img
+                      src={fileUrl(p.thumbnail_url || p.url)}
+                      alt={p.filename}
+                      style={{ cursor: 'pointer', height: 180, objectFit: 'cover' }}
+                      onClick={() => setLightboxIndex(idx)}
+                    />
+                    <div className="meta">
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>
+                        {p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
+                      </span>
+                      <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
+                      {p.event_name && <span>{p.event_name}</span>}
+                      {p.client_favourites_count > 0 && <span> · ★ {p.client_favourites_count} client pick</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {lightboxIndex !== null && (
+            <Lightbox
+              matches={userPhotos
+                .filter((p) => photoFilter === 'all' || (p.source || 'upload') === photoFilter)
+                .map((p) => ({
+                  photo_id: p.photo_id,
+                  filename: p.filename,
+                  url: p.url,
+                  thumbnail_url: p.thumbnail_url,
+                }))}
+              index={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+              onIndexChange={setLightboxIndex}
+            />
+          )}
+        </>
+      )}
 
       <h2 className="section-title">Custom plan limits</h2>
       <form className="card" onSubmit={handleSaveLimits}>
