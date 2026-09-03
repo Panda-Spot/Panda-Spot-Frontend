@@ -8,6 +8,7 @@ import {
   listAdminPlans,
   resendAdminUserVerification,
   revokeAdminUserFreeAccess,
+  setAdminUserBranding,
   setAdminUserLimits,
   setAdminUserPlan,
   suspendAdminUser,
@@ -42,6 +43,9 @@ export default function AdminClientDetail() {
   const [retentionDaysInput, setRetentionDaysInput] = useState('')
   const [savingLimits, setSavingLimits] = useState(false)
   const [limitsMessage, setLimitsMessage] = useState('')
+  const [watermarkIntensity, setWatermarkIntensity] = useState(0.75)
+  const [savingWatermark, setSavingWatermark] = useState(false)
+  const [watermarkMessage, setWatermarkMessage] = useState('')
   const [confirmEmailInput, setConfirmEmailInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [verifyActionMessage, setVerifyActionMessage] = useState('')
@@ -58,6 +62,7 @@ export default function AdminClientDetail() {
         setEventLimitInput(c.custom_event_limit != null ? String(c.custom_event_limit) : '')
         setStorageLimitInput(c.custom_storage_limit_bytes != null ? String(c.custom_storage_limit_bytes / 1e9) : '')
         setRetentionDaysInput(c.custom_photo_retention_days != null ? String(c.custom_photo_retention_days) : '')
+        setWatermarkIntensity(Number.isFinite(Number(c.watermark_intensity)) ? Number(c.watermark_intensity) : 0.75)
       })
       .catch((e) => setError(e.message))
   }, [userId])
@@ -144,6 +149,22 @@ export default function AdminClientDetail() {
       setError(e.message)
     } finally {
       setSavingPlan(false)
+    }
+  }
+
+  const handleSaveWatermark = async () => {
+    setSavingWatermark(true)
+    setError('')
+    setWatermarkMessage('')
+    try {
+      const updated = await setAdminUserBranding(userId, watermarkIntensity)
+      setWatermarkIntensity(Number.isFinite(Number(updated.watermark_intensity)) ? Number(updated.watermark_intensity) : 0.75)
+      setWatermarkMessage('Watermark intensity updated.')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingWatermark(false)
     }
   }
 
@@ -261,6 +282,45 @@ export default function AdminClientDetail() {
         </div>
         {verifyActionMessage && <p className="hint">{verifyActionMessage}</p>}
       </div>
+
+      {client.role === 'ADMIN' && (
+        <div className="card">
+          <div className="guest-link-label">Client gallery watermark</div>
+          <p className="hint">
+            Controls the overlay strength shown on this studio's protected client galleries.
+          </p>
+          <label className="field-label" htmlFor="admin-watermark-intensity">Watermark intensity</label>
+          <div className="watermark-control">
+            <input
+              id="admin-watermark-intensity"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={watermarkIntensity}
+              onChange={(e) => {
+                setWatermarkIntensity(Number(e.target.value))
+                setWatermarkMessage('')
+              }}
+            />
+            <span className="hint">{Math.round(watermarkIntensity * 100)}%</span>
+          </div>
+          <div
+            className="watermark-preview protected-photo-frame"
+            data-watermark={client.studio_name || client.name || 'PandaSpot'}
+            style={{ '--watermark-opacity': watermarkIntensity }}
+          >
+            <div
+              className="watermark-preview-image"
+              style={{ background: `linear-gradient(135deg, ${client.brand_color || '#0e8a8a'} 0%, #263238 55%, #f2c94c 100%)` }}
+            />
+          </div>
+          <button className="btn" type="button" onClick={handleSaveWatermark} disabled={savingWatermark}>
+            {savingWatermark ? 'Saving…' : 'Save watermark intensity'}
+          </button>
+          {watermarkMessage && <p className="hint">{watermarkMessage}</p>}
+        </div>
+      )}
 
       {/* MERGE (Studio-Verse Billing & Subscriptions, Phase 14): informational
           only — see server/src/lib/subscriptionAccess.js's safety note on

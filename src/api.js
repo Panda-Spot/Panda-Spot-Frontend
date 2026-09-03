@@ -329,6 +329,13 @@ export const setAdminUserPlan = (userId, planId) =>
     body: JSON.stringify({ plan_id: planId }),
   })
 
+export const setAdminUserBranding = (userId, watermarkIntensity) =>
+  request(`/admin/users/${userId}/branding`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ watermark_intensity: watermarkIntensity }),
+  })
+
 export const wipeAdminUserStorage = (userId, confirmEmail) =>
   request(`/admin/users/${userId}/storage`, {
     method: "DELETE",
