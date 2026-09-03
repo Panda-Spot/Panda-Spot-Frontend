@@ -22,6 +22,7 @@ export default function Billing() {
   const [subscription, setSubscription] = useState(null)
   const [freeAccessEnabled, setFreeAccessEnabled] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
+  const [aiIndexedPhotoCount, setAiIndexedPhotoCount] = useState(0)
   const [plans, setPlans] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [error, setError] = useState('')
@@ -33,6 +34,7 @@ export default function Billing() {
       .then((data) => {
         setSubscription(data.subscription)
         setWalletBalance(data.wallet_balance)
+        setAiIndexedPhotoCount(data.ai_indexed_photo_count || 0)
         setFreeAccessEnabled(!!data.free_access_enabled)
       })
       .catch(() => {})
@@ -154,6 +156,9 @@ export default function Billing() {
       <div className="card billing-card">
         <div className="guest-link-label">Wallet</div>
         <p className="subtle">Balance: <strong>{walletBalance} credits</strong></p>
+        <p className="hint">
+          AI indexed photos: {aiIndexedPhotoCount}. This counts every photo that has actually been face-extracted, even if it is later hidden from Guest Face Search.
+        </p>
         {plans !== null && walletPlans.length > 0 && (
           <div className="photo-grid" style={{ marginTop: 12 }}>
             {walletPlans.map((p) => (

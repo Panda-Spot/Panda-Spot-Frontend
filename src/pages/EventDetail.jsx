@@ -871,6 +871,9 @@ export default function EventDetail() {
           <p className="hint">
             Turn on either or both — they run independently on this same event and gallery.
           </p>
+          <p className="hint">
+            AI indexed photos: {event.ai_indexed_photo_count ?? 0}. Currently searchable: {event.face_search_searchable_photo_count ?? 0}.
+          </p>
           <label className="checkbox-row">
             <input
               type="checkbox"
