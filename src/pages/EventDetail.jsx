@@ -566,6 +566,10 @@ export default function EventDetail() {
 
   const handleExportConnect = async () => {
     if (!(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())) return
+    if (exportConnectionTest.permission && exportConnectionTest.permission !== 'writer') {
+      showToast('Export needs the folder shared as Editor, not Viewer or Commenter.', { type: 'error' })
+      return
+    }
     const confirmed = await confirm(
       "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
       "Once connected, you can back up your existing PandaSpot photos into this same folder.",
@@ -581,10 +585,17 @@ export default function EventDetail() {
     setSkippedFiles([])
     try {
       const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, exportUrl.trim())
+      if (event?.drive_backup_available) {
+        await setEventDriveBackup(eventId, true)
+      }
       setExportUrl('')
       setExportConnectionTest(null)
       setExportTestedUrl('')
-      setLogLines([`Connected — found ${filesFound} file(s) in the folder`])
+      setLogLines([
+        event?.drive_backup_available
+          ? `Connected and export enabled — found ${filesFound} file(s) in the folder`
+          : `Connected — found ${filesFound} file(s) in the folder. Drive backup is not configured on this PandaSpot instance yet.`,
+      ])
       watchJob(jobId, { failedLabel: 'Import failed' })
     } catch (e) {
       showToast(e.message, { type: 'error' })
@@ -1182,8 +1193,18 @@ export default function EventDetail() {
                   className="btn"
                   type="button"
                   onClick={handleExportConnect}
-                  disabled={uploading || !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())}
-                  title={!(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim()) ? 'Test the connection first' : undefined}
+                  disabled={
+                    uploading ||
+                    !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim()) ||
+                    (exportConnectionTest?.permission && exportConnectionTest.permission !== 'writer')
+                  }
+                  title={
+                    !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())
+                      ? 'Test the connection first'
+                      : exportConnectionTest?.permission && exportConnectionTest.permission !== 'writer'
+                        ? 'Export requires Editor access on the folder'
+                        : undefined
+                  }
                 >
                   {connectingDrive ? 'Connecting…' : 'Connect & enable export'}
                 </button>
