@@ -133,7 +133,7 @@ see `src/authToken.js`) — unrelated to any other Studio-Verse app.
 ```bash
 cd web
 npm install
-cp .env.example .env   # points at the PandaSpot API, defaults to http://localhost:4000
+cp .env.example .env   # set VITE_API_URL=http://localhost:4000 for local API testing
 npm run dev
 ```
 
@@ -144,7 +144,9 @@ it.
 ## Config
 
 `VITE_API_URL` in `.env` — base URL of the running PandaSpot API instance.
-Defaults to `http://localhost:4000`. Authenticated requests send
+If unset at build time, the app falls back to the production API URL in
+`src/api.js` (`https://git-pipeline.metatronhost.in/panda-spot`); set it
+explicitly to `http://localhost:4000` for local backend testing. Authenticated requests send
 `Authorization: Bearer <token>`, with the token read from `localStorage`
 (`src/authToken.js`) — set on successful register/login/Google sign-in,
 cleared on logout. `credentials: 'include'` is still sent too, so the
