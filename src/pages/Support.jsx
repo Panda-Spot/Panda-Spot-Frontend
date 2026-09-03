@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
-import { createSupportTicket, listSupportTickets, replySupportTicket, setSupportTicketStatus } from '../api.js'
+import { createSupportTicket, listClientEvents, listSupportTickets, replySupportTicket, setSupportTicketStatus } from '../api.js'
 import { useAuth } from '../auth.jsx'
 
 const STATUS_OPTIONS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
 
-// MERGE (Studio-Verse Support Tickets, Phase 13): one page for both
-// sides — a studio (ADMIN) sees/raises only their own tickets; a
-// SUPER_ADMIN sees every tenant's tickets. The API itself enforces the
-// visibility split; this page just renders whatever it gets back.
+// MERGE (Studio-Verse Support Tickets): one page for requesters, studio
+// admins handling client tickets, and SUPER_ADMIN handling every ticket.
 export default function Support() {
   const { user } = useAuth()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isClient = user?.role === 'USER'
   const [tickets, setTickets] = useState(null)
+  const [clientEvents, setClientEvents] = useState([])
   const [error, setError] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [eventId, setEventId] = useState('')
   const [replyDrafts, setReplyDrafts] = useState({})
   const [busy, setBusy] = useState(false)
 
@@ -24,15 +25,26 @@ export default function Support() {
 
   useEffect(load, [])
 
+  useEffect(() => {
+    if (!isClient) return
+    listClientEvents()
+      .then((events) => {
+        setClientEvents(events)
+        if (events.length === 1) setEventId(events[0].event_id)
+      })
+      .catch((e) => setError(e.message))
+  }, [isClient])
+
   const handleCreate = async (e) => {
     e.preventDefault()
     if (!subject.trim()) return
     setBusy(true)
     setError('')
     try {
-      await createSupportTicket(subject.trim(), message.trim() || undefined)
+      await createSupportTicket(subject.trim(), message.trim() || undefined, isClient ? eventId : undefined)
       setSubject('')
       setMessage('')
+      if (clientEvents.length !== 1) setEventId('')
       load()
     } catch (e) {
       setError(e.message)
@@ -82,9 +94,17 @@ export default function Support() {
         <div className="card billing-card">
           <div className="guest-link-label">Raise a new ticket</div>
           <form onSubmit={handleCreate}>
+            {isClient && (
+              <select className="text-input" value={eventId} onChange={(e) => setEventId(e.target.value)} required>
+                <option value="">Choose event</option>
+                {clientEvents.map((event) => (
+                  <option key={event.event_id} value={event.event_id}>{event.event_name}</option>
+                ))}
+              </select>
+            )}
             <input className="text-input" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
             <textarea className="text-input" style={{ marginTop: 8, minHeight: 80 }} placeholder="Describe your issue (optional)" value={message} onChange={(e) => setMessage(e.target.value)} />
-            <button className="btn" type="submit" disabled={busy || !subject.trim()} style={{ marginTop: 8 }}>Submit</button>
+            <button className="btn" type="submit" disabled={busy || !subject.trim() || (isClient && !eventId)} style={{ marginTop: 8 }}>Submit</button>
           </form>
         </div>
       )}
@@ -94,7 +114,7 @@ export default function Support() {
       {tickets.map((t) => (
         <div className="card billing-card" key={t.id}>
           <div className="guest-link-label">
-            {t.subject} <span className="hint">({t.status}{isSuperAdmin && t.tenant ? ` — ${t.tenant.email}` : ''})</span>
+            {t.subject} <span className="hint">({t.status}{t.event ? ` — ${t.event.name}` : ''}{isSuperAdmin && t.tenant ? ` — ${t.tenant.email}` : ''})</span>
           </div>
           <ul className="team-list">
             {t.replies.map((r) => (

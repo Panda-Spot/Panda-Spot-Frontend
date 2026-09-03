@@ -582,11 +582,11 @@ export const recordPayment = (billId, amount, method, remark) =>
 
 export const listSupportTickets = () => request(`/support/tickets`)
 
-export const createSupportTicket = (subject, message) =>
+export const createSupportTicket = (subject, message, eventId) =>
   request(`/support/tickets`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subject, message }),
+    body: JSON.stringify({ subject, message, event_id: eventId || undefined }),
   })
 
 export const replySupportTicket = (ticketId, message) =>

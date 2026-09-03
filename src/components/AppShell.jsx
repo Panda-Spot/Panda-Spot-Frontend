@@ -150,9 +150,14 @@ export default function AppShell({ children }) {
               a minimal nav — the studio sidebar below (Events/Branding/
               Billing/Admin) would just be a wall of 403s for them. */}
           {user?.role === 'USER' ? (
-            <SidebarSection label="Your Photos" defaultOpen>
-              <SidebarLink to="/client" icon={Heart} onNavigate={closeMobile}>Events</SidebarLink>
-            </SidebarSection>
+            <>
+              <SidebarSection label="Your Photos" defaultOpen>
+                <SidebarLink to="/client" icon={Heart} onNavigate={closeMobile}>Events</SidebarLink>
+              </SidebarSection>
+              <SidebarSection label="Help" defaultOpen>
+                <SidebarLink to="/support" icon={LifeBuoy} onNavigate={closeMobile}>Support</SidebarLink>
+              </SidebarSection>
+            </>
           ) : (
             <>
               <SidebarSection label="Workspace" defaultOpen>
