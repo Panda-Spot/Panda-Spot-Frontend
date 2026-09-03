@@ -789,6 +789,8 @@ export default function EventDetail() {
         p.photo_id === photoId
           ? {
               ...p,
+              face_count: updated.face_count ?? p.face_count,
+              face_indexed_at: updated.face_indexed_at ?? p.face_indexed_at,
               face_search_visible: updated.face_search_visible,
               photo_selection_visible: updated.photo_selection_visible,
             }
