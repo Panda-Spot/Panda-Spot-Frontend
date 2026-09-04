@@ -1,6 +1,10 @@
 import { getToken, setToken, clearToken } from "./authToken.js"
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://git-pipeline.metatronhost.in/panda-spot"
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:4000"
+    : "https://git-pipeline.metatronhost.in/panda-spot")
 
 async function request(path, options) {
   const token = getToken()
@@ -492,6 +496,10 @@ export const listAdminEvents = (search, page = 1, status) =>
   request(`/admin/events?search=${encodeURIComponent(search || "")}&page=${page}${status ? `&status=${status}` : ""}`)
 
 export const getAdminEvent = (eventId) => request(`/admin/events/${eventId}`)
+
+export const listAdminEventPhotos = (eventId) => request(`/admin/events/${eventId}/photos`)
+
+export const listAdminUserPhotos = (userId) => request(`/admin/users/${userId}/photos`)
 
 export const deleteAdminEvent = (eventId) => request(`/admin/events/${eventId}`, { method: "DELETE" })
 
