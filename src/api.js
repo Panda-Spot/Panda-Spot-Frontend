@@ -68,11 +68,19 @@ export async function downloadFile(path, filename) {
     }
     throw new Error(message)
   }
+  // Prefer the server's Content-Disposition filename (it carries the
+  // event/client/date slug); fall back to the explicit argument.
+  let saveAs = filename
+  if (!saveAs) {
+    const disposition = res.headers.get("Content-Disposition") || ""
+    const match = /filename="([^"]+)"/.exec(disposition)
+    if (match) saveAs = match[1]
+  }
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = filename
+  a.download = saveAs || "download"
   document.body.appendChild(a)
   a.click()
   a.remove()
@@ -1146,6 +1154,36 @@ export const overrideAlbumStatus = (eventId, albumId, status) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
   })
+
+// --- Selection export + proofing reports (Phase 1) ---
+// Studio side: scope is { clientId } for one client or { merged: true }
+// for the all-clients record. Filenames come from the server's
+// Content-Disposition header. Client side: own selection only, the API
+// 403s when the studio disabled downloads.
+
+const selectionScopeQuery = ({ clientId, merged }) =>
+  clientId ? `?client_id=${encodeURIComponent(clientId)}` : merged ? `?scope=merged` : ``
+
+export const downloadSelectionCsv = (eventId, scope) =>
+  downloadFile(`/events/${eventId}/selection/export.csv${selectionScopeQuery(scope)}`)
+
+export const downloadSelectionTxt = (eventId, scope) =>
+  downloadFile(`/events/${eventId}/selection/export.txt${selectionScopeQuery(scope)}`)
+
+export const downloadSelectionPdf = (eventId, scope) =>
+  downloadFile(`/events/${eventId}/selection/report.pdf${selectionScopeQuery(scope)}`)
+
+export const downloadSelectionZip = (eventId, scope) =>
+  downloadFile(`/events/${eventId}/selection/download-zip${selectionScopeQuery(scope)}`)
+
+export const downloadClientSelectionCsv = (eventId) =>
+  downloadFile(`/client/events/${eventId}/selection/export.csv`)
+
+export const downloadClientSelectionTxt = (eventId) =>
+  downloadFile(`/client/events/${eventId}/selection/export.txt`)
+
+export const downloadClientSelectionPdf = (eventId) =>
+  downloadFile(`/client/events/${eventId}/selection/report.pdf`)
 
 // Studio take-home: full-res originals of staged sources. Auth lives in
 // headers (not cookies), so this streams via fetch + blob like the other

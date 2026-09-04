@@ -10,6 +10,10 @@ import {
   backupExistingPhotosToDrive,
   bulkSetMembership,
   createAlbum,
+  downloadSelectionCsv,
+  downloadSelectionPdf,
+  downloadSelectionTxt,
+  downloadSelectionZip,
   getEventFaceGroups,
   getPhotoFaces,
   cancelInvite,
@@ -233,6 +237,26 @@ export default function EventDetail() {
   const [albumsError, setAlbumsError] = useState('')
   const [newAlbumName, setNewAlbumName] = useState('')
   const [creatingAlbum, setCreatingAlbum] = useState(false)
+  // Phase 1 — Selection export: per-client or merged, CSV/TXT/PDF/ZIP.
+  const [exportClient, setExportClient] = useState('merged')
+  const [exportFormat, setExportFormat] = useState('csv')
+  const [exporting, setExporting] = useState(false)
+
+  const handleSelectionExport = async () => {
+    setExporting(true)
+    try {
+      const scope = exportClient === 'merged' ? { merged: true } : { clientId: exportClient }
+      if (exportFormat === 'csv') await downloadSelectionCsv(eventId, scope)
+      else if (exportFormat === 'txt') await downloadSelectionTxt(eventId, scope)
+      else if (exportFormat === 'pdf') await downloadSelectionPdf(eventId, scope)
+      else await downloadSelectionZip(eventId, scope)
+      showToast('Export downloaded')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
   const [managerSelected, setManagerSelected] = useState({}) // photo_id -> true
   const [bulking, setBulking] = useState(null)
   // Phase 22 — face viewer modal state for the AI member grid.
@@ -2394,6 +2418,53 @@ export default function EventDetail() {
               title={studioPicks.length === 0 ? 'Star some photos as studio picks first' : 'Download your studio picks as a zip'}
             >
               <Download size={14} /> {zippingPicks ? 'Preparing picks zip…' : `Download picks (${studioPicks.length})`}
+            </button>
+          </div>
+          {/* Phase 1 — Selection export: per-client or merged record for
+              album design / editing / printing / client confirmation. */}
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8, alignItems: 'flex-end' }}>
+            <div>
+              <label className="field-label" htmlFor="export-client">Client</label>
+              <select
+                id="export-client"
+                className="text-input"
+                value={exportClient}
+                onChange={(e) => setExportClient(e.target.value)}
+                style={{ maxWidth: 220 }}
+              >
+                <option value="merged">All clients (merged)</option>
+                {clients
+                  .filter((c) => (c.favourite_count || 0) > 0)
+                  .map((c) => (
+                    <option key={c.user_id} value={c.user_id}>
+                      {c.name || c.email} ({c.favourite_count})
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="export-format">Format</label>
+              <select
+                id="export-format"
+                className="text-input"
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+                style={{ maxWidth: 220 }}
+              >
+                <option value="csv">CSV filenames</option>
+                <option value="txt">TXT filenames</option>
+                <option value="pdf">PDF proofing report</option>
+                <option value="zip">ZIP selected photos</option>
+              </select>
+            </div>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={handleSelectionExport}
+              disabled={exporting || (exportClient !== 'merged' && !clients.some((c) => c.user_id === exportClient && (c.favourite_count || 0) > 0))}
+              title="Download the selection record — filenames, proofing report, or photos"
+            >
+              <Download size={14} /> {exporting ? 'Preparing…' : 'Export selection'}
             </button>
           </div>
           {zippingPicks && picksZipProgress && (

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Download, Heart } from 'lucide-react'
+import { Download, FileText, Heart, Table } from 'lucide-react'
 import {
   downloadClientFavouritesZip,
+  downloadClientSelectionCsv,
+  downloadClientSelectionPdf,
+  downloadClientSelectionTxt,
   fileUrl,
   getClientEvent,
   listClientPhotos,
@@ -26,6 +29,23 @@ export default function ClientFavourites() {
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(null)
+  // Phase 1 — self-service selection record (CSV/TXT/PDF), same
+  // allow-download gate as the zip. Tracks which format is in flight.
+  const [exportingFormat, setExportingFormat] = useState(null)
+
+  const handleRecordExport = async (format) => {
+    setExportingFormat(format)
+    try {
+      if (format === 'csv') await downloadClientSelectionCsv(eventId)
+      else if (format === 'txt') await downloadClientSelectionTxt(eventId)
+      else await downloadClientSelectionPdf(eventId)
+      showToast('Export downloaded')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
 
   useEffect(() => {
     getClientEvent(eventId).then(setEvent).catch((e) => setError(e.message))
@@ -83,9 +103,20 @@ export default function ClientFavourites() {
           My Favourites{favourites.length > 0 ? ` (${favourites.length})` : ''}
         </h1>
         {allowDownload && favourites.length > 0 && (
-          <GoldButton size="sm" variant="outline" icon={<Download size={14} />} loading={downloading} onClick={handleDownload}>
-            Download
-          </GoldButton>
+          <div className="flex items-center gap-2 flex-wrap">
+            <GoldButton size="sm" variant="outline" icon={<Table size={14} />} loading={exportingFormat === 'csv'} onClick={() => handleRecordExport('csv')} title="My selected filenames as CSV">
+              CSV
+            </GoldButton>
+            <GoldButton size="sm" variant="outline" icon={<FileText size={14} />} loading={exportingFormat === 'txt'} onClick={() => handleRecordExport('txt')} title="My selected filenames as TXT">
+              TXT
+            </GoldButton>
+            <GoldButton size="sm" variant="outline" icon={<FileText size={14} />} loading={exportingFormat === 'pdf'} onClick={() => handleRecordExport('pdf')} title="Branded proofing report (PDF)">
+              Proof
+            </GoldButton>
+            <GoldButton size="sm" variant="outline" icon={<Download size={14} />} loading={downloading} onClick={handleDownload}>
+              Download
+            </GoldButton>
+          </div>
         )}
       </div>
       {error && <p className="error">{error}</p>}
