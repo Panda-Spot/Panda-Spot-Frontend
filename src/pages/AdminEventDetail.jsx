@@ -7,9 +7,11 @@ import {
   disableAdminEventShoots,
   getAdminEvent,
   listAdminAlbums,
+  listAdminDataRequests,
   listAdminEventPhotos,
   fileUrl,
   overrideAlbumStatus,
+  resolveAdminDataRequest,
   setAdminEventExpiry,
 } from '../api.js'
 import Lightbox from '../components/Lightbox.jsx'
@@ -44,6 +46,18 @@ export default function AdminEventDetail() {
   const [albums, setAlbums] = useState(null)
   const [albumsError, setAlbumsError] = useState('')
   const [overridingId, setOverridingId] = useState(null)
+  // Phase 2 (guest data rights): review queue for export/delete requests.
+  const [dataRequests, setDataRequests] = useState(null)
+  const [dataRequestsError, setDataRequestsError] = useState('')
+  const [resolvingId, setResolvingId] = useState(null)
+  const [exportResult, setExportResult] = useState(null)
+
+  const loadDataRequests = useCallback(() => {
+    setDataRequestsError('')
+    listAdminDataRequests(eventId)
+      .then(setDataRequests)
+      .catch((e) => setDataRequestsError(e.message))
+  }, [eventId])
 
   const loadAlbums = useCallback(() => {
     setAlbumsError('')
@@ -66,7 +80,8 @@ export default function AdminEventDetail() {
       .catch((e) => console.error('Failed to load event photos for admin:', e))
       .finally(() => setLoadingPhotos(false))
     loadAlbums()
-  }, [eventId, loadAlbums])
+    loadDataRequests()
+  }, [eventId, loadAlbums, loadDataRequests])
 
   useEffect(load, [load])
 
@@ -127,6 +142,27 @@ export default function AdminEventDetail() {
       setError(e.message)
     } finally {
       setOverridingId(null)
+    }
+  }
+
+  const handleResolveRequest = async (requestId, action) => {
+    const confirmed = await confirm(
+      action === 'complete'
+        ? 'Complete this request? For deletions this permanently erases the guest’s searches, alerts, reactions, and comments.'
+        : 'Reject this request without action?',
+      { title: action === 'complete' ? 'Complete request?' : 'Reject request?', confirmLabel: action === 'complete' ? 'Complete' : 'Reject' }
+    )
+    if (!confirmed) return
+    setResolvingId(requestId)
+    setError('')
+    try {
+      const res = await resolveAdminDataRequest(eventId, requestId, action)
+      setExportResult(res.result && res.status === 'completed' && action === 'complete' ? { requestId, result: res.result } : null)
+      loadDataRequests()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setResolvingId(null)
     }
   }
 
@@ -234,6 +270,58 @@ export default function AdminEventDetail() {
             ))}
           </ul>
           <p className="hint">Status overrides need SUPER_ADMIN — other admins will see an error.</p>
+        </div>
+      )}
+
+      <h2 className="section-title">Guest data requests ({dataRequests ? dataRequests.length : '…'} pending)</h2>
+      {dataRequestsError && <p className="error">{dataRequestsError}</p>}
+      {!dataRequests ? (
+        <p className="hint">Loading requests…</p>
+      ) : dataRequests.length === 0 ? (
+        <p className="hint">No pending requests — guests file export/delete requests from the event page.</p>
+      ) : (
+        <div className="card">
+          <ul className="team-list">
+            {dataRequests.map((r) => (
+              <li key={r.request_id} className="team-list-item" style={{ display: 'block' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ flex: 1 }}>
+                    <strong>{r.type === 'export' ? 'Data export' : 'Data deletion'}</strong>
+                    <span className="hint">
+                      {' '}· guest <code>{r.guest_client_id.slice(0, 8)}…</code>
+                      {r.contact && ` · ${r.contact}`}
+                      {' '}· filed {new Date(r.created_at).toLocaleString()}
+                    </span>
+                  </span>
+                  <button
+                    type="button" className="btn secondary"
+                    disabled={resolvingId === r.request_id}
+                    onClick={() => handleResolveRequest(r.request_id, 'complete')}
+                  >
+                    Complete
+                  </button>
+                  <button
+                    type="button" className="btn secondary"
+                    disabled={resolvingId === r.request_id}
+                    onClick={() => handleResolveRequest(r.request_id, 'reject')}
+                  >
+                    Reject
+                  </button>
+                </div>
+                {exportResult?.requestId === r.request_id && (
+                  <pre className="hint" style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                    {JSON.stringify(exportResult.result, null, 2)}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button type="button" className="btn secondary" onClick={loadDataRequests}>Refresh pending</button>
+            <button type="button" className="btn secondary" onClick={() => listAdminDataRequests(eventId, 'all').then(setDataRequests).catch((err) => setDataRequestsError(err.message))}>
+              Show all statuses
+            </button>
+          </div>
         </div>
       )}
 

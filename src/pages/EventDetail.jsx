@@ -70,6 +70,7 @@ import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
 import { uploadLargeFile } from '../lib/largeUpload.js'
 import GalleryMedia from '../components/GalleryMedia.jsx'
+import PrivacySettingsCard from '../components/PrivacySettingsCard.jsx'
 import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
 import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
@@ -241,6 +242,9 @@ export default function EventDetail() {
   const [exportClient, setExportClient] = useState('merged')
   const [exportFormat, setExportFormat] = useState('csv')
   const [exporting, setExporting] = useState(false)
+  // Phase 2 — Face Search privacy settings draft + save.
+  const [privacyDraft, setPrivacyDraft] = useState(null)
+  const [savingPrivacy, setSavingPrivacy] = useState(false)
 
   const handleSelectionExport = async () => {
     setExporting(true)
@@ -1684,6 +1688,38 @@ export default function EventDetail() {
             Photo Selection — clients log in to browse, favourite, and submit picks
           </label>
         </div>
+      )}
+
+      {/* Phase 2 — Face Search privacy: consent gate, notice text,
+          selfie handling, retention, and guest delete requests. */}
+      {event && (event.role === 'owner' || event.role === 'collaborator') && (
+        <PrivacySettingsCard
+          event={event}
+          draft={privacyDraft}
+          setDraft={setPrivacyDraft}
+          saving={savingPrivacy}
+          onSave={async () => {
+            if (!privacyDraft) return
+            setSavingPrivacy(true)
+            try {
+              const days = privacyDraft.guest_data_retention_days
+              await updateEvent(eventId, {
+                require_face_search_consent: !!privacyDraft.require_face_search_consent,
+                privacy_notice_text: privacyDraft.privacy_notice_text?.trim() ? privacyDraft.privacy_notice_text.trim() : null,
+                selfie_retention_mode: privacyDraft.selfie_retention_mode,
+                guest_data_retention_days: days === '' || days == null ? null : Number(days),
+                allow_guest_data_delete_request: !!privacyDraft.allow_guest_data_delete_request,
+              })
+              setPrivacyDraft(null)
+              showToast('Privacy settings saved')
+              load()
+            } catch (e) {
+              showToast(e.message, { type: 'error' })
+            } finally {
+              setSavingPrivacy(false)
+            }
+          }}
+        />
       )}
 
       {/* Phase 21 — workspace tabs. Manager holds every file movement

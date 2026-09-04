@@ -630,10 +630,11 @@ export const updateAdminPlatformSettings = (patch) =>
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)
 
-export const searchBySelfies = (slug, selfieFiles, guestClientId) => {
+export const searchBySelfies = (slug, selfieFiles, guestClientId, consented) => {
   const form = new FormData()
   for (const file of selfieFiles) form.append("selfies", file)
   if (guestClientId) form.append("guest_client_id", guestClientId)
+  if (consented) form.append("face_search_consent", "true")
   return request(`/e/${slug}/search`, { method: "POST", body: form })
 }
 
@@ -709,10 +710,11 @@ export const getMyReactions = (slug, guestClientId) =>
 
 // Group search — one selfie per person, returns photos matching ANY of
 // them (not the same person from multiple angles, see searchBySelfies).
-export const searchGroupBySelfies = (slug, selfieFiles, guestClientId) => {
+export const searchGroupBySelfies = (slug, selfieFiles, guestClientId, consented) => {
   const form = new FormData()
   for (const file of selfieFiles) form.append("selfies", file)
   if (guestClientId) form.append("guest_client_id", guestClientId)
+  if (consented) form.append("face_search_consent", "true")
   return request(`/e/${slug}/search/group`, { method: "POST", body: form })
 }
 
@@ -723,6 +725,29 @@ export const addPhotoComment = (slug, photoId, guestClientId, guestName, text) =
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ guest_client_id: guestClientId, guest_name: guestName, text }),
+  })
+
+// Phase 2 (guest data rights): file an export/delete request for your own
+// Face Search footprint, and check your requests' statuses.
+export const submitGuestDataRequest = (slug, { guestClientId, contact, type }) =>
+  request(`/e/${slug}/data-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guest_client_id: guestClientId, contact: contact || undefined, type }),
+  })
+
+export const getGuestDataRequestStatus = (slug, guestClientId) =>
+  request(`/e/${slug}/data-request/status?guest_client_id=${encodeURIComponent(guestClientId)}`)
+
+// Platform support: review queue + resolution for guest data requests.
+export const listAdminDataRequests = (eventId, status) =>
+  request(`/admin/events/${eventId}/data-requests${status ? `?status=${status}` : ""}`)
+
+export const resolveAdminDataRequest = (eventId, requestId, action) =>
+  request(`/admin/events/${eventId}/data-requests/${requestId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
   })
 
 // --- Guest uploads / moderation (photographer, authenticated) ---

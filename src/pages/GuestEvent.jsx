@@ -4,12 +4,14 @@ import { Share2, Download, X } from 'lucide-react'
 import {
   downloadMatches,
   fileUrl,
+  getGuestDataRequestStatus,
   getPublicEvent,
   reactToPhoto,
   searchBySelfies,
   searchGroupBySelfies,
   sendGalleryLinkViaWhatsApp,
   sendMatchFeedback,
+  submitGuestDataRequest,
   subscribeToMatchAlerts,
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
@@ -46,6 +48,15 @@ export default function GuestEvent() {
   const [sendingLink, setSendingLink] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [groupMode, setGroupMode] = useState(false)
+  // Phase 2 (consent-first Face Search): checkbox state, notice modal,
+  // and the guest data-request form.
+  const [consented, setConsented] = useState(false)
+  const [showNotice, setShowNotice] = useState(false)
+  const [drContact, setDrContact] = useState('')
+  const [drType, setDrType] = useState('delete')
+  const [drMessage, setDrMessage] = useState('')
+  const [drRequests, setDrRequests] = useState([])
+  const [drBusy, setDrBusy] = useState(false)
   // Holds { key, promise } for a search already kicked off the instant the
   // guest finished picking selfies — before they've even tapped "Find My
   // Photos". By the time they do tap it, the upload + face-detect + match
@@ -63,6 +74,9 @@ export default function GuestEvent() {
     getPublicEvent(slug)
       .then(setEvent)
       .catch((e) => setLoadError(e.message))
+    getGuestDataRequestStatus(slug, getGuestClientId())
+      .then(setDrRequests)
+      .catch(() => setDrRequests([]))
   }, [slug])
 
   useEffect(() => {
@@ -109,8 +123,12 @@ export default function GuestEvent() {
   const selfiesKey = (files, isGroup) =>
     `${isGroup ? 'group' : 'solo'}:${files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join('|')}`
 
-  const startSearch = (files, isGroup) =>
-    isGroup ? searchGroupBySelfies(slug, files, getGuestClientId()) : searchBySelfies(slug, files, getGuestClientId())
+  const startSearch = (files, isGroup, withConsent) =>
+    isGroup
+      ? searchGroupBySelfies(slug, files, getGuestClientId(), withConsent)
+      : searchBySelfies(slug, files, getGuestClientId(), withConsent)
+
+  const needsConsent = !!event?.require_face_search_consent
 
   const handleSelfies = (e) => {
     const files = Array.from(e.target.files || [])
@@ -122,15 +140,17 @@ export default function GuestEvent() {
     setResult(null)
 
     // Already have enough selfies to run a real search — start it now in
-    // the background rather than waiting for the button tap. If the
-    // selection isn't search-ready yet (e.g. group mode with only 1
-    // selfie so far), there's nothing valid to prefetch.
+    // the background rather than waiting for the button tap. Never
+    // prefetches past the consent gate: with consent required, nothing
+    // uploads until the box is ticked.
     const ready = capped.length > 0 && (!groupMode || capped.length >= 2)
-    if (ready) {
+    if (ready && (!event?.require_face_search_consent || consented)) {
       const key = selfiesKey(capped, groupMode)
-      const promise = startSearch(capped, groupMode)
+      const promise = startSearch(capped, groupMode, consented)
       promise.catch(() => {}) // Surfaced by handleSearch instead, not here.
-      prefetchRef.current = { key, promise }
+      // Remember the consent state: unticking after a consented prefetch
+      // must not reuse it.
+      prefetchRef.current = { key, promise, consented }
     } else {
       prefetchRef.current = null
     }
@@ -152,21 +172,43 @@ export default function GuestEvent() {
       return
     }
     if (!groupMode && selfies.length === 0) return
+    if (event?.require_face_search_consent && !consented) {
+      setError('Please tick the consent box first — this event needs your permission before a face search can run.')
+      return
+    }
     setSearching(true)
     setError('')
     setResult(null)
     try {
       const key = selfiesKey(selfies, groupMode)
       // If the background prefetch from handleSelfies already covers this
-      // exact selection, just wait on it (often already resolved) instead
-      // of firing a second, redundant request.
+      // exact selection (with the same consent state), just wait on it
+      // (often already resolved) instead of firing a second request.
       const data =
-        prefetchRef.current?.key === key ? await prefetchRef.current.promise : await startSearch(selfies, groupMode)
+        prefetchRef.current?.key === key && prefetchRef.current?.consented === consented
+          ? await prefetchRef.current.promise
+          : await startSearch(selfies, groupMode, consented)
       setResult(data)
     } catch (e) {
       setError(e.message)
     } finally {
       setSearching(false)
+    }
+  }
+
+  const handleDataRequest = async (e) => {
+    e.preventDefault()
+    setDrBusy(true)
+    setDrMessage('')
+    try {
+      const res = await submitGuestDataRequest(slug, { guestClientId: getGuestClientId(), contact: drContact.trim(), type: drType })
+      setDrMessage(res.status === 'pending' ? 'Request received — the studio will review it shortly.' : `Request ${res.status}.`)
+      const list = await getGuestDataRequestStatus(slug, getGuestClientId()).catch(() => [])
+      setDrRequests(list)
+    } catch (err) {
+      setDrMessage(err.message)
+    } finally {
+      setDrBusy(false)
     }
   }
 
@@ -353,12 +395,108 @@ export default function GuestEvent() {
           <button
             className="btn"
             type="submit"
-            disabled={searching || selfies.length === 0 || (groupMode && selfies.length < 2) || !event}
+            disabled={searching || selfies.length === 0 || (groupMode && selfies.length < 2) || !event || (needsConsent && !consented)}
             style={{ marginTop: 16 }}
           >
             {searching ? 'Searching…' : groupMode ? 'Find Our Photos' : 'Find My Photos'}
           </button>
+          <p className="hint" style={{ marginTop: 8 }}>
+            Your selfie is only used to find your photos — it is never saved or shared.
+            {event?.selfie_retention_mode === 'retain'
+              ? ' The studio keeps search records longer for this event.'
+              : ' Search records are deleted automatically after the studio’s retention period.'}{' '}
+            <button type="button" className="dismiss-btn" style={{ display: 'inline', textDecoration: 'underline' }} onClick={() => setShowNotice(true)}>
+              Privacy notice
+            </button>
+          </p>
+          {needsConsent && (
+            <label className="row" style={{ marginTop: 8, gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setConsented(checked)
+                  setError('')
+                  // Ticking after picking selfies kicks off the same
+                  // background prefetch picking files would have started.
+                  if (checked && selfies.length > 0 && (!groupMode || selfies.length >= 2) && !prefetchRef.current) {
+                    const promise = startSearch(selfies, groupMode, true)
+                    promise.catch(() => {})
+                    prefetchRef.current = { key: selfiesKey(selfies, groupMode), promise, consented: true }
+                  }
+                  if (!checked) prefetchRef.current = null
+                }}
+                style={{ marginTop: 3 }}
+              />
+              <span className="subtle">
+                I agree to a face search on my selfie for this event. I understand my selfie is used only to find
+                my photos and is never stored.
+              </span>
+            </label>
+          )}
         </form>
+      )}
+
+      {showNotice && event && (
+        <div className="modal-backdrop" onClick={() => setShowNotice(false)}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <h3>Privacy notice</h3>
+            <p className="subtle" style={{ whiteSpace: 'pre-wrap' }}>{event.privacy_notice_text}</p>
+            <p className="hint">
+              Your selfie is processed in memory only to find your photos — the file itself is never saved.
+              What stays behind is a search record (not your photo), which is deleted automatically after the
+              studio’s retention period, or sooner if you ask below.
+            </p>
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+              <button type="button" className="btn" onClick={() => setShowNotice(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {event && !event.expired && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="guest-link-label">Your data</div>
+          <p className="hint">Ask for a copy of your Face Search data, or ask the studio to delete it.</p>
+          <form className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }} onSubmit={handleDataRequest}>
+            <div>
+              <label className="field-label" htmlFor="dr-contact">Contact (optional)</label>
+              <input
+                id="dr-contact"
+                className="text-input"
+                placeholder="email or phone"
+                value={drContact}
+                onChange={(e) => setDrContact(e.target.value)}
+                maxLength={200}
+                style={{ maxWidth: 220 }}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="dr-type">Request</label>
+              <select id="dr-type" className="text-input" value={drType} onChange={(e) => setDrType(e.target.value)}>
+                <option value="export">Export my data</option>
+                {event.allow_guest_data_delete_request && <option value="delete">Delete my data</option>}
+              </select>
+            </div>
+            <button className="btn secondary" type="submit" disabled={drBusy}>
+              {drBusy ? 'Sending…' : 'Send request'}
+            </button>
+          </form>
+          {drMessage && <p className="hint" style={{ marginTop: 6 }}>{drMessage}</p>}
+          {drRequests.length > 0 && (
+            <ul className="team-list" style={{ marginTop: 8 }}>
+              {drRequests.map((r) => (
+                <li key={r.request_id} className="team-list-item">
+                  <span style={{ flex: 1 }}>
+                    {r.type === 'export' ? 'Data export' : 'Data deletion'}
+                    <span className="hint"> · {r.status}{r.resolved_at ? ` · resolved ${new Date(r.resolved_at).toLocaleDateString()}` : ''}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {error && <p className="error">{error}</p>}
