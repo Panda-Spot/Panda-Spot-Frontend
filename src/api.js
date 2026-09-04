@@ -1178,6 +1178,17 @@ export const deleteAlbumVersion = (eventId, albumId, versionId) =>
 export const sendAlbum = (eventId, albumId) =>
   request(`/events/${eventId}/albums/${albumId}/send`, { method: "POST" })
 
+// Phase 4: spread reorder + single-spread delete.
+export const reorderAlbumPages = (eventId, albumId, versionId, pageIds) =>
+  request(`/events/${eventId}/albums/${albumId}/versions/${versionId}/pages/reorder`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order: pageIds }),
+  })
+
+export const deleteAlbumPage = (eventId, albumId, versionId, pageId) =>
+  request(`/events/${eventId}/albums/${albumId}/versions/${versionId}/pages/${pageId}`, { method: "DELETE" })
+
 export const reopenAlbum = (eventId, albumId) =>
   request(`/events/${eventId}/albums/${albumId}/reopen`, { method: "POST" })
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, Images, MapPin, Plus, Send, Trash2, Undo2, Upload } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Images, MapPin, Plus, Send, Trash2, Undo2, Upload } from 'lucide-react'
 import {
   addAlbumSources,
   deleteAlbum,
+  deleteAlbumPage,
   deleteAlbumVersion,
   downloadAlbumSourcesZip,
   fileUrl,
@@ -14,6 +15,7 @@ import {
   removeAlbumSource,
   renameAlbum,
   reopenAlbum,
+  reorderAlbumPages,
   resolveAlbumComment,
   sendAlbum,
   uploadAlbumVersion,
@@ -120,6 +122,31 @@ export default function StudioAlbum() {
     catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
   }
 
+  // Phase 4: spread reorder (move one step) + single-spread delete.
+  // Pins ride along on reorder; deleting a spread deletes its pins too.
+  const handleMovePage = async (pageId, dir) => {
+    if (!version || locked) return
+    const ids = [...version.pages].sort((a, b) => a.page_number - b.page_number).map((p) => p.page_id)
+    const i = ids.indexOf(pageId)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= ids.length) return
+    const next = [...ids]
+    next[i] = ids[j]
+    next[j] = ids[i]
+    setBusy(true)
+    try { await reorderAlbumPages(eventId, albumId, version.id, next); await load() }
+    catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
+  }
+
+  const handleDeletePage = async (page) => {
+    if (!version || locked) return
+    const ok = await confirm(`Delete spread ${page.page_number} (“${page.filename}”) and its pins? The rest renumber.`, { title: 'Delete spread?', confirmLabel: 'Delete', danger: true })
+    if (!ok) return
+    setBusy(true)
+    try { await deleteAlbumPage(eventId, albumId, version.id, page.page_id); await refresh('Spread deleted') }
+    catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
+  }
+
   const openPicker = async () => {
     setPickerOpen(true)
     setPickerPhotos(null)
@@ -203,6 +230,13 @@ export default function StudioAlbum() {
           )}
         </div>
       </div>
+      {(album.created_by || album.sent_at) && (
+        <p className="hint" style={{ marginTop: 8 }}>
+          {album.created_by && <>Created by {album.created_by.name || album.created_by.email}</>}
+          {album.created_by && album.sent_at && ' · '}
+          {album.sent_at && <>Last sent {new Date(album.sent_at).toLocaleString()}</>}
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
 
       <div className="card" style={{ marginTop: 12 }}>
@@ -290,6 +324,39 @@ export default function StudioAlbum() {
           </div>
         )}
       </div>
+
+      {/* Phase 4: spread manager — reorder + delete per spread. */}
+      {version && !version.print_pdf_url && version.pages.length > 0 && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="guest-link-label">Spreads — v{version.version_number} order ({version.pages.length})</div>
+          {!locked && <p className="hint">Reorder with the arrows; pins move with their spread. Deleting a spread deletes its pins too.</p>}
+          <div className="photo-grid">
+            {[...version.pages].sort((a, b) => a.page_number - b.page_number).map((p, i, arr) => (
+              <div className="photo-card" key={p.page_id}>
+                <img src={fileUrl(p.thumbnail_url || p.file_url)} alt={`Spread ${p.page_number}`} style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 6 }} loading="lazy" />
+                <div className="meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                  <span className="hint" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.page_number}. {p.filename}{p.width && p.height ? ` · ${p.width}×${p.height}` : ''}
+                  </span>
+                  {!locked && (
+                    <span className="row" style={{ gap: 2, flexShrink: 0 }}>
+                      <button type="button" className="dismiss-btn" title="Move earlier" disabled={busy || i === 0} onClick={() => handleMovePage(p.page_id, -1)}>
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button type="button" className="dismiss-btn" title="Move later" disabled={busy || i === arr.length - 1} onClick={() => handleMovePage(p.page_id, 1)}>
+                        <ChevronRight size={14} />
+                      </button>
+                      <button type="button" className="dismiss-btn" title="Delete spread" disabled={busy || arr.length <= 1} onClick={() => handleDeletePage(p)}>
+                        <Trash2 size={13} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {version && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 7fr) minmax(280px, 4fr)', gap: 12, marginTop: 12, alignItems: 'start' }} className="album-workspace-grid">
