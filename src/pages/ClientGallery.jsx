@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, CheckCircle2, Clock, Heart, Lock, Send } from 'lucid
 import {
   fileUrl,
   getClientEvent,
+  listClientAlbums,
   listClientEvents,
   listClientPhotos,
   listStudioPickIds,
@@ -38,6 +39,7 @@ export default function ClientGallery() {
   const [submitting, setSubmitting] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [studioPicks, setStudioPicks] = useState([])
+  const [albums, setAlbums] = useState([])
   const [eventCount, setEventCount] = useState(1)
   const [logoOk, setLogoOk] = useState(true)
 
@@ -54,6 +56,10 @@ export default function ClientGallery() {
     listStudioPickIds(eventId)
       .then((data) => setStudioPicks(data.photo_ids || []))
       .catch(() => setStudioPicks([]))
+    // Album proofing (Phase 23): albums the studio sent for review.
+    listClientAlbums(eventId)
+      .then(setAlbums)
+      .catch(() => setAlbums([]))
   }
 
   useEffect(() => {
@@ -290,6 +296,28 @@ export default function ClientGallery() {
           draggable={false}
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />
+      )}
+
+      {albums.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="guest-link-label">Albums for review ({albums.length})</div>
+          <p className="hint">Your studio shared these album designs — open one to flip through, pin feedback, and approve.</p>
+          <ul className="team-list">
+            {albums.map((a) => (
+              <li key={a.id} className="team-list-item">
+                <span style={{ flex: 1 }}>
+                  <Link to={`/client/${eventId}/albums/${a.id}`} style={{ fontWeight: 700 }}>{a.name}</Link>
+                  <span className="hint">
+                    {' '}· {a.status === 'APPROVED' ? 'approved' : a.status === 'CHANGES_REQUESTED' ? 'changes requested' : 'awaiting your review'}
+                    {a.latest_version != null && ` · v${a.latest_version}`}
+                    {a.open_pins > 0 && ` · ${a.open_pins} open pin${a.open_pins === 1 ? '' : 's'}`}
+                  </span>
+                </span>
+                <Link className="btn secondary" to={`/client/${eventId}/albums/${a.id}`}>Review</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div

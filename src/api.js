@@ -1032,3 +1032,136 @@ export const downloadMatches = async (slug, photoIds) => {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+// --- Album proofing (Phase 23) ---
+// Studio side: full CRUD + sources + versions + review lifecycle + pins.
+// Shape notes: album list items carry source_count/version_count/open_pins;
+// detail carries versions[].pages[] ({page_id,file_url,thumbnail_url}) and
+// top-level comments[] with threaded replies[].
+
+export const listAlbums = (eventId) => request(`/events/${eventId}/albums`)
+
+export const createAlbum = (eventId, { name, fromFavourites }) =>
+  request(`/events/${eventId}/albums`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, from_favourites: fromFavourites || undefined }),
+  })
+
+export const getAlbum = (eventId, albumId) => request(`/events/${eventId}/albums/${albumId}`)
+
+export const renameAlbum = (eventId, albumId, name) =>
+  request(`/events/${eventId}/albums/${albumId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
+
+export const deleteAlbum = (eventId, albumId) =>
+  request(`/events/${eventId}/albums/${albumId}`, { method: "DELETE" })
+
+export const addAlbumSources = (eventId, albumId, photoIds) =>
+  request(`/events/${eventId}/albums/${albumId}/sources`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_ids: photoIds }),
+  })
+
+export const removeAlbumSource = (eventId, albumId, photoId) =>
+  request(`/events/${eventId}/albums/${albumId}/sources/${photoId}`, { method: "DELETE" })
+
+export const uploadAlbumVersion = (eventId, albumId, { files, printPdf, note }) => {
+  const form = new FormData()
+  if (note) form.append("note", note)
+  if (printPdf) {
+    form.append("print_pdf", printPdf, printPdf.name || "print.pdf")
+  } else {
+    ;(files || []).forEach((f) => form.append("images", f, f.name))
+  }
+  return request(`/events/${eventId}/albums/${albumId}/versions`, { method: "POST", body: form })
+}
+
+export const deleteAlbumVersion = (eventId, albumId, versionId) =>
+  request(`/events/${eventId}/albums/${albumId}/versions/${versionId}`, { method: "DELETE" })
+
+export const sendAlbum = (eventId, albumId) =>
+  request(`/events/${eventId}/albums/${albumId}/send`, { method: "POST" })
+
+export const reopenAlbum = (eventId, albumId) =>
+  request(`/events/${eventId}/albums/${albumId}/reopen`, { method: "POST" })
+
+export const postAlbumComment = (eventId, albumId, { versionId, pageId, parentId, xPct, yPct, message }) =>
+  request(`/events/${eventId}/albums/${albumId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      version_id: versionId,
+      page_id: pageId || undefined,
+      parent_id: parentId || undefined,
+      x_pct: xPct ?? undefined,
+      y_pct: yPct ?? undefined,
+      message,
+    }),
+  })
+
+export const resolveAlbumComment = (eventId, albumId, commentId) =>
+  request(`/events/${eventId}/albums/${albumId}/comments/${commentId}/resolve`, { method: "POST" })
+
+// Client side: only non-DRAFT albums are visible; approve/request-changes
+// flip SENT albums, APPROVED locks everything but viewing.
+export const listClientAlbums = (eventId) => request(`/client/events/${eventId}/albums`)
+
+export const getClientAlbum = (eventId, albumId) => request(`/client/events/${eventId}/albums/${albumId}`)
+
+export const postClientAlbumComment = (eventId, albumId, { versionId, pageId, parentId, xPct, yPct, message }) =>
+  request(`/client/events/${eventId}/albums/${albumId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      version_id: versionId,
+      page_id: pageId || undefined,
+      parent_id: parentId || undefined,
+      x_pct: xPct ?? undefined,
+      y_pct: yPct ?? undefined,
+      message,
+    }),
+  })
+
+export const requestAlbumChanges = (eventId, albumId, message) =>
+  request(`/client/events/${eventId}/albums/${albumId}/request-changes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: message || undefined }),
+  })
+
+export const approveAlbum = (eventId, albumId) =>
+  request(`/client/events/${eventId}/albums/${albumId}/approve`, { method: "POST" })
+
+// Platform support: read-only album list per event + SUPER_ADMIN status override.
+export const listAdminAlbums = (eventId) => request(`/admin/events/${eventId}/albums`)
+
+export const overrideAlbumStatus = (eventId, albumId, status) =>
+  request(`/admin/events/${eventId}/albums/${albumId}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+
+// Studio take-home: full-res originals of staged sources. Auth lives in
+// headers (not cookies), so this streams via fetch + blob like the other
+// zips instead of a plain link.
+export const downloadAlbumSourcesZip = async (eventId, albumId, filename) => {
+  const token = getToken()
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await fetch(`${BASE_URL}/events/${eventId}/albums/${albumId}/sources/download-zip`, { headers })
+  if (!res.ok) throw new Error(`Download failed (${res.status})`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename || "album-sources.zip"
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}

@@ -6,8 +6,10 @@ import {
   disableAdminEventDriveBackup,
   disableAdminEventShoots,
   getAdminEvent,
+  listAdminAlbums,
   listAdminEventPhotos,
   fileUrl,
+  overrideAlbumStatus,
   setAdminEventExpiry,
 } from '../api.js'
 import Lightbox from '../components/Lightbox.jsx'
@@ -38,6 +40,17 @@ export default function AdminEventDetail() {
   const [disablingShoots, setDisablingShoots] = useState(false)
   const [disablingDriveBackup, setDisablingDriveBackup] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // Album proofing (Phase 23): platform visibility + SUPER_ADMIN override.
+  const [albums, setAlbums] = useState(null)
+  const [albumsError, setAlbumsError] = useState('')
+  const [overridingId, setOverridingId] = useState(null)
+
+  const loadAlbums = useCallback(() => {
+    setAlbumsError('')
+    listAdminAlbums(eventId)
+      .then(setAlbums)
+      .catch((e) => setAlbumsError(e.message))
+  }, [eventId])
 
   const load = useCallback(() => {
     getAdminEvent(eventId)
@@ -52,7 +65,8 @@ export default function AdminEventDetail() {
       .then(setPhotos)
       .catch((e) => console.error('Failed to load event photos for admin:', e))
       .finally(() => setLoadingPhotos(false))
-  }, [eventId])
+    loadAlbums()
+  }, [eventId, loadAlbums])
 
   useEffect(load, [load])
 
@@ -98,8 +112,25 @@ export default function AdminEventDetail() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleOverrideStatus = async (albumId, name, status) => {
     const confirmed = await confirm(
+      `Force "${name}" to ${status}? This bypasses the normal studio/client review flow — use it for stuck or disputed albums.`,
+      { title: 'Override album status?', confirmLabel: `Set ${status}` }
+    )
+    if (!confirmed) return
+    setOverridingId(albumId)
+    setError('')
+    try {
+      await overrideAlbumStatus(eventId, albumId, status)
+      loadAlbums()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setOverridingId(null)
+    }
+  }
+
+  const handleDelete = async () => {    const confirmed = await confirm(
       `Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`,
       { title: 'Delete this event?', confirmLabel: 'Delete' }
     )
@@ -159,6 +190,52 @@ export default function AdminEventDetail() {
           <p className="hint">Collaborators: {event.collaborators.map((c) => c.email).join(', ')}</p>
         )}
       </div>
+
+      <h2 className="section-title">Albums ({albums ? albums.length : '…'})</h2>
+      {albumsError && <p className="error">{albumsError}</p>}
+      {!albums ? (
+        <p className="hint">Loading albums…</p>
+      ) : albums.length === 0 ? (
+        <p className="hint">No albums on this event yet.</p>
+      ) : (
+        <div className="card">
+          <ul className="team-list">
+            {albums.map((a) => (
+              <li key={a.album_id} className="team-list-item" style={{ display: 'block' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ flex: 1 }}>
+                    <strong>{a.name}</strong>
+                    <span className="hint">
+                      {' '}· {a.status.replace(/_/g, ' ').toLowerCase()}
+                      {' '}· {a.version_count} version{a.version_count === 1 ? '' : 's'}
+                      {a.latest_version != null && ` (latest v${a.latest_version}, ${a.page_count_latest} pages)`}
+                      {a.has_print_pdf && ' · print PDF'}
+                      {a.open_pins > 0 && ` · ${a.open_pins} open pin${a.open_pins === 1 ? '' : 's'}`}
+                    </span>
+                  </span>
+                </div>
+                <div className="row" style={{ marginTop: 8, gap: 6, flexWrap: 'wrap' }}>
+                  {['DRAFT', 'SENT', 'CHANGES_REQUESTED', 'APPROVED']
+                    .filter((s) => s !== a.status)
+                    .map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className="btn secondary"
+                        disabled={overridingId === a.album_id}
+                        onClick={() => handleOverrideStatus(a.album_id, a.name, s)}
+                        title="SUPER_ADMIN only — bypasses the review flow"
+                      >
+                        Set {s.replace(/_/g, ' ').toLowerCase()}
+                      </button>
+                    ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="hint">Status overrides need SUPER_ADMIN — other admins will see an error.</p>
+        </div>
+      )}
 
       <h2 className="section-title">Event Photos ({photos.length})</h2>
       {loadingPhotos ? (

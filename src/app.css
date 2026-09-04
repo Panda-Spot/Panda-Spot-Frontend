@@ -1564,6 +1564,10 @@
   .app-topbar-user {
     display: none;
   }
+  /* Phase 23 — album workspace stacks viewer over feedback on small screens. */
+  .album-workspace-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 @media (min-width: 861px) {
   .sidebar-mobile-open-btn {

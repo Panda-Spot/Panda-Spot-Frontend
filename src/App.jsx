@@ -49,6 +49,8 @@ import AcceptClientInvite from './pages/AcceptClientInvite.jsx'
 import ClientEvents from './pages/ClientEvents.jsx'
 import ClientGallery from './pages/ClientGallery.jsx'
 import ClientFavourites from './pages/ClientFavourites.jsx'
+import ClientAlbum from './pages/ClientAlbum.jsx'
+import StudioAlbum from './pages/StudioAlbum.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -204,6 +206,17 @@ function App() {
           </AppShell>
         }
       />
+      {/* Album proofing: client review workspace (Phase 23) */}
+      <Route
+        path="/client/:eventId/albums/:albumId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientAlbum />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
 
       {/* 4. Authenticated Photographer Studio Dashboard Routes */}
       <Route
@@ -256,6 +269,17 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <EventDetail />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      {/* Album proofing: studio workspace (Phase 23) */}
+      <Route
+        path="/events/:eventId/albums/:albumId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <StudioAlbum />
             </ProtectedRoute>
           </AppShell>
         }

@@ -9,6 +9,7 @@ import {
   archivePhoto,
   backupExistingPhotosToDrive,
   bulkSetMembership,
+  createAlbum,
   getEventFaceGroups,
   getPhotoFaces,
   cancelInvite,
@@ -25,6 +26,7 @@ import {
   getShootsCredentials,
   inviteClient,
   inviteCollaborator,
+  listAlbums,
   listClients,
   listCollaborators,
   listEventFavourites,
@@ -225,7 +227,12 @@ export default function EventDetail() {
   const [photoStatusFilter, setPhotoStatusFilter] = useState('active') // active | archived | all
   // Phase 21 — three workspace tabs: manager (files in/out), selection
   // (Photo Selection members + clients), ai (Face Search members + guests).
-  const [activeTab, setActiveTab] = useState('manager') // manager | selection | ai
+  const [activeTab, setActiveTab] = useState('manager') // manager | selection | ai | albums
+  // Phase 23 — Albums tab: album proofing projects for this event.
+  const [albums, setAlbums] = useState(null)
+  const [albumsError, setAlbumsError] = useState('')
+  const [newAlbumName, setNewAlbumName] = useState('')
+  const [creatingAlbum, setCreatingAlbum] = useState(false)
   const [managerSelected, setManagerSelected] = useState({}) // photo_id -> true
   const [bulking, setBulking] = useState(null)
   // Phase 22 — face viewer modal state for the AI member grid.
@@ -237,6 +244,18 @@ export default function EventDetail() {
   const [faceGroupsState, setFaceGroupsState] = useState({ loading: false, error: '', data: null })
   const [openGroupId, setOpenGroupId] = useState(null)
 
+  // Phase 23 — load albums when the Albums tab opens (independent of the
+  // Face Search / Photo Selection feature toggles).
+  const loadAlbums = useCallback(() => {
+    setAlbumsError('')
+    listAlbums(eventId)
+      .then(setAlbums)
+      .catch((e) => setAlbumsError(e.message))
+  }, [eventId])
+  useEffect(() => {
+    if (activeTab !== 'albums' || albums !== null) return
+    loadAlbums()
+  }, [activeTab, albums, loadAlbums])
   // Load face groups on first opening the Faces sub-tab (and refresh
   // whenever the photo list changes, since new faces alter clusters).
   useEffect(() => {
@@ -1655,6 +1674,7 @@ export default function EventDetail() {
               { key: 'manager', label: 'Manager — files in & out' },
               ...(event.photo_selection_enabled ? [{ key: 'selection', label: 'Photo Selection' }] : []),
               ...(event.face_search_enabled ? [{ key: 'ai', label: 'AI Selection' }] : []),
+              { key: 'albums', label: 'Albums' },
             ].map((opt) => (
               <button
                 key={opt.key}
@@ -2467,6 +2487,72 @@ export default function EventDetail() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Phase 23 — Albums tab: album proofing projects. Always available
+          (independent of the feature toggles) for owners + collaborators. */}
+      {activeTab === 'albums' && (event?.role === 'owner' || event?.role === 'collaborator') && (
+        <div className="card">
+          <div className="guest-link-label">Albums ({albums ? albums.length : '…'})</div>
+          <p className="hint">
+            Stage client favourites as zero-cost sources, upload designed spreads or a print PDF,
+            then send the album for pinned client review and approval.
+          </p>
+          <form
+            className="row"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!newAlbumName.trim()) return
+              setCreatingAlbum(true)
+              try {
+                const created = await createAlbum(eventId, { name: newAlbumName.trim(), fromFavourites: true })
+                setNewAlbumName('')
+                showToast(`Album created${created.source_count ? ` — ${created.source_count} favourite${created.source_count === 1 ? '' : 's'} staged` : ''}`)
+                loadAlbums()
+              } catch (err) {
+                showToast(err.message, { type: 'error' })
+              } finally {
+                setCreatingAlbum(false)
+              }
+            }}
+          >
+            <input
+              className="text-input"
+              placeholder="New album name (e.g. Wedding Album)"
+              value={newAlbumName}
+              onChange={(e) => setNewAlbumName(e.target.value)}
+              maxLength={120}
+              style={{ flex: 1, minWidth: 200 }}
+            />
+            <button className="btn" type="submit" disabled={creatingAlbum || !newAlbumName.trim()}>
+              {creatingAlbum ? 'Creating…' : 'Create + stage favourites'}
+            </button>
+          </form>
+          {albumsError && <p className="error">{albumsError}</p>}
+          {!albums ? (
+            <p className="hint">Loading albums…</p>
+          ) : albums.length === 0 ? (
+            <p className="hint">No albums yet — create one above.</p>
+          ) : (
+            <ul className="team-list">
+              {albums.map((a) => (
+                <li key={a.id} className="team-list-item">
+                  <span style={{ flex: 1 }}>
+                    <Link to={`/events/${eventId}/albums/${a.id}`} style={{ fontWeight: 700 }}>{a.name}</Link>
+                    <span className="hint">
+                      {' '}· {a.status.replace(/_/g, ' ').toLowerCase()}
+                      {' '}· {a.version_count} version{a.version_count === 1 ? '' : 's'}
+                      {a.latest_version != null && ` (latest v${a.latest_version})`}
+                      {' '}· {a.source_count} source{a.source_count === 1 ? '' : 's'}
+                      {a.open_pins > 0 && ` · ${a.open_pins} open pin${a.open_pins === 1 ? '' : 's'}`}
+                    </span>
+                  </span>
+                  <Link className="btn secondary" to={`/events/${eventId}/albums/${a.id}`}>Open</Link>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
