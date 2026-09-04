@@ -24,6 +24,9 @@ import NotFound from './pages/public/NotFound.jsx'
 
 // Authenticated Photographer Studio Pages
 import Dashboard from './pages/Dashboard.jsx'
+import Clients from './pages/Clients.jsx'
+import AccessBoard from './pages/AccessBoard.jsx'
+import Settings from './pages/Settings.jsx'
 import EventDetail from './pages/EventDetail.jsx'
 import GuestEvent from './pages/GuestEvent.jsx'
 import GuestUpload from './pages/GuestUpload.jsx'
@@ -45,6 +48,7 @@ import InviteAccept from './pages/InviteAccept.jsx'
 import AcceptClientInvite from './pages/AcceptClientInvite.jsx'
 import ClientEvents from './pages/ClientEvents.jsx'
 import ClientGallery from './pages/ClientGallery.jsx'
+import ClientFavourites from './pages/ClientFavourites.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -52,6 +56,7 @@ import ProtectedRoute from './ProtectedRoute.jsx'
 import AppShell from './components/AppShell.jsx'
 import CameraShutter from './components/CameraShutter.jsx'
 import RouteTransition from './components/RouteTransition.jsx'
+import { ShutterProvider } from './context/ShutterContext.jsx'
 
 // Styles
 import './app.css'
@@ -87,7 +92,7 @@ function AuthLayout({ children }) {
 
 function App() {
   return (
-    <>
+    <ShutterProvider>
       <ScrollToTop />
       <RouteTransition />
       <Routes>
@@ -189,6 +194,16 @@ function App() {
           </AppShell>
         }
       />
+      <Route
+        path="/client/:eventId/favourites"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientFavourites />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
 
       {/* 4. Authenticated Photographer Studio Dashboard Routes */}
       <Route
@@ -204,6 +219,36 @@ function App() {
       <Route
         path="/dashboard"
         element={<Navigate to="/events" replace />}
+      />
+      <Route
+        path="/clients"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Clients />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/access"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <AccessBoard />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          </AppShell>
+        }
       />
       <Route
         path="/events/:eventId"
@@ -330,7 +375,7 @@ function App() {
       <Route path="/404" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
-    </>
+    </ShutterProvider>
   )
 }
 

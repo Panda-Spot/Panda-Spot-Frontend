@@ -14,13 +14,20 @@ async function request(path, options) {
   })
   if (!res.ok) {
     let message = `Request failed (${res.status})`
+    const err = new Error(message)
+    err.status = res.status
     try {
       const body = await res.json()
       message = body.detail || body.message || body.error || message
+      err.message = message
+      // Pass through structured failure context (e.g. client access
+      // denials carry event_name + reason for the Access Expired screen).
+      if (body.event_name !== undefined) err.event_name = body.event_name
+      if (body.reason !== undefined) err.reason = body.reason
     } catch {
       // response wasn't JSON — keep the generic message
     }
-    throw new Error(message)
+    throw err
   }
   if (res.status === 204) return null
   return res.json()
@@ -112,6 +119,27 @@ export const loginWithGoogle = async (idToken) => {
   return data
 }
 
+export const changePassword = (currentPassword, newPassword) =>
+  request("/auth/change-password", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  })
+
+export const adminUnlockAccount = (email) =>
+  request("/admin/users/unlock-account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+
+export const adminResetAccountPassword = (email, newPassword) =>
+  request("/admin/users/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, new_password: newPassword }),
+  })
+
 // --- Events (photographer, authenticated) ---
 
 export const createEvent = (name) =>
@@ -121,9 +149,63 @@ export const createEvent = (name) =>
     body: JSON.stringify({ name }),
   })
 
-export const listEvents = () => request("/events")
+export const listEvents = (status) => {
+  const params = new URLSearchParams()
+  if (status) params.set("status", status)
+  const qs = params.toString()
+  return request(`/events${qs ? `?${qs}` : ""}`)
+}
 
 export const getEvent = (eventId) => request(`/events/${eventId}`)
+
+export const updateEvent = (eventId, patch) =>
+  request(`/events/${eventId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const publishEvent = (eventId) =>
+  request(`/events/${eventId}/publish`, { method: "POST" })
+
+export const archiveEvent = (eventId) =>
+  request(`/events/${eventId}/archive`, { method: "POST" })
+
+export const restoreEvent = (eventId) =>
+  request(`/events/${eventId}/restore`, { method: "POST" })
+
+export const setEventAllowDownload = (eventId, allowDownload) =>
+  request(`/events/${eventId}/allow-download`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ allow_download: allowDownload }),
+  })
+
+export const uploadEventCover = (eventId, coverBlob) => {
+  const form = new FormData()
+  form.append("cover", coverBlob, "cover.jpg")
+  return request(`/events/${eventId}/cover`, { method: "POST", body: form })
+}
+
+export const deleteEventCover = (eventId) =>
+  request(`/events/${eventId}/cover`, { method: "DELETE" })
+
+// Studio read-side of Photo Selection favourites: per-client groups plus a
+// deduplicated merged view with favourited_by attribution.
+export const listEventFavourites = (eventId) => request(`/events/${eventId}/favourites`)
+
+// Studio's own picks (independent of client favourites).
+export const listStudioPicks = (eventId) => request(`/events/${eventId}/studio-picks`)
+
+export const addStudioPick = (eventId, photoId) =>
+  request(`/events/${eventId}/studio-picks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_id: photoId }),
+  })
+
+export const removeStudioPick = (eventId, photoId) =>
+  request(`/events/${eventId}/studio-picks/${photoId}`, { method: "DELETE" })
 
 // Required before any upload/import/Shoots activity can happen on this
 // event — see the "started" field on getEvent()'s response.
@@ -276,6 +358,51 @@ export const backupExistingPhotosToDrive = (eventId, source) =>
 
 export const getBranding = () => request("/branding")
 
+export const getStudioProfile = () => request("/branding/profile")
+
+export const updateStudioProfile = (patch) =>
+  request("/branding/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const getBillingSettings = () => request("/billing/settings")
+
+export const updateBillingSettings = (patch) =>
+  request("/billing/settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const getStudioAnalyticsSummary = () => request("/events/analytics/summary")
+
+// --- Resumable large-file upload (files too big for one multipart POST) ---
+
+export const initiateLargeUpload = (eventId, filename, fileSize, contentType) =>
+  request(`/events/${eventId}/uploads/large/initiate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename, file_size: fileSize, content_type: contentType }),
+  })
+
+export const getLargeUploadStage = (eventId, stageId) =>
+  request(`/events/${eventId}/uploads/large/${stageId}`)
+
+export const completeLargeUpload = (eventId, stageId) =>
+  request(`/events/${eventId}/uploads/large/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage_id: stageId }),
+  })
+
+export const abortLargeUpload = (eventId, stageId) =>
+  request(`/events/${eventId}/uploads/large/abort`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage_id: stageId }),
+  })
 export const saveBranding = (studioName, brandColor, logoFile, watermarkIntensity) => {
   const form = new FormData()
   form.append("studio_name", studioName || "")
@@ -361,8 +488,8 @@ export const deleteAdminUser = (userId, confirmEmail) =>
     body: JSON.stringify({ confirm_email: confirmEmail }),
   })
 
-export const listAdminEvents = (search, page = 1) =>
-  request(`/admin/events?search=${encodeURIComponent(search || "")}&page=${page}`)
+export const listAdminEvents = (search, page = 1, status) =>
+  request(`/admin/events?search=${encodeURIComponent(search || "")}&page=${page}${status ? `&status=${status}` : ""}`)
 
 export const getAdminEvent = (eventId) => request(`/admin/events/${eventId}`)
 
@@ -547,6 +674,25 @@ export const listClients = (eventId) => request(`/events/${eventId}/clients`)
 export const removeClient = (eventId, userId) =>
   request(`/events/${eventId}/clients/${userId}`, { method: "DELETE" })
 
+export const updateClientGrant = (eventId, userId, patch) =>
+  request(`/events/${eventId}/clients/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const submitClientOnBehalf = (eventId, userId) =>
+  request(`/events/${eventId}/clients/${userId}/submit`, { method: "POST" })
+
+export const unsubmitClientOnBehalf = (eventId, userId) =>
+  request(`/events/${eventId}/clients/${userId}/unsubmit`, { method: "POST" })
+
+export const revokeClient = (eventId, userId) =>
+  request(`/events/${eventId}/clients/${userId}/revoke`, { method: "POST" })
+
+export const restoreClient = (eventId, userId) =>
+  request(`/events/${eventId}/clients/${userId}/restore`, { method: "POST" })
+
 // --- Photo Selection: client-invite acceptance (public, no auth yet) ---
 
 export const getClientInvite = (token) => request(`/client-invites/${token}`)
@@ -578,6 +724,42 @@ export const toggleClientFavourite = (eventId, photoId, favourite) =>
 
 export const submitClientSelection = (eventId) =>
   request(`/client/events/${eventId}/submit`, { method: "POST" })
+
+export const listStudioPickIds = (eventId) => request(`/client/events/${eventId}/studio-pick-ids`)
+
+// The client's own favourited photos as one zip (honors the studio's
+// allow_download opt-out server-side). Streams the response so callers can
+// show byte/speed progress; resolves with the finished Blob.
+export const downloadClientFavouritesZip = async (eventId, onProgress) => {
+  const token = getToken()
+  const res = await fetch(fileUrl(`/client/events/${eventId}/download-zip`), {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    let message = `Download failed (${res.status})`
+    try {
+      const body = await res.json()
+      message = body.error || body.message || message
+    } catch {
+      // non-JSON error — keep generic
+    }
+    throw new Error(message)
+  }
+  const total = Number(res.headers.get("content-length")) || null
+  const reader = res.body.getReader()
+  const chunks = []
+  let loaded = 0
+  const startedAt = Date.now()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    loaded += value.length
+    onProgress?.({ loaded, total, speed: loaded / Math.max(0.1, (Date.now() - startedAt) / 1000) })
+  }
+  return new Blob(chunks, { type: "application/zip" })
+}
 
 // --- Billing & Subscriptions (MERGE: Studio-Verse, Phase 12) ---
 
@@ -616,6 +798,8 @@ export const rechargeWallet = (planId) =>
   })
 
 export const listWalletTransactions = () => request(`/subscriptions/wallet/transactions`)
+
+export const listSubscriptionHistory = () => request(`/subscriptions/history`)
 
 export const listBillingServices = () => request(`/billing/services`)
 

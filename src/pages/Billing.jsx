@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CreditCard, Wallet as WalletIcon } from 'lucide-react'
 import {
   activateTrial,
   downgradeSubscription,
   getMySubscription,
   listEvents,
+  listSubscriptionHistory,
   listSubscriptionPlans,
   listWalletTransactions,
   rechargeWallet,
   subscribeToPlan,
   upgradeSubscription,
 } from '../api.js'
+import { useConfirm } from '../confirm.jsx'
+import { useToast } from '../toast.jsx'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
+import Badge from '../components/ui/Badge.jsx'
+import StatCard from '../components/ui/StatCard.jsx'
 
 const FREE_EVENT_LIMIT = 15
 
-// MERGE (Studio-Verse Billing & Subscriptions): subscription quota gates
-// are wired into uploads/imports/Shoots. Super Admin can temporarily keep
-// global free access enabled from the platform settings page.
+// Subscription quota gates are wired into uploads/imports/Shoots. Super
+// Admin can temporarily keep global free access enabled from the platform
+// settings page.
 export default function Billing() {
+  const confirm = useConfirm()
+  const { showToast } = useToast()
   const [eventCount, setEventCount] = useState(null)
   const [subscription, setSubscription] = useState(null)
   const [freeAccessEnabled, setFreeAccessEnabled] = useState(false)
@@ -25,6 +35,7 @@ export default function Billing() {
   const [aiIndexedPhotoCount, setAiIndexedPhotoCount] = useState(0)
   const [plans, setPlans] = useState(null)
   const [transactions, setTransactions] = useState([])
+  const [history, setHistory] = useState([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -40,6 +51,7 @@ export default function Billing() {
       .catch(() => {})
     listSubscriptionPlans().then(setPlans).catch(() => setPlans([]))
     listWalletTransactions().then(setTransactions).catch(() => setTransactions([]))
+    listSubscriptionHistory().then(setHistory).catch(() => setHistory([]))
   }
 
   useEffect(load, [])
@@ -52,9 +64,21 @@ export default function Billing() {
       load()
     } catch (e) {
       setError(e.message)
+      showToast(e.message, { type: 'error' })
     } finally {
       setBusy(false)
     }
+  }
+
+  // Downgrading forfeits the price difference with no refund (enforced
+  // server-side) — say so explicitly before the irreversible call.
+  const handleDowngrade = async (planId, planName) => {
+    const ok = await confirm(
+      `Downgrade to "${planName}"? The price difference is forfeited — there is no refund, and your quota ceiling drops immediately.`,
+      { title: 'Downgrade plan?', confirmLabel: 'Downgrade', danger: true }
+    )
+    if (!ok) return
+    withBusy(() => downgradeSubscription(planId))
   }
 
   const subscriptionPlans = (plans || []).filter((p) => p.planType === 'SUBSCRIPTION')
@@ -62,13 +86,21 @@ export default function Billing() {
   const hasWallet = transactions.length > 0 || walletBalance > 0
 
   return (
-    <div>
-      <h1 className="section-title">Billing</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <CreditCard size={22} className="text-gold-500" /> Billing
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          Your SaaS subscription, wallet credits, and client invoicing.
+        </p>
+      </div>
+
       {freeAccessEnabled && (
         <p className="hint">Platform free access is currently enabled. Upload quota tracking is wired but not enforced until the platform turns free access off.</p>
       )}
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Free plan (event limits)</div>
         <ul className="billing-limits">
           <li>Up to {FREE_EVENT_LIMIT} events per account</li>
@@ -88,16 +120,19 @@ export default function Billing() {
             </div>
           </>
         )}
-      </div>
+      </GlassCard>
 
       {error && <p className="error">{error}</p>}
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Subscription</div>
         {subscription ? (
           <>
             <p className="subtle">
-              <strong>{subscription.plan_name || 'Trial'}</strong> — {subscription.status}
+              <strong>{subscription.plan_name || 'Trial'}</strong>{' '}
+              <Badge variant={subscription.status === 'TRIAL' || subscription.status === 'ACTIVE' ? 'success' : subscription.status === 'GRACE' ? 'gold' : 'error'}>
+                {subscription.status}
+              </Badge>
               {subscription.expires_at && ` · renews/expires ${new Date(subscription.expires_at).toLocaleDateString()}`}
             </p>
             <p className="hint">
@@ -111,9 +146,9 @@ export default function Billing() {
         )}
 
         {!subscription && (
-          <button className="btn" type="button" disabled={busy} onClick={() => withBusy(activateTrial)}>
+          <GoldButton type="button" loading={busy} onClick={() => withBusy(activateTrial)}>
             Start free trial
-          </button>
+          </GoldButton>
         )}
 
         {plans === null ? (
@@ -131,29 +166,35 @@ export default function Billing() {
                   <p className="hint">₹{Number(p.price)} / {p.durationValue} {p.durationUnit?.toLowerCase()}</p>
                   <p className="hint">{p.photoQuota} photos</p>
                   {isCurrent ? (
-                    <span className="hint">Current plan</span>
+                    <Badge variant="gold">Current plan</Badge>
                   ) : subscription && subscription.status !== 'GRACE' && subscription.status !== 'EXPIRED' && subscription.plan_name ? (
-                    <button
-                      className="btn secondary"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => withBusy(() => (isHigher ? upgradeSubscription(p.id) : downgradeSubscription(p.id)))}
-                    >
-                      {isHigher ? 'Upgrade' : 'Downgrade'}
-                    </button>
+                    isHigher ? (
+                      <GoldButton size="sm" type="button" disabled={busy} onClick={() => withBusy(() => upgradeSubscription(p.id))}>
+                        Upgrade
+                      </GoldButton>
+                    ) : (
+                      <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => handleDowngrade(p.id, p.planName)}>
+                        Downgrade
+                      </GoldButton>
+                    )
                   ) : (
-                    <button className="btn secondary" type="button" disabled={busy} onClick={() => withBusy(() => subscribeToPlan(p.id))}>
+                    <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => withBusy(() => subscribeToPlan(p.id))}>
                       Subscribe
-                    </button>
+                    </GoldButton>
                   )}
                 </div>
               )
             })}
           </div>
         )}
+      </GlassCard>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <StatCard label="Wallet balance" value={walletBalance} icon={WalletIcon} />
+        <StatCard label="AI-indexed photos" value={aiIndexedPhotoCount} icon={CreditCard} />
       </div>
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Wallet</div>
         <p className="subtle">Balance: <strong>{walletBalance} credits</strong></p>
         <p className="hint">
@@ -165,14 +206,15 @@ export default function Billing() {
               <div className="photo-card" key={p.id} style={{ padding: 16 }}>
                 <div className="guest-link-label">{p.planName}</div>
                 <p className="hint">₹{Number(p.price)} for {p.walletCredits} credits</p>
-                <button
-                  className="btn secondary"
+                <GoldButton
+                  size="sm"
+                  variant="outline"
                   type="button"
                   disabled={busy || (p.walletTier === 'INITIAL' && hasWallet) || (p.walletTier === 'TOPUP' && !hasWallet)}
                   onClick={() => withBusy(() => rechargeWallet(p.id))}
                 >
                   {p.walletTier === 'INITIAL' ? 'Activate wallet' : 'Top up'}
-                </button>
+                </GoldButton>
               </div>
             ))}
           </div>
@@ -187,13 +229,36 @@ export default function Billing() {
             ))}
           </ul>
         )}
-      </div>
+      </GlassCard>
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Quotations, bills & payments</div>
         <p className="hint">Create quotations for clients, confirm them into bills, and record payments.</p>
-        <Link className="btn secondary" to="/billing/documents">Open billing documents</Link>
-      </div>
+        <Link to="/billing/documents">
+          <GoldButton variant="outline">Open Invoicing</GoldButton>
+        </Link>
+      </GlassCard>
+
+      {history.length > 0 && (
+        <GlassCard hover={false}>
+          <div className="guest-link-label">Plan history</div>
+          <p className="hint">Every subscribe, upgrade, downgrade, trial, and free grant on this account.</p>
+          <ul className="team-list" style={{ marginTop: 8 }}>
+            {history.map((h) => (
+              <li key={h.id} className="team-list-item">
+                <span>
+                  {h.change_type || '—'} — {h.plan_name || 'Trial'}{' '}
+                  <Badge variant={h.status === 'TRIAL' || h.status === 'ACTIVE' ? 'success' : h.status === 'GRACE' ? 'gold' : 'default'}>
+                    {h.status}
+                  </Badge>
+                  {h.is_free_grant && <span className="hint"> · free grant</span>}
+                </span>
+                <span className="hint">{h.starts_at ? new Date(h.starts_at).toLocaleDateString() : '—'}</span>
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
     </div>
   )
 }

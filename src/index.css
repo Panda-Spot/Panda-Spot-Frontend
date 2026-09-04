@@ -1,37 +1,64 @@
-/* MERGE (Studio-Verse merge, Phase 16 — new design system, MERGE_PLAN.md
-   D4): a fresh camera-circle + shutter identity, built from scratch —
-   neither PandaSpot's old purple/pink nor Studio-Verse's gold/glass
-   survives. The palette is a "lens" duotone: a deep teal (glass
-   anti-reflective coating) as the primary accent, paired with a warm
-   amber (flash/tungsten light) as the secondary — evoking a camera lens
-   with light passing through its iris, distinct from both source
-   products' identities. Every other file in this app already reads
-   colors through these same custom properties, so this single edit is
-   what actually re-themes the entire product — see components/
-   CameraShutter.jsx for this system's signature animated motif. */
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* ─── Design Tokens (Studio-Verse gold-on-glass, ported exactly) ─── */
 :root {
-  --text: #5b6169;
-  --text-h: #0d1115;
-  --bg: #fff;
-  --border: #e2e6e9;
-  --card-bg: #f6f8f9;
-  --accent: #0e8a8a;
-  --accent-2: #f0a020;
-  --accent-bg: rgba(14, 138, 138, 0.1);
-  --accent-border: rgba(14, 138, 138, 0.5);
-  --danger: #d0342c;
+  /* Light mode (Ivory) */
+  --bg-base: #FAFAF8;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F5F5F0;
+  --bg-overlay: #EDEDEA;
 
-  --gradient-brand: linear-gradient(135deg, var(--accent), var(--accent-2));
-  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.06);
-  --shadow-md: 0 4px 12px rgba(11, 11, 11, 0.08);
-  --shadow-lg: 0 12px 32px rgba(11, 11, 11, 0.12);
+  --border-subtle: #E8E8E4;
+  --border-default: #D8D8D2;
+  --border-strong: #C0C0B8;
+
+  --text-primary: #111113;
+  --text-secondary: #5A5A65;
+  --text-tertiary: #9A9AA5;
+  --text-inverse: #F5F5F7;
+
+  --accent-primary: #D97706;
+  --accent-hover: #B45309;
+  --accent-muted: rgba(217, 119, 6, 0.10);
+
+  --success: #10B981;
+  --success-muted: rgba(16, 185, 129, 0.12);
+  --error: #EF4444;
+  --error-muted: rgba(239, 68, 68, 0.12);
+  --warning: #F59E0B;
+  --info: #3B82F6;
+  --info-muted: rgba(59, 130, 246, 0.12);
+
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 100%);
+  --gradient-gold: linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #92400E 100%);
+  --gradient-glow-gold: radial-gradient(ellipse at center, rgba(245,158,11,0.15) 0%, transparent 70%);
+  --gradient-image-fade: linear-gradient(to bottom, transparent 60%, rgba(10,10,11,0.9) 100%);
+
+  /* ── Backward-compatible aliases: every pre-existing PandaSpot page
+     reads these names (app.css, marketing.css, guest pages). They resolve
+     to the gold system above so old pages re-theme without rewrites. ── */
+  --text: var(--text-secondary);
+  --text-h: var(--text-primary);
+  --bg: var(--bg-base);
+  --border: var(--border-default);
+  --card-bg: var(--bg-surface);
+  --accent: var(--accent-primary);
+  --accent-2: #F59E0B;
+  --accent-bg: var(--accent-muted);
+  --accent-border: rgba(217, 119, 6, 0.5);
+  --danger: var(--error);
+  --gradient-brand: var(--gradient-gold);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.10);
   --radius-lg: 16px;
   --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Sora', system-ui, sans-serif;
+  --sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
 
   font: 16px/145% var(--sans);
   color-scheme: light;
@@ -41,36 +68,58 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-:root[data-theme='dark'] {
-  color-scheme: dark;
-}
-
 /* Theme is a manual toggle (see src/theme.jsx), not OS-driven — default is
    always light regardless of system preference; `data-theme="dark"` is set
    on <html> only once the user explicitly switches, and index.html's inline
    script applies it synchronously before paint to avoid a flash. */
 :root[data-theme='dark'] {
-  --text: #9aa5ab;
-  --text-h: #eef2f3;
-  --bg: #12181a;
-  --border: #263033;
-  --card-bg: #182022;
-  --accent: #2dd4c8;
-  --accent-2: #ffb84d;
-  --accent-bg: rgba(45, 212, 200, 0.15);
-  --accent-border: rgba(45, 212, 200, 0.5);
+  /* Dark mode (Obsidian) */
+  --bg-base: #0A0A0B;
+  --bg-surface: #111113;
+  --bg-elevated: #1A1A1E;
+  --bg-overlay: #242428;
+
+  --border-subtle: #1F1F23;
+  --border-default: #2A2A30;
+  --border-strong: #3A3A42;
+
+  --text-primary: #F5F5F7;
+  --text-secondary: #A0A0AB;
+  --text-tertiary: #6B6B76;
+  --text-inverse: #0A0A0B;
+
+  --accent-primary: #F59E0B;
+  --accent-hover: #FBBF24;
+  --accent-muted: rgba(245, 158, 11, 0.12);
+
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  --accent-border: rgba(245, 158, 11, 0.5);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* ─── Global Transitions ──────────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 h1, h2, h3 {
@@ -92,11 +141,174 @@ input, button {
   font: inherit;
 }
 
-/* MERGE (Studio-Verse merge, Phase 16 — new design system): the camera-
-   iris shutter motif — see components/CameraShutter.jsx. A ring of
-   trapezoidal "blades" around a center lens circle, styled with the
-   brand gradient so the motif itself carries the new palette everywhere
-   it appears. */
+/* ─── Scrollbar Styling ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+/* ─── Gold Shimmer Text ──────────────────────────────────── */
+.text-gold-shimmer {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Skeleton Shimmer ───────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    var(--bg-overlay) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* ─── Glass card utility ─────────────────────────────────── */
+.glass {
+  background: var(--gradient-glass);
+  border: 1px solid var(--border-default);
+}
+
+/* ─── No-download protection ─────────────────────────────── */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ─── Page transition overlay ────────────────────────────── */
+#page-transition {
+  position: fixed;
+  inset: 0;
+  background: var(--gradient-gold);
+  z-index: 9998;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  pointer-events: none;
+}
+
+/* ─── Custom focus ring ──────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ─── Grain texture overlay ──────────────────────────────── */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ─── Masonry Grid ───────────────────────────────────────── */
+.masonry-grid {
+  columns: 3;
+  column-gap: 16px;
+}
+.masonry-grid > * {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+@media (max-width: 1024px) { .masonry-grid { columns: 2; } }
+@media (max-width: 640px) { .masonry-grid { columns: 1; } }
+
+/* ─── Lightbox heart flash ───────────────────────────────── */
+@keyframes lb-heart-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  30%  { opacity: 1; transform: scale(1.2); }
+  60%  { opacity: 1; transform: scale(1);   }
+  100% { opacity: 0; transform: scale(1);   }
+}
+
+/* ─── Gallery zoom slider ────────────────────────────────── */
+.gallery-zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-default);
+  outline: none;
+  cursor: pointer;
+}
+.gallery-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.gallery-zoom-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+.gallery-zoom-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  cursor: pointer;
+}
+
+/* ─── Input floating label ───────────────────────────────── */
+.input-group { position: relative; }
+.input-group input:focus ~ label,
+.input-group input:not(:placeholder-shown) ~ label {
+  transform: translateY(-22px) scale(0.85);
+  color: var(--accent-primary);
+}
+.input-group label {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  transition: transform 0.2s ease, color 0.2s ease;
+  transform-origin: left;
+  pointer-events: none;
+}
+
+/* ─── Brand colours ────────────────────────────────────────
+   Tenant-set brand palette overrides the default gold on client-facing
+   pages. The wrapper (data-brand) carries --brand-primary etc.; these
+   rules remap the Tailwind gold utilities to the brand values. */
+[data-brand] {
+  --accent-primary: var(--brand-primary, var(--accent-primary));
+  --accent-hover: var(--brand-secondary, var(--accent-hover));
+  --accent-muted: var(--brand-primary-12, rgba(245, 158, 11, 0.12));
+}
+[data-brand] .text-gold-500 { color: var(--brand-primary, #F59E0B); }
+[data-brand] .text-gold-400 { color: var(--brand-secondary, #D97706); }
+[data-brand] .bg-gold-500 { background-color: var(--brand-primary, #F59E0B); }
+[data-brand] .bg-gold-400 { background-color: var(--brand-secondary, #D97706); }
+[data-brand] .border-gold-500 { border-color: var(--brand-primary, #F59E0B); }
+[data-brand] .fill-gold-500 { fill: var(--brand-primary, #F59E0B); }
+[data-brand] .ring-gold-500 { --tw-ring-color: var(--brand-primary, #F59E0B); }
+[data-brand] .shadow-gold {
+  box-shadow: 0 0 0 1px var(--brand-primary-30, rgba(245,158,11,0.3)),
+              0 4px 20px var(--brand-primary-15, rgba(245,158,11,0.15));
+}
+[data-brand] .shadow-gold-lg {
+  box-shadow: 0 0 0 1px var(--brand-primary-40, rgba(245,158,11,0.4)),
+              0 8px 40px var(--brand-primary-25, rgba(245,158,11,0.25));
+}
+
+/* ─── PandaSpot camera-iris shutter motif (kept) ───
+   See components/CameraShutter.jsx. A ring of trapezoidal "blades"
+   around a center lens circle, styled with the brand gradient so the
+   motif itself carries the palette everywhere it appears. */
 .camera-shutter {
   position: relative;
   display: inline-block;
@@ -159,7 +371,7 @@ input, button {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* MERGE (Phase 16): the app-wide route-change shutter transition — see
+/* The app-wide route-change shutter transition — see
    components/RouteTransition.jsx. Closes to black, then opens to reveal
    the page React Router has already swapped in underneath. */
 .route-shutter-overlay {
@@ -216,7 +428,7 @@ input, button {
   to { opacity: 0; }
 }
 
-/* MERGE: the guest landing page's first-paint reveal — see GuestEvent.jsx. */
+/* The guest landing page's first-paint reveal — see GuestEvent.jsx. */
 .guest-shutter-overlay {
   position: fixed;
   inset: 0;

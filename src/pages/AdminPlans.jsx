@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowDown, ArrowUp, CreditCard } from 'lucide-react'
 import {
   createAdminPlan,
   getAdminPlatformSettings,
@@ -6,6 +7,9 @@ import {
   updateAdminPlan,
   updateAdminPlatformSettings,
 } from '../api.js'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
+import Badge from '../components/ui/Badge.jsx'
 
 const PLAN_TYPES = ['SUBSCRIPTION', 'WALLET']
 const DURATION_UNITS = ['DAYS', 'MONTHS', 'YEARS']
@@ -112,6 +116,27 @@ export default function AdminPlans() {
     }
   }
 
+  // Catalog order is the display_order column — move swaps this plan's
+  // value with its neighbour's through the regular plan-update endpoint
+  // (same end state as a dedicated reorder call, no extra backend needed).
+  const handleMove = async (plan, dir) => {
+    const sorted = [...(plans || [])].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+    const idx = sorted.findIndex((p) => p.id === plan.id)
+    const other = sorted[idx + dir]
+    if (!other) return
+    setBusy(true)
+    setError('')
+    try {
+      await updateAdminPlan(plan.id, { display_order: other.displayOrder ?? 0 })
+      await updateAdminPlan(other.id, { display_order: plan.displayOrder ?? 0 })
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleSavePlan = async (plan) => {
     const d = planDrafts[plan.id]
     setBusy(true)
@@ -166,11 +191,18 @@ export default function AdminPlans() {
   if (!plans || !settings) return <p className="hint">Loading…</p>
 
   return (
-    <div>
-      <h1 className="section-title">Plans & platform settings</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <CreditCard size={22} className="text-gold-500" /> Plans & platform settings
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          The plan catalog, special-access windows, and platform-wide trial/grace defaults.
+        </p>
+      </div>
       {error && <p className="error">{error}</p>}
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Trial & grace period defaults</div>
         <p className="hint">Trial/grace values apply to new subscriptions. Free platform access bypasses upload quota enforcement until disabled.</p>
         <form onSubmit={handleSaveSettings}>
@@ -196,11 +228,11 @@ export default function AdminPlans() {
               Free access for all studios
             </label>
           </div>
-          <button className="btn" type="submit" disabled={busy} style={{ marginTop: 8 }}>Save</button>
+          <GoldButton type="submit" loading={busy} style={{ marginTop: 8 }}>Save</GoldButton>
         </form>
-      </div>
+      </GlassCard>
 
-      <div className="card billing-card">
+      <GlassCard hover={false}>
         <div className="guest-link-label">Add a plan</div>
         <form onSubmit={handleCreate}>
           <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
@@ -240,17 +272,25 @@ export default function AdminPlans() {
             <span className="hint">Only studios created before this date can select the plan. Blank means public.</span>
           </div>
 
-          <button className="btn" type="submit" disabled={busy || !draft.plan_name.trim() || !draft.price} style={{ marginTop: 8 }}>
+          <GoldButton type="submit" loading={busy} disabled={!draft.plan_name.trim() || !draft.price} style={{ marginTop: 8 }}>
             Create plan
-          </button>
+          </GoldButton>
         </form>
-      </div>
+      </GlassCard>
 
-      <div className="card billing-card">
-        <div className="guest-link-label">Existing plans</div>
+      <GlassCard hover={false}>
+        <div className="guest-link-label">Existing plans (catalog order)</div>
         <ul className="team-list">
-          {plans.map((p) => (
-            <li key={p.id} className="team-list-item">
+          {[...(plans || [])].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)).map((p, idx, sorted) => (
+            <li key={p.id} className="team-list-item" style={{ alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: 4, flexDirection: 'column', paddingTop: 4 }}>
+                <button className="dismiss-btn" type="button" title="Move up" disabled={busy || idx === 0} onClick={() => handleMove(p, -1)}>
+                  <ArrowUp size={14} />
+                </button>
+                <button className="dismiss-btn" type="button" title="Move down" disabled={busy || idx === sorted.length - 1} onClick={() => handleMove(p, 1)}>
+                  <ArrowDown size={14} />
+                </button>
+              </div>
               <div style={{ flex: 1 }}>
                 <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
                   <input className="text-input" value={planDrafts[p.id]?.plan_name || ''} onChange={(e) => updatePlanDraft(p.id, { plan_name: e.target.value })} style={{ maxWidth: 220 }} />
@@ -280,20 +320,21 @@ export default function AdminPlans() {
                   </div>
                 )}
                 <span className="hint">
-                  {p.planType} · {p.specialAccessCutoffDate ? `special before ${dateInputValue(p.specialAccessCutoffDate)}` : 'public'}{!p.isActive && ' · inactive'}
+                  {p.planType} · {p.specialAccessCutoffDate ? `special before ${dateInputValue(p.specialAccessCutoffDate)}` : 'public'}{' '}
+                  {p.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="default">Inactive</Badge>}
                 </span>
               </div>
               <span className="row">
-                <button className="btn secondary" type="button" disabled={busy} onClick={() => handleSavePlan(p)}>Save</button>
-                <button className="btn secondary" type="button" disabled={busy} onClick={() => handleToggleActive(p)}>
+                <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => handleSavePlan(p)}>Save</GoldButton>
+                <GoldButton size="sm" variant="ghost" type="button" disabled={busy} onClick={() => handleToggleActive(p)}>
                   {p.isActive ? 'Deactivate' : 'Reactivate'}
-                </button>
+                </GoldButton>
               </span>
             </li>
           ))}
           {plans.length === 0 && <li className="hint">No plans yet — create one above.</li>}
         </ul>
-      </div>
+      </GlassCard>
     </div>
   )
 }

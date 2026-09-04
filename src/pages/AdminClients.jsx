@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Building2 } from 'lucide-react'
 import { createAdminStudio, listAdminPlans, listAdminUsers, suspendAdminUser, unsuspendAdminUser } from '../api.js'
+import { useConfirm } from '../confirm.jsx'
+import { useToast } from '../toast.jsx'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
+import Badge from '../components/ui/Badge.jsx'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
 }
 
 export default function AdminClients() {
+  const confirm = useConfirm()
+  const { showToast } = useToast()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
@@ -59,11 +67,19 @@ export default function AdminClients() {
   }
 
   const handleToggleSuspend = async (user) => {
+    if (!user.is_suspended) {
+      const ok = await confirm(
+        `Suspend ${user.email}? They and their clients lose access immediately; nothing is deleted.`,
+        { title: 'Suspend studio?', confirmLabel: 'Suspend' }
+      )
+      if (!ok) return
+    }
     setTogglingId(user.id)
     setError('')
     try {
       if (user.is_suspended) await unsuspendAdminUser(user.id)
       else await suspendAdminUser(user.id)
+      showToast(user.is_suspended ? 'Studio reactivated' : 'Studio suspended')
       load()
     } catch (e) {
       setError(e.message)
@@ -75,11 +91,18 @@ export default function AdminClients() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
 
   return (
-    <div>
-      <h1 className="section-title">Clients</h1>
-      <p className="subtle">Every studio account on the platform — search, review usage, and act on one.</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <Building2 size={22} className="text-gold-500" /> Studios
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          Every studio account on the platform — search, review usage, and act on one.
+        </p>
+      </div>
 
-      <form className="card billing-card" onSubmit={handleCreate}>
+      <GlassCard hover={false}>
+      <form onSubmit={handleCreate}>
         <div className="guest-link-label">Create studio</div>
         <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
           <input className="text-input" placeholder="Studio / owner name" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
@@ -92,21 +115,25 @@ export default function AdminClients() {
             {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
           </select>
           <input className="text-input" type="date" value={draft.free_access_until} onChange={(e) => setDraft((d) => ({ ...d, free_access_until: e.target.value }))} disabled={!draft.plan_id} />
-          <button className="btn" type="submit" disabled={creating || !draft.name.trim() || !draft.email.trim() || (!!draft.plan_id && !draft.free_access_until)}>
-            {creating ? 'Creating…' : 'Create studio'}
-          </button>
+          <GoldButton type="submit" loading={creating} disabled={!draft.name.trim() || !draft.email.trim() || (!!draft.plan_id && !draft.free_access_until)}>
+            Create studio
+          </GoldButton>
         </div>
         {createdStudio && (
-          <p className="hint">
+          <p className="hint" style={{ border: '1px dashed var(--accent-primary)', borderRadius: 8, padding: 8, marginTop: 8 }}>
             Created {createdStudio.email}
-            {createdStudio.generated_password && ` · temporary password: ${createdStudio.generated_password}`}
+            {createdStudio.generated_password && (
+              <> · temporary password (shown once): <strong style={{ userSelect: 'all' }}>{createdStudio.generated_password}</strong></>
+            )}
+            {createdStudio.credentials_email_sent === false && createdStudio.generated_password && ' · the credentials email could not be sent — copy it now.'}
           </p>
         )}
       </form>
+      </GlassCard>
 
-      <div className="data-table-toolbar">
+      <GlassCard hover={false}>
         <input
-          className="text-input"
+          className="text-input w-full"
           placeholder="Search by name or email…"
           value={search}
           onChange={(e) => {
@@ -114,7 +141,7 @@ export default function AdminClients() {
             setSearch(e.target.value)
           }}
         />
-      </div>
+      </GlassCard>
 
       {error && <p className="error">{error}</p>}
 
@@ -142,30 +169,31 @@ export default function AdminClients() {
                     <td>{u.name}</td>
                     <td>{u.email}</td>
                     <td>
-                      <span className={`status-pill ${u.is_suspended ? 'suspended' : 'active'}`}>
-                        {u.is_suspended ? 'Suspended' : 'Active'}
-                      </span>
+                      {u.is_suspended ? <Badge variant="error">Suspended</Badge> : <Badge variant="success">Active</Badge>}
                     </td>
                     <td>{u.email_verified ? 'Yes' : 'No'}</td>
                     <td>{u.event_count}</td>
                     <td>{formatBytes(u.storage_used_bytes)}</td>
                     <td>{new Date(u.created_at).toLocaleDateString()}</td>
                     <td className="actions-cell">
-                      <Link className="btn secondary" to={`/admin/clients/${u.id}`}>View</Link>
-                      <button
-                        className={`btn ${u.is_suspended ? 'secondary' : 'danger-btn'}`}
-                        type="button"
-                        onClick={() => handleToggleSuspend(u)}
-                        disabled={togglingId === u.id}
-                      >
-                        {u.is_suspended ? 'Reactivate' : 'Suspend'}
-                      </button>
+                      <Link to={`/admin/clients/${u.id}`}>
+                        <GoldButton size="sm" variant="outline">View</GoldButton>
+                      </Link>
+                      {u.is_suspended ? (
+                        <GoldButton size="sm" variant="outline" type="button" onClick={() => handleToggleSuspend(u)} disabled={togglingId === u.id}>
+                          Reactivate
+                        </GoldButton>
+                      ) : (
+                        <GoldButton size="sm" variant="danger" type="button" onClick={() => handleToggleSuspend(u)} disabled={togglingId === u.id}>
+                          Suspend
+                        </GoldButton>
+                      )}
                     </td>
                   </tr>
                 ))}
                 {data.users.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="hint">No clients match that search.</td>
+                    <td colSpan={8} className="hint">No studios match that search.</td>
                   </tr>
                 )}
               </tbody>
@@ -175,13 +203,13 @@ export default function AdminClients() {
           <div className="data-table-pagination">
             <span>{data.total} studio{data.total === 1 ? '' : 's'} total</span>
             <div className="row">
-              <button className="btn secondary" type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <GoldButton size="sm" variant="outline" type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 Previous
-              </button>
+              </GoldButton>
               <span>Page {page} of {totalPages}</span>
-              <button className="btn secondary" type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <GoldButton size="sm" variant="outline" type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
                 Next
-              </button>
+              </GoldButton>
             </div>
           </div>
         </>

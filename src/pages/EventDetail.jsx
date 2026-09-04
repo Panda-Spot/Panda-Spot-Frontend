@@ -1,44 +1,63 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Search, Users, Target, Flag, CheckCircle2, XCircle } from 'lucide-react'
+import Cropper from 'react-easy-crop'
+import { Archive, ArchiveRestore, CalendarDays, Download, MapPin, Pencil, Search, Star, Users, Target, Flag, CheckCircle2, XCircle } from 'lucide-react'
 import {
+  addStudioPick,
   approvePhoto,
+  archiveEvent,
   backupExistingPhotosToDrive,
   cancelInvite,
   connectDriveFolder,
+  createSubGallery,
   deleteEvent,
+  deleteEventCover,
   deletePhoto,
   disconnectShoots,
   fileUrl,
   generateShootsCredentials,
-  getShootsCredentials,
   getEvent,
   getEventAnalytics,
+  getShootsCredentials,
+  inviteClient,
   inviteCollaborator,
+  listClients,
   listCollaborators,
+  listEventFavourites,
   listPhotos,
+  listStudioPicks,
+  publishEvent,
+  reclaimDriveBackupNow,
+  removeClient,
   removeCollaborator,
+  removeStudioPick,
+  restoreClient,
+  restoreEvent,
+  revokeClient,
   setDriveAutoSync,
+  setEventAllowDownload,
+  setEventDriveBackup,
+  setGuestUploadWindow,
   startEvent,
   startPhotoUpload,
+  submitClientOnBehalf,
   subscribeToLiveEvents,
-  reclaimDriveBackupNow,
-  setEventDriveBackup,
   subscribeToUploadProgress,
   syncDriveFolder,
   testDriveFolderConnection,
-  toggleGuestUploads,
   toggleEventFeature,
+  toggleGuestUploads,
+  unsubmitClientOnBehalf,
+  updateClientGrant,
+  updateEvent,
   updatePhotoFeatureMembership,
-  inviteClient,
-  listClients,
-  removeClient,
-  setGuestUploadWindow,
-  createSubGallery,
+  uploadEventCover,
 } from '../api.js'
+import { getToken } from '../authToken.js'
 import { useAuth } from '../auth.jsx'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { uploadLargeFile } from '../lib/largeUpload.js'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
@@ -65,6 +84,37 @@ function formatEta(seconds) {
   if (rounded < 60) return `~${rounded}s remaining`
   const minutes = Math.round(rounded / 60)
   return `~${minutes}m remaining`
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+// Renders the react-easy-crop pixel area to a JPEG blob for the cover upload.
+function getCroppedImg(imageSrc, pixelCrop) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(pixelCrop.width)
+      canvas.height = Math.round(pixelCrop.height)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(
+        image,
+        pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
+        0, 0, canvas.width, canvas.height
+      )
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Could not crop the cover image'))
+      }, 'image/jpeg', 0.9)
+    }
+    image.onerror = () => reject(new Error('Could not read the cover image'))
+    image.src = imageSrc
+  })
 }
 
 export default function EventDetail() {
@@ -95,6 +145,35 @@ export default function EventDetail() {
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [savingPhotoFeatures, setSavingPhotoFeatures] = useState({})
   const [deletingEvent, setDeletingEvent] = useState(false)
+  // MERGE (Studio-Verse EventDetail depth, Phase 18E): event settings state
+  // — details edit, publish, archive/restore, allow-download, cover crop.
+  const [showEditDetails, setShowEditDetails] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editVenue, setEditVenue] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [togglingDownload, setTogglingDownload] = useState(false)
+  const [showCoverModal, setShowCoverModal] = useState(false)
+  const [coverSrc, setCoverSrc] = useState('')
+  const [coverCrop, setCoverCrop] = useState({ x: 0, y: 0 })
+  const [coverZoom, setCoverZoom] = useState(1)
+  const [coverPixels, setCoverPixels] = useState(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [zipping, setZipping] = useState(false)
+  const [zipProgress, setZipProgress] = useState(null) // { loaded, total|null, speed }
+  // Studio read-side of Photo Selection: grouped/merged favourites + picks.
+  const [favView, setFavView] = useState('grouped') // grouped | merged
+  const [eventFavourites, setEventFavourites] = useState(null)
+  const [studioPicks, setStudioPicks] = useState([])
+  const [togglingPickId, setTogglingPickId] = useState(null)
+  // Per-client access panel state (cap/expiry edit, submit/unlock, revoke).
+  const [expandedClient, setExpandedClient] = useState(null)
+  const [grantCap, setGrantCap] = useState('')
+  const [grantExpiry, setGrantExpiry] = useState('')
+  const [savingGrant, setSavingGrant] = useState(false)
   const [uploadTab, setUploadTab] = useState('files')
   const [logLines, setLogLines] = useState([])
   const [skippedFiles, setSkippedFiles] = useState([])
@@ -166,17 +245,33 @@ export default function EventDetail() {
       })
   }, [eventId])
 
+  const loadFavourites = useCallback(() => {
+    listEventFavourites(eventId)
+      .then(setEventFavourites)
+      .catch(() => setEventFavourites(null))
+  }, [eventId])
+
+  const loadPicks = useCallback(() => {
+    listStudioPicks(eventId)
+      .then((data) => setStudioPicks(data.photo_ids || []))
+      .catch(() => setStudioPicks([]))
+  }, [eventId])
+
   const load = useCallback(() => {
     getEvent(eventId)
       .then((ev) => {
         setEvent(ev)
         if (ev.role === 'owner') loadTeam()
-        if (ev.photo_selection_enabled) loadClients()
+        if (ev.photo_selection_enabled) {
+          loadClients()
+          loadFavourites()
+          loadPicks()
+        }
       })
       .catch((e) => setError(e.message))
     listPhotos(eventId).then(setPhotos).catch((e) => setError(e.message))
     getEventAnalytics(eventId).then(setAnalytics).catch(() => setAnalytics(null))
-  }, [eventId, loadTeam, loadClients])
+  }, [eventId, loadTeam, loadClients, loadFavourites, loadPicks])
 
   useEffect(load, [load])
 
@@ -372,6 +467,301 @@ export default function EventDetail() {
     }
   }
 
+  // MERGE (Studio-Verse EventDetail depth, Phase 18E) handlers — details
+  // edit, publish (one-way), archive/restore, allow-download, cover crop,
+  // studio zip with live byte/speed progress, picks, and per-client grants.
+
+  const openEditDetails = () => {
+    if (!event) return
+    setEditName(event.name || '')
+    setEditDate(event.event_date ? new Date(event.event_date).toISOString().slice(0, 10) : '')
+    setEditVenue(event.event_venue || '')
+    setEditDesc(event.description || '')
+    setShowEditDetails(true)
+  }
+
+  const handleSaveDetails = async (e) => {
+    e.preventDefault()
+    if (!editName.trim()) {
+      showToast('Event name is required', { type: 'error' })
+      return
+    }
+    setSavingDetails(true)
+    try {
+      await updateEvent(eventId, {
+        name: editName.trim(),
+        event_date: editDate || null,
+        event_venue: editVenue.trim() || null,
+        description: editDesc.trim() || null,
+      })
+      setShowEditDetails(false)
+      load()
+      showToast('Event details saved.')
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    } finally {
+      setSavingDetails(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    const confirmed = await confirm(
+      'Publish this event? This marks uploads as finished for Photo Selection clients. Publishing is one-way.',
+      { title: 'Publish event?', confirmLabel: 'Publish', danger: false }
+    )
+    if (!confirmed) return
+    setPublishing(true)
+    try {
+      await publishEvent(eventId)
+      load()
+      showToast('Event published.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleArchive = async () => {
+    const confirmed = await confirm(
+      `Archive "${event?.name}"? Guests immediately lose access and clients can't open the gallery — nothing is deleted, and you can restore it any time.`,
+      { title: 'Archive event?', confirmLabel: 'Archive', danger: false }
+    )
+    if (!confirmed) return
+    setArchiving(true)
+    try {
+      await archiveEvent(eventId)
+      load()
+      showToast('Event archived.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleRestore = async () => {
+    const confirmed = await confirm(
+      `Restore "${event?.name}"? Guests and clients regain access immediately.`,
+      { title: 'Restore event?', confirmLabel: 'Restore', danger: false }
+    )
+    if (!confirmed) return
+    setArchiving(true)
+    try {
+      await restoreEvent(eventId)
+      load()
+      showToast('Event restored.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleAllowDownload = async (enabled) => {
+    setTogglingDownload(true)
+    try {
+      await setEventAllowDownload(eventId, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingDownload(false)
+    }
+  }
+
+  const handleCoverFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setCoverSrc(url)
+    setCoverCrop({ x: 0, y: 0 })
+    setCoverZoom(1)
+    setCoverPixels(null)
+    setShowCoverModal(true)
+    e.target.value = ''
+  }
+
+  const handleSaveCover = async () => {
+    if (!coverSrc || !coverPixels) {
+      showToast('Adjust the crop first', { type: 'error' })
+      return
+    }
+    setUploadingCover(true)
+    try {
+      const blob = await getCroppedImg(coverSrc, coverPixels)
+      await uploadEventCover(eventId, blob)
+      setShowCoverModal(false)
+      setCoverSrc('')
+      load()
+      showToast('Cover photo updated.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setUploadingCover(false)
+    }
+  }
+
+  const handleRemoveCover = async () => {
+    const confirmed = await confirm('Remove the cover photo?', { title: 'Remove cover?', confirmLabel: 'Remove' })
+    if (!confirmed) return
+    try {
+      await deleteEventCover(eventId)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleStudioZip = async () => {
+    if (!event || zipping) return
+    setZipping(true)
+    setZipProgress({ loaded: 0, total: null, speed: 0 })
+    try {
+      const token = getToken()
+      const res = await fetch(fileUrl(`/events/${eventId}/download-zip`), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        let message = `Download failed (${res.status})`
+        try {
+          const body = await res.json()
+          message = body.error || body.message || message
+        } catch {
+          // non-JSON error — keep generic
+        }
+        throw new Error(message)
+      }
+      const total = Number(res.headers.get('content-length')) || null
+      const reader = res.body.getReader()
+      const chunks = []
+      let loaded = 0
+      const startedAt = Date.now()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.length
+        const elapsed = Math.max(0.1, (Date.now() - startedAt) / 1000)
+        setZipProgress({ loaded, total, speed: loaded / elapsed })
+      }
+      const blob = new Blob(chunks, { type: 'application/zip' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${(event.name || 'event').replace(/[^\w\-]+/g, '-').slice(0, 60)}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setZipping(false)
+      setZipProgress(null)
+    }
+  }
+
+  const handleTogglePick = async (photoId, isPick) => {
+    setTogglingPickId(photoId)
+    try {
+      if (isPick) {
+        await removeStudioPick(eventId, photoId)
+        setStudioPicks((prev) => prev.filter((id) => id !== photoId))
+      } else {
+        await addStudioPick(eventId, photoId)
+        setStudioPicks((prev) => (prev.includes(photoId) ? prev : [...prev, photoId]))
+      }
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingPickId(null)
+    }
+  }
+
+  const openGrantPanel = (client) => {
+    if (expandedClient === client.user_id) {
+      setExpandedClient(null)
+      return
+    }
+    setExpandedClient(client.user_id)
+    setGrantCap(client.favourite_cap != null ? String(client.favourite_cap) : '')
+    setGrantExpiry(client.access_expires ? new Date(client.access_expires).toISOString().slice(0, 10) : '')
+  }
+
+  const handleSaveGrant = async (userId) => {
+    setSavingGrant(true)
+    setClientError('')
+    try {
+      await updateClientGrant(eventId, userId, {
+        favourite_cap: grantCap.trim() === '' ? null : parseInt(grantCap, 10),
+        access_expires: grantExpiry === '' ? null : grantExpiry,
+      })
+      showToast('Client access updated.')
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      setClientError(e.message)
+    } finally {
+      setSavingGrant(false)
+    }
+  }
+
+  const handleSubmitBehalf = async (userId, name) => {
+    const confirmed = await confirm(
+      `Submit ${name || 'this client'}'s selection on their behalf? Their favourites lock immediately.`,
+      { title: 'Submit on behalf?', confirmLabel: 'Submit', danger: false }
+    )
+    if (!confirmed) return
+    try {
+      await submitClientOnBehalf(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleUnsubmit = async (userId, name) => {
+    const confirmed = await confirm(
+      `Re-open ${name || 'this client'}'s selection? They'll be able to change their favourites again.`,
+      { title: 'Unlock selection?', confirmLabel: 'Unlock', danger: false }
+    )
+    if (!confirmed) return
+    try {
+      await unsubmitClientOnBehalf(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRevoke = async (userId, name) => {
+    const confirmed = await confirm(
+      `Revoke ${name || 'this client'}'s access? They lose the gallery immediately, but you can restore them later without re-inviting.`,
+      { title: 'Revoke access?', confirmLabel: 'Revoke' }
+    )
+    if (!confirmed) return
+    try {
+      await revokeClient(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRestoreAccess = async (userId) => {
+    try {
+      await restoreClient(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
   const handleApprovePhoto = async (photoId) => {
     setApprovingId(photoId)
     try {
@@ -437,12 +827,77 @@ export default function EventDetail() {
     setLogLines([`Starting upload — ${files.length} file(s)`])
     setSkippedFiles([])
     try {
-      const { job_id: jobId } = await startPhotoUpload(eventId, files)
-      watchJob(jobId, { failedLabel: 'Upload failed' })
+      // Files too big for one multipart POST go through the resumable
+      // chunked uploader first (8MB chunks, retried, resumable); each one
+      // still lands in the regular async processing job afterwards, so
+      // progress/result UI below is identical either way.
+      const LARGE_FILE_BYTES = 20 * 1024 * 1024
+      const small = files.filter((f) => f.size <= LARGE_FILE_BYTES)
+      const large = files.filter((f) => f.size > LARGE_FILE_BYTES)
+      for (const file of large) {
+        appendLog(`Large file — uploading "${file.name}" in chunks…`)
+        try {
+          const { job_id: jobId } = await uploadLargeFile(eventId, file, {
+            onProgress: ({ loaded, total }) =>
+              setProgress({
+                completed: 0,
+                total: 1,
+                current_file: `${file.name} (${Math.round((loaded / total) * 100)}% uploaded)`,
+                eta_seconds: null,
+                faces_found_so_far: 0,
+                skipped_so_far: [],
+              }),
+          })
+          appendLog(`"${file.name}" uploaded — processing…`)
+          await watchJobOnce(jobId)
+        } catch (e) {
+          appendLog(`"${file.name}" failed — ${e.message}`)
+        }
+      }
+      if (small.length > 0) {
+        const { job_id: jobId } = await startPhotoUpload(eventId, small)
+        watchJob(jobId, { failedLabel: 'Upload failed' })
+      } else {
+        setUploading(false)
+        setProgress(null)
+        load()
+      }
     } catch (e) {
       showToast(e.message, { type: 'error' })
       setUploading(false)
     }
+  }
+
+  // One-shot promise wrapper around the SSE progress subscription, for the
+  // sequential large-file path above (the shared watchJob handles the
+  // single interactive batch instead).
+  function watchJobOnce(jobId) {
+    return new Promise((resolve) => {
+      const cleanup = subscribeToUploadProgress(eventId, jobId, {
+        onProgress: (data) => {
+          setProgress(data)
+          appendLog(progressLine(data))
+          addPhotoFromProgress(data)
+        },
+        onDone: (data) => {
+          setProgress(null)
+          appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+          setSkippedFiles(data.skipped || [])
+          clearActiveJob(eventId)
+          showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+          cleanup()
+          resolve()
+        },
+        onError: (data) => {
+          setProgress(null)
+          appendLog(`Failed — ${data.message || 'Upload failed'}`)
+          clearActiveJob(eventId)
+          showToast(data.message || 'Upload failed', { type: 'error' })
+          cleanup()
+          resolve()
+        },
+      })
+    })
   }
 
   const handleDriveUrlChange = (value) => {
@@ -836,8 +1291,108 @@ export default function EventDetail() {
   return (
     <div>
       <Link className="back-link" to="/events">&larr; All events</Link>
+      {event?.cover_url && (
+        <img
+          src={fileUrl(event.cover_url)}
+          alt=""
+          style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 16, marginTop: 8 }}
+        />
+      )}
       <h1 className="section-title">{event?.name || 'Event'}</h1>
       <p className="subtle">Bulk-upload the event photos here. Face indexing runs only when Face Search is enabled for this event.</p>
+
+      {event?.archived_at && (
+        <div className="card" style={{ borderColor: 'var(--accent-primary)' }}>
+          <div className="guest-link-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Archive size={14} /> Archived — hidden from guests and clients
+          </div>
+          <p className="hint">
+            Archived {new Date(event.archived_at).toLocaleDateString()}. Nothing is deleted; restore to bring guests and clients back.
+          </p>
+          <button className="btn secondary" type="button" onClick={handleRestore} disabled={archiving}>
+            <ArchiveRestore size={14} /> {archiving ? 'Restoring…' : 'Restore event'}
+          </button>
+        </div>
+      )}
+
+      {event && (
+        <div className="card">
+          <div className="guest-link-label">Event settings</div>
+          {(event.event_date || event.event_venue || event.description) && (
+            <p className="hint" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {event.event_date && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <CalendarDays size={13} /> {new Date(event.event_date).toLocaleDateString()}
+                </span>
+              )}
+              {event.event_venue && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <MapPin size={13} /> {event.event_venue}
+                </span>
+              )}
+              {event.description && <span>{event.description}</span>}
+            </p>
+          )}
+          <p className="hint">
+            {event.published_at
+              ? `Published ${new Date(event.published_at).toLocaleDateString()} — Photo Selection clients see the gallery as ready.`
+              : 'Not published yet — publishing marks uploads as finished for Photo Selection clients.'}
+            {' '}Guest downloads are {event.allow_download ? 'allowed' : 'turned off (view-only)'}.
+          </p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <button className="btn secondary" type="button" onClick={openEditDetails}>
+              <Pencil size={14} /> Edit details
+            </button>
+            {!event.published_at && (
+              <button className="btn secondary" type="button" onClick={handlePublish} disabled={publishing}>
+                {publishing ? 'Publishing…' : 'Publish event'}
+              </button>
+            )}
+            {!event.archived_at && (
+              <button className="btn secondary" type="button" onClick={handleArchive} disabled={archiving}>
+                <Archive size={14} /> {archiving ? 'Archiving…' : 'Archive'}
+              </button>
+            )}
+            <label className="checkbox-row" title="When off, guests and clients can view and favourite but can't download originals">
+              <input
+                type="checkbox"
+                checked={!!event.allow_download}
+                disabled={togglingDownload}
+                onChange={(e) => handleAllowDownload(e.target.checked)}
+              />
+              Allow downloads
+            </label>
+          </div>
+          <div className="row" style={{ flexWrap: 'wrap', marginTop: 8 }}>
+            <label className="btn secondary" style={{ cursor: 'pointer' }}>
+              {event.cover_url ? 'Change cover' : 'Add cover (16:9)'}
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
+            </label>
+            {event.cover_url && (
+              <button className="btn secondary" type="button" onClick={handleRemoveCover}>
+                Remove cover
+              </button>
+            )}
+            <button className="btn secondary" type="button" onClick={handleStudioZip} disabled={zipping}>
+              <Download size={14} /> {zipping ? 'Preparing zip…' : 'Download all photos (zip)'}
+            </button>
+          </div>
+          {zipping && zipProgress && (
+            <div style={{ marginTop: 8 }}>
+              <div className="progress-bar">
+                {zipProgress.total
+                  ? <div className="progress-bar-fill" style={{ width: `${Math.min(100, Math.round((zipProgress.loaded / zipProgress.total) * 100))}%` }} />
+                  : <div className="progress-bar-fill" style={{ width: '100%', opacity: 0.5 }} />}
+              </div>
+              <p className="hint">
+                {formatBytes(zipProgress.loaded)}
+                {zipProgress.total ? ` of ${formatBytes(zipProgress.total)}` : ' downloaded'}
+                {' · '}{formatBytes(Math.round(zipProgress.speed))}/s
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {event && (
         <div className="card guest-link-card">
@@ -1318,18 +1873,82 @@ export default function EventDetail() {
           {clientError && <p className="error">{clientError}</p>}
 
           <ul className="team-list">
-            {clients.map((c) => (
-              <li key={c.user_id} className="team-list-item">
-                <span>
-                  {c.name} <span className="hint">({c.email})</span>
-                  {c.favourite_cap != null && <span className="hint"> · cap {c.favourite_cap}</span>}
-                  {c.submitted_at && <span className="hint"> · submitted</span>}
-                </span>
-                <button className="btn secondary" type="button" onClick={() => handleRemoveClient(c.user_id)}>
-                  Remove
-                </button>
-              </li>
-            ))}
+            {clients.map((c) => {
+              const expanded = expandedClient === c.user_id
+              const expired = c.access_expires && new Date(c.access_expires) < new Date()
+              return (
+                <li key={c.user_id} className="team-list-item" style={{ display: 'block' }}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: '100%' }}
+                    onClick={() => openGrantPanel(c)}
+                  >
+                    <span style={{ flex: 1 }}>
+                      {c.name} <span className="hint">({c.email})</span>
+                      {c.favourite_cap != null && <span className="hint"> · cap {c.favourite_cap}</span>}
+                      <span className="hint"> · {c.favourite_count || 0} favourite{(c.favourite_count || 0) === 1 ? '' : 's'}</span>
+                      {c.submitted_at && <span className="hint"> · submitted</span>}
+                      {c.revoked_at && <span className="hint"> · revoked</span>}
+                      {expired && !c.revoked_at && <span className="hint"> · expired</span>}
+                    </span>
+                    <button className="btn secondary" type="button" onClick={(e) => { e.stopPropagation(); handleRemoveClient(c.user_id) }}>
+                      Remove
+                    </button>
+                  </div>
+                  {expanded && (
+                    <div style={{ marginTop: 10, display: 'grid', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                      <div className="row" style={{ alignItems: 'flex-end' }}>
+                        <div>
+                          <label className="field-label" htmlFor={`cap-${c.user_id}`}>Favourite cap</label>
+                          <input
+                            id={`cap-${c.user_id}`}
+                            className="text-input"
+                            type="number"
+                            min="1"
+                            placeholder="Unlimited"
+                            style={{ maxWidth: 130 }}
+                            value={grantCap}
+                            onChange={(e) => setGrantCap(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="field-label" htmlFor={`exp-${c.user_id}`}>Access expires</label>
+                          <input
+                            id={`exp-${c.user_id}`}
+                            className="text-input"
+                            type="date"
+                            value={grantExpiry}
+                            onChange={(e) => setGrantExpiry(e.target.value)}
+                          />
+                        </div>
+                        <button className="btn secondary" type="button" onClick={() => handleSaveGrant(c.user_id)} disabled={savingGrant}>
+                          {savingGrant ? 'Saving…' : 'Save access'}
+                        </button>
+                      </div>
+                      <div className="row" style={{ flexWrap: 'wrap' }}>
+                        {c.submitted_at ? (
+                          <button className="btn secondary" type="button" onClick={() => handleUnsubmit(c.user_id, c.name)}>
+                            Unlock selection
+                          </button>
+                        ) : (
+                          <button className="btn secondary" type="button" onClick={() => handleSubmitBehalf(c.user_id, c.name)}>
+                            Submit on their behalf
+                          </button>
+                        )}
+                        {c.revoked_at ? (
+                          <button className="btn secondary" type="button" onClick={() => handleRestoreAccess(c.user_id)}>
+                            Restore access
+                          </button>
+                        ) : (
+                          <button className="btn secondary" type="button" onClick={() => handleRevoke(c.user_id, c.name)}>
+                            Revoke access
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
             {pendingClientInvites.map((inv) => (
               <li key={inv.invite_id} className="team-list-item team-list-item-pending">
                 <span>{inv.email} <span className="hint">(pending)</span></span>
@@ -1339,6 +1958,102 @@ export default function EventDetail() {
               <li className="hint">No clients yet — invite one above.</li>
             )}
           </ul>
+        </div>
+      )}
+
+      {/* MERGE (Studio-Verse Favourites tab, Phase 18E): the studio's read
+          side of Photo Selection — per-client groups or a deduplicated
+          merged view with who-favourited-this attribution, plus the
+          studio's own separate picks (star). */}
+      {event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+        <div className="card team-card">
+          <div className="guest-link-label">Favourites</div>
+          <p className="hint">What each client picked — and your own separate studio picks (star) over the same photos.</p>
+          <div className="row source-filter-row">
+            {[
+              { key: 'grouped', label: 'By client' },
+              { key: 'merged', label: 'Merged' },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                className={favView === opt.key ? 'upload-tab active' : 'upload-tab'}
+                onClick={() => setFavView(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {!eventFavourites ? (
+            <p className="hint">Loading favourites…</p>
+          ) : favView === 'grouped' ? (
+            eventFavourites.groups.length === 0 ? (
+              <p className="hint">No clients yet — favourites appear here once clients pick.</p>
+            ) : (
+              eventFavourites.groups.map((g) => (
+                <div key={g.user_id} style={{ marginTop: 12 }}>
+                  <p className="subtle">
+                    <strong>{g.name || g.email}</strong>{' '}
+                    <span className="hint">
+                      {g.photos.length} favourite{g.photos.length === 1 ? '' : 's'}
+                      {g.favourite_cap != null && ` · cap ${g.favourite_cap}`}
+                      {g.submitted_at && ' · submitted'}
+                      {g.revoked_at && ' · revoked'}
+                    </span>
+                  </p>
+                  {g.photos.length === 0 ? (
+                    <p className="hint">No picks yet.</p>
+                  ) : (
+                    <div className="photo-grid">
+                      {g.photos.map((p) => (
+                        <div className="photo-card" key={p.photo_id}>
+                          <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                          <div className="meta">
+                            <span className="hint">{p.filename}</span>
+                            <button
+                              className="dismiss-btn"
+                              type="button"
+                              title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                              onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                              disabled={togglingPickId === p.photo_id}
+                              style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
+                            >
+                              <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )
+          ) : eventFavourites.merged.length === 0 ? (
+            <p className="hint">No favourites yet — the merged view fills in once clients pick.</p>
+          ) : (
+            <div className="photo-grid">
+              {eventFavourites.merged.map((p) => (
+                <div className="photo-card" key={p.photo_id}>
+                  <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                  <div className="meta">
+                    <span className="hint">
+                      {p.favourited_by.map((u) => u.name || u.email).join(', ')}
+                    </span>
+                    <button
+                      className="dismiss-btn"
+                      type="button"
+                      title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                      onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                      disabled={togglingPickId === p.photo_id}
+                      style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
+                    >
+                      <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1385,7 +2100,7 @@ export default function EventDetail() {
             onFiles={handleFiles}
             accept="image/png,image/jpeg,image/webp"
             disabled={uploading}
-            hint="JPG, PNG, or WebP — drop multiple photos at once"
+            hint="JPG, PNG, or WebP — drop multiple photos at once (files over 20MB upload in resumable chunks)"
           />
         ) : uploadTab === 'shoots' ? (
           <div className="drive-import">
@@ -1563,6 +2278,18 @@ export default function EventDetail() {
               <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
               <div className="meta">
                 <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                {event?.photo_selection_enabled && (
+                  <button
+                    className="dismiss-btn"
+                    type="button"
+                    title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                    onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                    disabled={togglingPickId === p.photo_id}
+                    style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
+                  >
+                    <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
+                  </button>
+                )}
                 <button
                   className="dismiss-btn"
                   type="button"
@@ -1596,6 +2323,93 @@ export default function EventDetail() {
           ))}
         </div>
         </>
+      )}
+
+      {event && (
+        <Modal open={showEditDetails} onClose={() => setShowEditDetails(false)} title="Edit event details">
+          <form onSubmit={handleSaveDetails}>
+            <label className="field-label" htmlFor="ev-name">Event name</label>
+            <input
+              id="ev-name"
+              className="text-input"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
+            <label className="field-label" htmlFor="ev-date">Event date</label>
+            <input
+              id="ev-date"
+              className="text-input"
+              type="date"
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+            />
+            <label className="field-label" htmlFor="ev-venue">Venue</label>
+            <input
+              id="ev-venue"
+              className="text-input"
+              placeholder="e.g. Grand Palace Hall"
+              value={editVenue}
+              onChange={(e) => setEditVenue(e.target.value)}
+            />
+            <label className="field-label" htmlFor="ev-desc">Description</label>
+            <input
+              id="ev-desc"
+              className="text-input"
+              placeholder="Short note for your own reference"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+            />
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn secondary" type="button" onClick={() => setShowEditDetails(false)}>
+                Cancel
+              </button>
+              <button className="btn" type="submit" disabled={savingDetails || !editName.trim()}>
+                {savingDetails ? 'Saving…' : 'Save details'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {event && (
+        <Modal open={showCoverModal} onClose={() => { setShowCoverModal(false); setCoverSrc('') }} title="Cover photo (16:9)">
+          {coverSrc ? (
+            <>
+              <div style={{ position: 'relative', width: '100%', height: 320, background: '#111' }}>
+                <Cropper
+                  image={coverSrc}
+                  crop={coverCrop}
+                  zoom={coverZoom}
+                  aspect={16 / 9}
+                  onCropChange={setCoverCrop}
+                  onZoomChange={setCoverZoom}
+                  onCropComplete={(_, pixels) => setCoverPixels(pixels)}
+                />
+              </div>
+              <label className="field-label" htmlFor="cover-zoom">Zoom</label>
+              <input
+                id="cover-zoom"
+                type="range"
+                min="1"
+                max="3"
+                step="0.1"
+                value={coverZoom}
+                onChange={(e) => setCoverZoom(Number(e.target.value))}
+                style={{ width: '100%' }}
+              />
+              <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+                <button className="btn secondary" type="button" onClick={() => { setShowCoverModal(false); setCoverSrc('') }}>
+                  Cancel
+                </button>
+                <button className="btn" type="button" onClick={handleSaveCover} disabled={uploadingCover || !coverPixels}>
+                  {uploadingCover ? 'Uploading…' : 'Set cover'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="hint">Pick an image file to crop it to 16:9 for this event&apos;s cover.</p>
+          )}
+        </Modal>
       )}
 
       {event?.role === 'owner' && (

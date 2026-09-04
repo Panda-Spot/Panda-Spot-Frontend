@@ -1,0 +1,79 @@
+import React from 'react'
+import { Folder, Lock, Clock } from 'lucide-react'
+import { fileUrl } from '../../api.js'
+import { formatDate } from '../../utils/formatters.js'
+
+// Drive-style landing view for clients with access to multiple events —
+// pick a folder (event) first, then see its photos. Inaccessible grants
+// (revoked / expired / archived) render with a lock overlay instead of
+// opening, matching the client list's accessible/reason flags.
+export default function EventFolderGrid({ events, onOpen }) {
+  return (
+    <div>
+      <h2 className="font-display text-2xl mb-1" style={{ color: 'var(--text-primary)' }}>Your Events</h2>
+      <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>
+        Select an event to view its photos
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+        {events.map(ev => {
+          const locked = ev.accessible === false
+          const expiresDate = ev.access_expires ? new Date(ev.access_expires) : null
+          const daysLeft = expiresDate ? Math.ceil((expiresDate - new Date()) / 86400000) : null
+          const expiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7
+          const coverSrc = ev.cover_url ? fileUrl(ev.cover_url) : null
+
+          return (
+            <button
+              key={ev.event_id}
+              onClick={() => !locked && onOpen(ev.event_id)}
+              disabled={locked}
+              className={`flex flex-col items-center gap-3 rounded-2xl text-center transition-all duration-200 overflow-hidden ${locked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:-translate-y-1'}`}
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="relative w-full">
+                {coverSrc ? (
+                  <div className="relative w-full h-28">
+                    <img src={coverSrc} alt="" className="w-full h-full object-cover" draggable={false} />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(10,10,11,0.05) 0%, rgba(10,10,11,0.55) 100%)' }} />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center pt-6">
+                    <Folder size={56} style={{ color: locked ? 'var(--text-tertiary)' : '#F59E0B' }} fill={locked ? 'none' : 'rgba(245,158,11,0.15)'} />
+                  </div>
+                )}
+                {locked && (
+                  <div className="absolute bottom-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: '#F87171' }}>
+                    <Lock size={12} className="text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 w-full px-4 pb-5 -mt-1">
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                  {ev.event_name}
+                </p>
+                {ev.event_date && (
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {formatDate(ev.event_date)}
+                  </p>
+                )}
+                {locked ? (
+                  <p className="text-xs mt-1.5" style={{ color: '#F87171' }}>
+                    {ev.reason === 'expired' ? 'Access expired' : ev.reason === 'revoked' ? 'Access revoked' : 'Archived'}
+                  </p>
+                ) : expiringSoon ? (
+                  <p className="text-xs mt-1.5 flex items-center justify-center gap-1" style={{ color: '#FBBF24' }}>
+                    <Clock size={10} /> {daysLeft}d left
+                  </p>
+                ) : ev.submitted_at ? (
+                  <p className="text-xs mt-1.5" style={{ color: '#34D399' }}>Submitted</p>
+                ) : null}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

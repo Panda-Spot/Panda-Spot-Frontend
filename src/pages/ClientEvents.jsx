@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { Camera } from 'lucide-react'
 import { listClientEvents } from '../api.js'
+import EventFolderGrid from '../components/gallery/EventFolderGrid.jsx'
+import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
+import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 
-// MERGE (Studio-Verse Photo Selection): a USER-role client's landing page
-// — every event a studio has granted them access to (see EventUserMapping).
+// A USER-role client's landing page — every event a studio granted them.
+// Exactly one accessible event auto-opens; otherwise a folder-grid picker
+// (with lock overlays for revoked/expired/archived grants) chooses first.
 export default function ClientEvents() {
+  const navigate = useNavigate()
   const [events, setEvents] = useState(null)
   const [error, setError] = useState('')
 
@@ -12,23 +18,42 @@ export default function ClientEvents() {
     listClientEvents().then(setEvents).catch((e) => setError(e.message))
   }, [])
 
+  const accessible = (events || []).filter((e) => e.accessible !== false)
+
+  useEffect(() => {
+    if (events && accessible.length === 1) {
+      navigate(`/client/${accessible[0].event_id}`, { replace: true })
+    }
+  }, [events]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (error) return <p className="error">{error}</p>
-  if (!events) return <p className="hint">Loading…</p>
+  if (!events) {
+    return (
+      <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <MiniLoader size={22} /> Loading your events…
+      </p>
+    )
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="py-24 text-center">
+        <Camera size={48} className="mx-auto mb-4 text-[var(--text-tertiary)] animate-float" />
+        <h2 className="font-display text-2xl mb-2" style={{ color: 'var(--text-primary)' }}>No events assigned</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>Your studio hasn&apos;t added you to any events yet.</p>
+      </div>
+    )
+  }
+
+  if (accessible.length === 1) {
+    return (
+      <div className="space-y-4">
+        <SkeletonLoader type="card" count={1} />
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <h1 className="section-title">Your photos</h1>
-      {events.length === 0 && <p className="hint">No events shared with you yet.</p>}
-      <ul className="team-list">
-        {events.map((e) => (
-          <li key={e.event_id} className="team-list-item">
-            <Link to={`/client/${e.event_id}`}>{e.event_name}</Link>
-            <span className="hint">
-              {e.submitted_at ? 'Submitted' : e.favourite_cap ? `Up to ${e.favourite_cap} favourites` : 'No favourite limit'}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <EventFolderGrid events={events} onOpen={(id) => navigate(`/client/${id}`)} />
   )
 }

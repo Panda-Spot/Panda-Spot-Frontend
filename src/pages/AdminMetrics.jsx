@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Search, Target, MessageSquare } from 'lucide-react'
+import { BarChart3, MessageSquare, Search, Target, Users } from 'lucide-react'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
+} from 'recharts'
 import { getAdminMetrics } from '../api.js'
 import StatTile from '../components/StatTile.jsx'
+import GlassCard from '../components/ui/GlassCard.jsx'
+
+const GOLD = '#F59E0B'
+const axisProps = {
+  tick: { fill: '#6B6B76', fontSize: 11 },
+  axisLine: false,
+  tickLine: false,
+}
 
 function formatBytes(bytes) {
   if (bytes == null) return '—'
@@ -34,12 +46,24 @@ export default function AdminMetrics() {
   if (error) return <p className="error">{error}</p>
   if (!data) return <p className="hint">Loading…</p>
 
-  const { guest_engagement: eng, feature_adoption: adoption, top_clients: topClients, drive_backup_quota: quota } = data
+  const { guest_engagement: eng, feature_adoption: adoption, top_clients: topClients, drive_backup_quota: quota, storage_by_event: storageByEvent } = data
+
+  const storageChart = (storageByEvent || []).map((e) => ({
+    ...e,
+    label: e.event_name.length > 14 ? `${e.event_name.slice(0, 13)}…` : e.event_name,
+    gb: Math.round((e.storage_used_bytes / 1e9) * 10) / 10,
+  }))
 
   return (
-    <div>
-      <h1 className="section-title">Metrics</h1>
-      <p className="subtle">Platform-wide engagement, feature adoption, and usage — the full picture behind the overview stats.</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <BarChart3 size={22} className="text-gold-500" /> Metrics
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          Platform-wide engagement, feature adoption, storage, and usage.
+        </p>
+      </div>
 
       <h2 className="section-title">Guest engagement</h2>
       <div className="card analytics-card">
@@ -50,6 +74,31 @@ export default function AdminMetrics() {
           <StatTile icon={MessageSquare} value={formatPct(eng.feedback_rate)} label='"not me" feedback rate' />
         </div>
       </div>
+
+      <h2 className="section-title">Storage by event</h2>
+      <GlassCard hover={false}>
+        {storageChart.length === 0 ? (
+          <p className="hint">No stored photos yet.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={storageChart} margin={{ top: 8, right: 4, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="label" {...axisProps} interval={0} angle={-18} textAnchor="end" height={52} />
+              <YAxis {...axisProps} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ background: '#18181B', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, color: '#F5F5F7', fontSize: 12 }}
+                itemStyle={{ color: GOLD }}
+                formatter={(v, name, props) => [`${v} GB · ${props.payload.photo_count} photos · ${props.payload.owner_email}`, 'stored']}
+              />
+              <Bar dataKey="gb" name="stored" radius={[4, 4, 0, 0]}>
+                {storageChart.map((_, i) => (
+                  <Cell key={i} fill={i === 0 ? GOLD : `rgba(245,158,11,${0.85 - (i / storageChart.length) * 0.5})`} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </GlassCard>
 
       <h2 className="section-title">Feature adoption</h2>
       <div className="data-table-wrap">

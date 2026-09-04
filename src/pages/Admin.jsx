@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { LayoutDashboard, Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
 import { driveBackupConnectUrl, getAdminOverview } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import StatTile from '../components/StatTile.jsx'
 import TrendChart from '../components/TrendChart.jsx'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
 
 export default function Admin() {
   const [data, setData] = useState(null)
@@ -18,11 +21,18 @@ export default function Admin() {
   if (!data) return <p className="hint">Loading…</p>
 
   return (
-    <div>
-      <h1 className="section-title">Platform overview</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <LayoutDashboard size={22} className="text-gold-500" /> Platform overview
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          Every studio, event, photo, and search on the platform.
+        </p>
+      </div>
 
       {user?.is_admin && (
-        <div className="card">
+        <GlassCard hover={false}>
           <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta — platform setup)</span></h2>
           <p className="subtle">
             One Google account, shared across every event that turns on Drive backup — not something each
@@ -34,14 +44,16 @@ export default function Admin() {
             then.
           </p>
           {user.drive_backup_configured && <p className="hint">Connected — GOOGLE_DRIVE_BACKUP_REFRESH_TOKEN is set on the server.</p>}
-          <a className="btn" href={driveBackupConnectUrl()}>
-            {user.drive_backup_configured ? 'Reconnect a different account' : 'Connect Google Drive'}
+          <a href={driveBackupConnectUrl()} style={{ textDecoration: 'none' }}>
+            <GoldButton variant="outline">
+              {user.drive_backup_configured ? 'Reconnect a different account' : 'Connect Google Drive'}
+            </GoldButton>
           </a>
           <p className="hint">
             The callback page shows a fresh refresh token to copy into the server's .env, then restart the server for
             it to take effect.
           </p>
-        </div>
+        </GlassCard>
       )}
       <div className="card analytics-card">
         <div className="stat-grid">
@@ -68,7 +80,10 @@ export default function Admin() {
         {data.recent_events.map((e) => (
           <li key={e.id} className="event-list-item">
             <div className="event-list-footer">
-              <span>{e.name} <span className="hint">({e.owner_email})</span></span>
+              <span>
+                <Link to={`/admin/events/${e.id}`}>{e.name}</Link>{' '}
+                <span className="hint">({e.owner_email})</span>
+              </span>
               <span className="hint">{e.photo_count} photos</span>
             </div>
           </li>

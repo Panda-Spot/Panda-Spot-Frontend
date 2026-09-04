@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Building2, Wallet } from 'lucide-react'
 import { useConfirm } from '../confirm.jsx'
 import {
   deleteAdminUser,
@@ -16,11 +17,18 @@ import {
   verifyAdminUser,
   wipeAdminUserStorage,
 } from '../api.js'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
+import Badge from '../components/ui/Badge.jsx'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
 }
 
+// Deep-dive view on one studio: profile + actions, watermark override,
+// subscription/wallet summary with plan reassignment, full plan-change
+// history, and that studio's own events table — the cross-tenant
+// drill-down.
 export default function AdminClientDetail() {
   const { userId } = useParams()
   const navigate = useNavigate()
@@ -76,6 +84,13 @@ export default function AdminClientDetail() {
   }, [])
 
   const handleToggleSuspend = async () => {
+    if (!client.is_suspended) {
+      const ok = await confirm(
+        `Suspend ${client.email}? They and their clients lose access immediately; nothing is deleted.`,
+        { title: 'Suspend studio?', confirmLabel: 'Suspend' }
+      )
+      if (!ok) return
+    }
     setTogglingSuspend(true)
     setError('')
     try {
@@ -138,6 +153,11 @@ export default function AdminClientDetail() {
   }
 
   const handleSetPlan = async () => {
+    const ok = await confirm(
+      `Force-assign this plan to ${client.email}? Their current subscription row is replaced.`,
+      { title: 'Reassign plan?', confirmLabel: 'Reassign', danger: false }
+    )
+    if (!ok) return
     setSavingPlan(true)
     setError('')
     setLifecycleMessage('')
@@ -227,7 +247,7 @@ export default function AdminClientDetail() {
   const handleDelete = async () => {
     const confirmed = await confirm(
       `Permanently delete ${client.email}'s account and every event they own? This can't be undone.`,
-      { title: 'Delete this client?', confirmLabel: 'Delete' }
+      { title: 'Delete this studio?', confirmLabel: 'Delete' }
     )
     if (!confirmed) return
     setDeleting(true)
@@ -245,87 +265,104 @@ export default function AdminClientDetail() {
   if (!client) return <p className="hint">Loading…</p>
 
   return (
-    <div>
-      <Link className="back-link" to="/admin/clients">&larr; All clients</Link>
-
-      <div className="client-detail-header" style={{ marginTop: 10 }}>
-        <div>
-          <h1>{client.name}</h1>
-          <p className="hint">{client.email}</p>
+    <div className="space-y-6">
+      <div>
+        <Link className="back-link" to="/admin/clients">&larr; All studios</Link>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <Building2 size={22} className="text-gold-500" />
+          <div className="flex-1 min-w-[200px]">
+            <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>{client.name}</h1>
+            <p className="hint">{client.email}</p>
+          </div>
+          {client.is_suspended ? <Badge variant="error">Suspended</Badge> : <Badge variant="success">Active</Badge>}
+          <Badge>{client.role}</Badge>
         </div>
-        <span className={`status-pill ${client.is_suspended ? 'suspended' : 'active'}`}>
-          {client.is_suspended ? 'Suspended' : 'Active'}
-        </span>
       </div>
 
       {error && <p className="error">{error}</p>}
       {lifecycleMessage && <p className="hint">{lifecycleMessage}</p>}
 
-      <div className="card">
+      <GlassCard hover={false}>
         <p className="hint">
-          Joined {new Date(client.created_at).toLocaleDateString()} · {client.role} · Email {client.email_verified ? 'verified' : 'not verified'}
+          Joined {new Date(client.created_at).toLocaleDateString()} · Email {client.email_verified ? 'verified' : 'not verified'}
+          {client.studio_name && <> · Studio “{client.studio_name}”</>}
         </p>
-        <div className="row">
-          <button className={`btn ${client.is_suspended ? 'secondary' : 'danger-btn'}`} type="button" onClick={handleToggleSuspend} disabled={togglingSuspend}>
-            {togglingSuspend ? 'Working…' : client.is_suspended ? 'Reactivate account' : 'Suspend account'}
-          </button>
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          {client.is_suspended ? (
+            <GoldButton variant="outline" type="button" onClick={handleToggleSuspend} loading={togglingSuspend}>
+              Reactivate account
+            </GoldButton>
+          ) : (
+            <GoldButton variant="danger" type="button" onClick={handleToggleSuspend} loading={togglingSuspend}>
+              Suspend account
+            </GoldButton>
+          )}
           {!client.email_verified && (
             <>
-              <button className="btn secondary" type="button" onClick={handleResendVerification} disabled={resendingVerification}>
-                {resendingVerification ? 'Sending…' : 'Resend verification email'}
-              </button>
-              <button className="btn secondary" type="button" onClick={handleForceVerify} disabled={forceVerifying}>
-                {forceVerifying ? 'Working…' : 'Mark verified'}
-              </button>
+              <GoldButton variant="outline" type="button" onClick={handleResendVerification} loading={resendingVerification}>
+                Resend verification email
+              </GoldButton>
+              <GoldButton variant="outline" type="button" onClick={handleForceVerify} loading={forceVerifying}>
+                Mark verified
+              </GoldButton>
             </>
           )}
+          <Link to="/settings">
+            <GoldButton variant="ghost">Unlock / reset via Settings</GoldButton>
+          </Link>
         </div>
         {verifyActionMessage && <p className="hint">{verifyActionMessage}</p>}
+      </GlassCard>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <GlassCard hover={false}>
+          <div className="guest-link-label flex items-center gap-2">
+            <Wallet size={14} className="text-gold-500" /> Wallet & AI usage
+          </div>
+          <p className="subtle">Balance: <strong>{client.wallet_balance ?? 0} credits</strong></p>
+          <p className="hint">AI-indexed photos: {client.ai_indexed_photo_count ?? 0}</p>
+        </GlassCard>
+
+        {client.role === 'ADMIN' && (
+          <GlassCard hover={false}>
+            <div className="guest-link-label">Client gallery watermark</div>
+            <p className="hint">Overlay strength on this studio&apos;s protected client galleries.</p>
+            <div className="watermark-control">
+              <input
+                id="admin-watermark-intensity"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={watermarkIntensity}
+                onChange={(e) => {
+                  setWatermarkIntensity(Number(e.target.value))
+                  setWatermarkMessage('')
+                }}
+              />
+              <span className="hint">{Math.round(watermarkIntensity * 100)}%</span>
+            </div>
+            <div
+              className="watermark-preview protected-photo-frame"
+              data-watermark={client.studio_name || client.name || 'PandaSpot'}
+              style={{ '--watermark-opacity': watermarkIntensity }}
+            >
+              <div
+                className="watermark-preview-image"
+                style={{ background: `linear-gradient(135deg, ${client.brand_color || '#D97706'} 0%, #263238 55%, #f2c94c 100%)` }}
+              />
+            </div>
+            <GoldButton type="button" onClick={handleSaveWatermark} loading={savingWatermark}>
+              Save watermark intensity
+            </GoldButton>
+            {watermarkMessage && <p className="hint">{watermarkMessage}</p>}
+          </GlassCard>
+        )}
       </div>
 
-      {client.role === 'ADMIN' && (
-        <div className="card">
-          <div className="guest-link-label">Client gallery watermark</div>
-          <p className="hint">
-            Controls the overlay strength shown on this studio's protected client galleries.
-          </p>
-          <label className="field-label" htmlFor="admin-watermark-intensity">Watermark intensity</label>
-          <div className="watermark-control">
-            <input
-              id="admin-watermark-intensity"
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={watermarkIntensity}
-              onChange={(e) => {
-                setWatermarkIntensity(Number(e.target.value))
-                setWatermarkMessage('')
-              }}
-            />
-            <span className="hint">{Math.round(watermarkIntensity * 100)}%</span>
-          </div>
-          <div
-            className="watermark-preview protected-photo-frame"
-            data-watermark={client.studio_name || client.name || 'PandaSpot'}
-            style={{ '--watermark-opacity': watermarkIntensity }}
-          >
-            <div
-              className="watermark-preview-image"
-              style={{ background: `linear-gradient(135deg, ${client.brand_color || '#0e8a8a'} 0%, #263238 55%, #f2c94c 100%)` }}
-            />
-          </div>
-          <button className="btn" type="button" onClick={handleSaveWatermark} disabled={savingWatermark}>
-            {savingWatermark ? 'Saving…' : 'Save watermark intensity'}
-          </button>
-          {watermarkMessage && <p className="hint">{watermarkMessage}</p>}
-        </div>
-      )}
-
-      {/* MERGE (Studio-Verse Billing & Subscriptions, Phase 14): informational
-          only — see server/src/lib/subscriptionAccess.js's safety note on
-          why this isn't enforced against uploads yet. */}
-      <div className="card">
+      {/* Informational only — see server/src/lib/subscriptionAccess.js's
+          safety note on why this isn't enforced against uploads yet. */}
+      <GlassCard hover={false}>
         <div className="guest-link-label">Subscription</div>
         {client.subscription ? (
           <p className="hint">
@@ -343,13 +380,13 @@ export default function AdminClientDetail() {
                 <option value="">Choose plan</option>
                 {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
               </select>
-              <button className="btn secondary" type="button" onClick={handleSetPlan} disabled={savingPlan || !planId}>
-                {savingPlan ? 'Assigning…' : 'Force assign plan'}
-              </button>
+              <GoldButton variant="outline" type="button" onClick={handleSetPlan} loading={savingPlan} disabled={!planId}>
+                Force assign plan
+              </GoldButton>
               {client.subscription?.is_free_grant && (
-                <button className="btn danger-btn" type="button" onClick={handleRevokeFreeAccess} disabled={revokingGrant}>
-                  {revokingGrant ? 'Revoking…' : 'Revoke free access'}
-                </button>
+                <GoldButton variant="danger" type="button" onClick={handleRevokeFreeAccess} loading={revokingGrant}>
+                  Revoke free access
+                </GoldButton>
               )}
             </div>
             <div className="row" style={{ flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
@@ -358,9 +395,9 @@ export default function AdminClientDetail() {
                 {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
               </select>
               <input className="text-input" type="date" value={grantUntil} onChange={(e) => setGrantUntil(e.target.value)} />
-              <button className="btn" type="button" onClick={handleGrantFreeAccess} disabled={granting || !grantPlanId || !grantUntil}>
-                {granting ? 'Granting…' : 'Grant free access'}
-              </button>
+              <GoldButton type="button" onClick={handleGrantFreeAccess} loading={granting} disabled={!grantPlanId || !grantUntil}>
+                Grant free access
+              </GoldButton>
             </div>
           </>
         )}
@@ -392,87 +429,112 @@ export default function AdminClientDetail() {
             </table>
           </div>
         )}
-      </div>
+      </GlassCard>
 
-      <h2 className="section-title">Events ({client.events.length})</h2>
-      <div className="data-table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Photos</th>
-              <th>Storage</th>
-              <th>Created</th>
-              <th>Expires</th>
-            </tr>
-          </thead>
-          <tbody>
-            {client.events.map((e) => (
-              <tr key={e.id}>
-                <td>{e.name}</td>
-                <td>{e.photo_count}</td>
-                <td>{formatBytes(e.storage_used_bytes)}</td>
-                <td>{new Date(e.created_at).toLocaleDateString()}</td>
-                <td>{new Date(e.expires_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
-            {client.events.length === 0 && (
+      <div>
+        <h2 className="section-title">Events ({client.events.length})</h2>
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={5} className="hint">No events yet.</td>
+                <th>Name</th>
+                <th>Photos</th>
+                <th>Status</th>
+                <th>Storage</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th></th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {client.events.map((e) => (
+                <tr key={e.id}>
+                  <td>{e.name}</td>
+                  <td>{e.photo_count}</td>
+                  <td>{e.archived_at ? <Badge variant="gold">Archived</Badge> : <Badge variant="success">Active</Badge>}</td>
+                  <td>{formatBytes(e.storage_used_bytes)}</td>
+                  <td>{new Date(e.created_at).toLocaleDateString()}</td>
+                  <td>{new Date(e.expires_at).toLocaleDateString()}</td>
+                  <td>
+                    <Link to={`/admin/events/${e.id}`}>
+                      <GoldButton size="sm" variant="outline">View</GoldButton>
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {client.events.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="hint">No events yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <h2 className="section-title">Custom plan limits</h2>
-      <form className="card" onSubmit={handleSaveLimits}>
-        <p className="subtle">
-          Leave a field blank to use the platform default (currently {client.default_event_limit} events /{' '}
-          {formatBytes(client.default_storage_limit_bytes)} per event /{' '}
-          {client.default_photo_retention_days} day originals).
-        </p>
-        <label className="field-label" htmlFor="event-limit">Event limit</label>
-        <input
-          id="event-limit"
-          className="text-input"
-          type="number"
-          min="1"
-          placeholder={String(client.default_event_limit)}
-          value={eventLimitInput}
-          onChange={(e) => setEventLimitInput(e.target.value)}
-        />
-        <label className="field-label" htmlFor="storage-limit">Storage limit per event (GB)</label>
-        <input
-          id="storage-limit"
-          className="text-input"
-          type="number"
-          min="1"
-          step="0.1"
-          placeholder={String(client.default_storage_limit_bytes / 1e9)}
-          value={storageLimitInput}
-          onChange={(e) => setStorageLimitInput(e.target.value)}
-        />
-        <label className="field-label" htmlFor="retention-days">Photo retention (days)</label>
-        <input
-          id="retention-days"
-          className="text-input"
-          type="number"
-          min="1"
-          placeholder={String(client.default_photo_retention_days)}
-          value={retentionDaysInput}
-          onChange={(e) => setRetentionDaysInput(e.target.value)}
-        />
-        <p className="hint" style={{ marginTop: 4 }}>
-          Full-resolution originals are removed after this many days — thumbnails and face search keep working forever.
-        </p>
-        <button className="btn" type="submit" disabled={savingLimits} style={{ marginTop: 12 }}>
-          {savingLimits ? 'Saving…' : 'Save limits'}
-        </button>
-        {limitsMessage && <p className="hint">{limitsMessage}</p>}
-      </form>
+      {client.collaborates_on?.length > 0 && (
+        <div>
+          <h2 className="section-title">Collaborates on</h2>
+          <ul className="team-list">
+            {client.collaborates_on.map((c) => (
+              <li key={c.event_id} className="team-list-item">
+                <span>{c.event_name} <span className="hint">(owner: {c.owner_email})</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <div className="card danger-zone">
+      <GlassCard hover={false}>
+        <h2 className="section-title">Custom plan limits</h2>
+        <form onSubmit={handleSaveLimits}>
+          <p className="subtle">
+            Leave a field blank to use the platform default (currently {client.default_event_limit} events /{' '}
+            {formatBytes(client.default_storage_limit_bytes)} per event /{' '}
+            {client.default_photo_retention_days} day originals).
+          </p>
+          <label className="field-label" htmlFor="event-limit">Event limit</label>
+          <input
+            id="event-limit"
+            className="text-input"
+            type="number"
+            min="1"
+            placeholder={String(client.default_event_limit)}
+            value={eventLimitInput}
+            onChange={(e) => setEventLimitInput(e.target.value)}
+          />
+          <label className="field-label" htmlFor="storage-limit">Storage limit per event (GB)</label>
+          <input
+            id="storage-limit"
+            className="text-input"
+            type="number"
+            min="1"
+            step="0.1"
+            placeholder={String(client.default_storage_limit_bytes / 1e9)}
+            value={storageLimitInput}
+            onChange={(e) => setStorageLimitInput(e.target.value)}
+          />
+          <label className="field-label" htmlFor="retention-days">Photo retention (days)</label>
+          <input
+            id="retention-days"
+            className="text-input"
+            type="number"
+            min="1"
+            placeholder={String(client.default_photo_retention_days)}
+            value={retentionDaysInput}
+            onChange={(e) => setRetentionDaysInput(e.target.value)}
+          />
+          <p className="hint" style={{ marginTop: 4 }}>
+            Full-resolution originals are removed after this many days — thumbnails and face search keep working forever.
+          </p>
+          <GoldButton type="submit" loading={savingLimits} style={{ marginTop: 12 }}>
+            Save limits
+          </GoldButton>
+          {limitsMessage && <p className="hint">{limitsMessage}</p>}
+        </form>
+      </GlassCard>
+
+      <GlassCard hover={false}>
         <h2 className="section-title" style={{ marginTop: 0 }}>Danger zone</h2>
         {client.role === 'ADMIN' && (
           <>
@@ -485,19 +547,20 @@ export default function AdminClientDetail() {
               value={storageConfirmInput}
               onChange={(e) => setStorageConfirmInput(e.target.value)}
             />
-            <button
-              className="btn danger-btn"
+            <GoldButton
+              variant="danger"
               type="button"
               onClick={handleWipeStorage}
-              disabled={wipingStorage || storageConfirmInput.trim().toLowerCase() !== client.email.toLowerCase()}
+              loading={wipingStorage}
+              disabled={storageConfirmInput.trim().toLowerCase() !== client.email.toLowerCase()}
               style={{ marginTop: 10 }}
             >
-              {wipingStorage ? 'Wiping…' : 'Wipe studio storage'}
-            </button>
+              Wipe studio storage
+            </GoldButton>
           </>
         )}
         <p className="subtle">
-          Permanently deletes this client's account, every event they own, and every photo — irreversible. Type
+          Permanently deletes this studio&apos;s account, every event they own, and every photo — irreversible. Type
           their email to confirm.
         </p>
         <input
@@ -506,16 +569,17 @@ export default function AdminClientDetail() {
           value={confirmEmailInput}
           onChange={(e) => setConfirmEmailInput(e.target.value)}
         />
-        <button
-          className="btn danger-btn"
+        <GoldButton
+          variant="danger"
           type="button"
           onClick={handleDelete}
-          disabled={deleting || confirmEmailInput.trim().toLowerCase() !== client.email.toLowerCase()}
+          loading={deleting}
+          disabled={confirmEmailInput.trim().toLowerCase() !== client.email.toLowerCase()}
           style={{ marginTop: 10 }}
         >
-          {deleting ? 'Deleting…' : 'Delete account permanently'}
-        </button>
-      </div>
+          Delete account permanently
+        </GoldButton>
+      </GlassCard>
     </div>
   )
 }
