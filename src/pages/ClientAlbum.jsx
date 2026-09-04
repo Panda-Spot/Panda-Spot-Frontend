@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, MapPin, Undo2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Download, MapPin, Undo2 } from 'lucide-react'
 import {
   approveAlbum,
   deleteClientAlbumComment,
+  downloadClientAlbumProofPdf,
   getClientAlbum,
   postClientAlbumComment,
   requestAlbumChanges,
@@ -125,6 +126,17 @@ export default function ClientAlbum() {
             <GoldButton size="sm" icon={<CheckCircle2 size={13} />} loading={busy} onClick={handleApprove}>
               Approve album
             </GoldButton>
+          </div>
+        )}
+        {album.versions.length > 0 && (
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              type="button" className="btn secondary" disabled={busy}
+              title="Lifecycle record: revisions, comments with status, approval timestamp"
+              onClick={() => downloadClientAlbumProofPdf(eventId, albumId).then(() => showToast('Proof PDF downloaded')).catch((e) => showToast(e.message, { type: 'error' }))}
+            >
+              <Download size={13} /> Proof PDF
+            </button>
           </div>
         )}
       </div>

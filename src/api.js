@@ -1175,6 +1175,18 @@ export const uploadAlbumVersion = (eventId, albumId, { files, printPdf, note }) 
 export const deleteAlbumVersion = (eventId, albumId, versionId) =>
   request(`/events/${eventId}/albums/${albumId}/versions/${versionId}`, { method: "DELETE" })
 
+// Phase 7: duplicate latest/current spreads into a new revision, and the
+// proofing PDF (lifecycle record).
+export const duplicateAlbumVersion = (eventId, albumId, fromVersionId) =>
+  request(`/events/${eventId}/albums/${albumId}/versions/duplicate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ from_version_id: fromVersionId || undefined }),
+  })
+
+export const downloadAlbumProofPdf = (eventId, albumId) =>
+  downloadFile(`/events/${eventId}/albums/${albumId}/proof.pdf`)
+
 export const sendAlbum = (eventId, albumId) =>
   request(`/events/${eventId}/albums/${albumId}/send`, { method: "POST" })
 
@@ -1252,6 +1264,10 @@ export const approveAlbum = (eventId, albumId) =>
 // Phase 6: clients delete their own in-review comments.
 export const deleteClientAlbumComment = (eventId, albumId, commentId) =>
   request(`/client/events/${eventId}/albums/${albumId}/comments/${commentId}`, { method: "DELETE" })
+
+// Phase 7: the client's own proofing PDF.
+export const downloadClientAlbumProofPdf = (eventId, albumId) =>
+  downloadFile(`/client/events/${eventId}/albums/${albumId}/proof.pdf`)
 
 // Platform support: read-only album list per event + SUPER_ADMIN status override.
 export const listAdminAlbums = (eventId) => request(`/admin/events/${eventId}/albums`)

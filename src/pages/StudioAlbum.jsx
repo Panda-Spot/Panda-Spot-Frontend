@@ -7,6 +7,8 @@ import {
   deleteAlbumPage,
   deleteAlbumVersion,
   downloadAlbumSourcesZip,
+  downloadAlbumProofPdf,
+  duplicateAlbumVersion,
   fileUrl,
   getAlbum,
   listEventFavourites,
@@ -322,9 +324,41 @@ export default function StudioAlbum() {
                 Delete latest
               </button>
             )}
+            {version && (
+              <button type="button" className="btn danger-btn" disabled={busy} onClick={handleDeleteVersion}>
+                Delete latest
+              </button>
+            )}
             {version?.note && <span className="hint">Note: {version.note}</span>}
           </div>
         )}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          {!locked && version && !version.print_pdf_url && version.pages.length > 0 && (
+            <button
+              type="button" className="btn secondary" disabled={busy}
+              title="Start a new revision from this version's spreads — the old revision is preserved"
+              onClick={async () => {
+                const nextNum = Math.max(...album.versions.map((v) => v.version_number)) + 1
+                const okDup = await confirm(`Start V${nextNum} from V${version.version_number}'s spreads? The current revision stays preserved.`, { title: 'New revision from current spreads?', confirmLabel: 'Duplicate' })
+                if (!okDup) return
+                setBusy(true)
+                try { await duplicateAlbumVersion(eventId, albumId, version.id); await refresh('New revision started') }
+                catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
+              }}
+            >
+              <Images size={13} /> New revision from current
+            </button>
+          )}
+          {album.versions.length > 0 && (
+            <button
+              type="button" className="btn secondary" disabled={busy}
+              title="Lifecycle record: title, revisions, comments with status, approval timestamp"
+              onClick={() => downloadAlbumProofPdf(eventId, albumId).then(() => showToast('Proof PDF downloaded')).catch((e) => showToast(e.message, { type: 'error' }))}
+            >
+              <Download size={13} /> Proof PDF
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Phase 4: spread manager — reorder + delete per spread. */}
