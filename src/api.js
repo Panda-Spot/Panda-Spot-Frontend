@@ -732,7 +732,26 @@ export const uploadGuestPhotos = (slug, files, guestClientId) => {
 // Public gallery of approved photos — powers the live slideshow view.
 export const getPublicGallery = (slug) => request(`/e/${slug}/gallery`)
 
-// Public SSE feed of new approved photos landing — same event shape as
+// Phase 8 (live TV wall): public on-air feed — branding, settings, QR
+// target, and the current (moderated, mode-filtered) photo set.
+export const getTvFeed = (slug) => request(`/e/${slug}/tv`)
+
+// Phase 8: studio-star a photo for highlights mode, sponsor logo upload.
+export const setPhotoHighlight = (eventId, photoId, highlighted) =>
+  request(`/events/${eventId}/photos/${photoId}/highlight`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ highlighted }),
+  })
+
+export const uploadSponsorLogo = (eventId, logoBlob) => {
+  const form = new FormData()
+  form.append("logo", logoBlob, "sponsor-logo.jpg")
+  return request(`/events/${eventId}/sponsor-logo`, { method: "POST", body: form })
+}
+
+export const deleteSponsorLogo = (eventId) =>
+  request(`/events/${eventId}/sponsor-logo`, { method: "DELETE" })// Public SSE feed of new approved photos landing — same event shape as
 // subscribeToLiveEvents above, just unauthenticated and scoped by
 // guestSlug instead of a token. Powers the live slideshow view.
 export const subscribeToPublicLiveEvents = (slug, { onPhotoAdded }) => {

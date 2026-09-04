@@ -1920,6 +1920,86 @@
   max-height: 28px;
 }
 
+/* --- Phase 8 live TV wall: fixed chrome bars so overlay text never
+   overlaps the photo, QR corner, sponsor frame. --- */
+.tv-wall .slideshow-image {
+  max-height: 100vh;
+  padding: 76px 16px 96px;
+  box-sizing: border-box;
+}
+.tv-topbar {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: auto;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: linear-gradient(rgba(0, 0, 0, 0.55), transparent);
+}
+.tv-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tv-bottombar {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 14px 24px 18px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+}
+.tv-sponsor-logo {
+  max-height: 44px;
+  max-width: 220px;
+  object-fit: contain;
+}
+.tv-qr-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tv-qr-corner img {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 4px;
+}
+.tv-qr-corner .hint {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+}
+.tv-qr-large {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  margin-top: 16px;
+}
+@media (max-width: 640px) {
+  .tv-wall .slideshow-image {
+    padding: 68px 8px 120px;
+  }
+  .tv-qr-corner img {
+    width: 72px;
+    height: 72px;
+  }
+  .tv-sponsor-logo {
+    max-height: 32px;
+    max-width: 140px;
+  }
+}
+
 /* --- Phase 16 full app redesign overrides --- */
 
 :root {

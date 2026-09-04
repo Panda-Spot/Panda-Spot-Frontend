@@ -49,6 +49,7 @@ import {
   setEventAllowDownload,
   setEventDriveBackup,
   setGuestUploadWindow,
+  setPhotoHighlight,
   startEvent,
   startPhotoUpload,
   submitClientOnBehalf,
@@ -72,6 +73,7 @@ import { uploadLargeFile } from '../lib/largeUpload.js'
 import GalleryMedia from '../components/GalleryMedia.jsx'
 import PrivacySettingsCard from '../components/PrivacySettingsCard.jsx'
 import AccessSettingsCard from '../components/AccessSettingsCard.jsx'
+import TVSettingsForm from '../components/TVSettingsForm.jsx'
 import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
 import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
@@ -1040,8 +1042,21 @@ export default function EventDetail() {
     }
   }
 
-  const handleRejectPhoto = async (photoId, filename) => {
-    const confirmed = await confirm(`Reject and delete "${filename}"? This can't be undone.`, { title: 'Reject photo?', confirmLabel: 'Reject' })
+  const [togglingHighlightId, setTogglingHighlightId] = useState(null)
+
+  const handleToggleHighlight = async (photoId, highlighted) => {
+    setTogglingHighlightId(photoId)
+    try {
+      await setPhotoHighlight(eventId, photoId, !highlighted)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, highlighted: !highlighted } : p)))
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingHighlightId(null)
+    }
+  }
+
+  const handleRejectPhoto = async (photoId, filename) => {    const confirmed = await confirm(`Reject and delete "${filename}"? This can't be undone.`, { title: 'Reject photo?', confirmLabel: 'Reject' })
     if (!confirmed) return
     setApprovingId(photoId)
     try {
@@ -2032,18 +2047,42 @@ export default function EventDetail() {
 
       {event?.started && showSlideshowCard && (
         <div className="card" style={{ display: activeTab === 'manager' ? undefined : 'none' }}>
-          <div className="guest-link-label">Live slideshow</div>
+          <div className="guest-link-label">Live TV wall</div>
           <p className="hint">
-            A full-screen, auto-advancing carousel for a venue TV/screen — updates live as photos land from any
-            source. No login needed to view it.
+            A full-screen, auto-advancing wall for a venue TV/projector — moderated photos only, updates live as
+            photos land from any source. No login needed to view it.
           </p>
-          <GuestCard
-            eventName={event.name}
-            guestSlug={event.guestSlug}
-            urlPath="/slideshow"
-            instruction="Scan to open the live slideshow"
-            filenameSuffix="slideshow-card"
-          />
+          <TVSettingsForm event={event} onSaved={load} />
+          <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="text-input" readOnly
+              value={`${window.location.origin}/e/${event.guestSlug}/slideshow`}
+              onFocus={(e) => e.target.select()} style={{ flex: 1, minWidth: 220 }}
+            />
+            <button
+              className="btn secondary" type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/e/${event.guestSlug}/slideshow`).then(
+                  () => showToast('TV wall link copied — open it in the TV browser'),
+                  () => showToast('Copy failed — select the link manually', { type: 'error' })
+                )
+              }}
+            >
+              Copy TV link
+            </button>
+            <Link className="btn secondary" to={`/e/${event.guestSlug}/slideshow`} target="_blank" rel="noreferrer">
+              Open TV wall
+            </Link>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <GuestCard
+              eventName={event.name}
+              guestSlug={event.guestSlug}
+              urlPath="/slideshow"
+              instruction="Scan to open the live slideshow"
+              filenameSuffix="slideshow-card"
+            />
+          </div>
         </div>
       )}
 
@@ -3066,6 +3105,16 @@ export default function EventDetail() {
                     Archive
                   </button>
                 )}
+                <button
+                  className="dismiss-btn"
+                  type="button"
+                  title={p.highlighted ? 'Remove TV highlight' : 'Star for TV highlights wall'}
+                  onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
+                  disabled={togglingHighlightId === p.photo_id}
+                  style={{ color: p.highlighted ? '#F59E0B' : undefined }}
+                >
+                  <Star size={15} fill={p.highlighted ? '#F59E0B' : 'none'} />
+                </button>
                 <button
                   className="dismiss-btn"
                   type="button"
