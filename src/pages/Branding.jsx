@@ -18,6 +18,9 @@ export default function Branding() {
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState('')
   const [currentLogoUrl, setCurrentLogoUrl] = useState(null)
+  const [watermarkFile, setWatermarkFile] = useState(null)
+  const [watermarkPreview, setWatermarkPreview] = useState('')
+  const [currentWatermarkUrl, setCurrentWatermarkUrl] = useState(null)
   const [phone, setPhone] = useState('')
   const [studioAddress, setStudioAddress] = useState('')
   const [savingContact, setSavingContact] = useState(false)
@@ -28,6 +31,7 @@ export default function Branding() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const fileInput = useRef(null)
+  const watermarkInput = useRef(null)
 
   useEffect(() => {
     getBranding()
@@ -36,6 +40,7 @@ export default function Branding() {
         setBrandColor(b.brand_color || DEFAULT_ACCENT)
         setWatermarkIntensity(Number.isFinite(Number(b.watermark_intensity)) ? Number(b.watermark_intensity) : 0.75)
         setCurrentLogoUrl(b.logo_url || null)
+        setCurrentWatermarkUrl(b.watermark_image_url || null)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -56,20 +61,46 @@ export default function Branding() {
     setLogoPreview(file ? URL.createObjectURL(file) : '')
   }
 
+  const handleWatermarkChange = (e) => {
+    const file = e.target.files?.[0]
+    setWatermarkFile(file || null)
+    setWatermarkPreview(file ? URL.createObjectURL(file) : '')
+  }
+
+  const handleRemoveWatermark = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      const b = await saveBranding(studioName, brandColor, null, watermarkIntensity, null, true)
+      setCurrentWatermarkUrl(b.watermark_image_url || null)
+      setWatermarkFile(null)
+      setWatermarkPreview('')
+      if (watermarkInput.current) watermarkInput.current.value = ''
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
     setError('')
     setSaved(false)
     try {
-      const b = await saveBranding(studioName, brandColor, logoFile, watermarkIntensity)
+      const b = await saveBranding(studioName, brandColor, logoFile, watermarkIntensity, watermarkFile)
       setStudioName(b.studio_name || '')
       setBrandColor(b.brand_color || DEFAULT_ACCENT)
       setWatermarkIntensity(Number.isFinite(Number(b.watermark_intensity)) ? Number(b.watermark_intensity) : 0.75)
       setCurrentLogoUrl(b.logo_url || null)
+      setCurrentWatermarkUrl(b.watermark_image_url || null)
       setLogoFile(null)
       setLogoPreview('')
+      setWatermarkFile(null)
+      setWatermarkPreview('')
       if (fileInput.current) fileInput.current.value = ''
+      if (watermarkInput.current) watermarkInput.current.value = ''
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
@@ -146,6 +177,24 @@ export default function Branding() {
               />
             )}
             <input id="logo" ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoChange} />
+          </div>
+
+          <label className="field-label" htmlFor="watermark-image">Watermark overlay image (optional)</label>
+          <p className="hint">Centered over protected client-gallery photos instead of the studio-name text. Never burned into files.</p>
+          <div className="row logo-row">
+            {(watermarkPreview || currentWatermarkUrl) && (
+              <img
+                className="logo-preview"
+                src={watermarkPreview || fileUrl(currentWatermarkUrl)}
+                alt="Watermark preview"
+              />
+            )}
+            <input id="watermark-image" ref={watermarkInput} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleWatermarkChange} />
+            {currentWatermarkUrl && !watermarkPreview && (
+              <button className="btn secondary" type="button" onClick={handleRemoveWatermark} disabled={saving}>
+                Remove
+              </button>
+            )}
           </div>
 
           <label className="field-label" htmlFor="watermark-intensity">Watermark intensity</label>

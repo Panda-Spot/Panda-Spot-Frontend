@@ -199,6 +199,22 @@
   pointer-events: none;
   opacity: var(--watermark-opacity, 0.75);
 }
+/* Image variant of the overlay (studio-uploaded watermark): centered,
+   never interactive, same opacity control as the text variant above.
+   The ::after text is suppressed via data-watermark="" on the frame. */
+.watermark-image-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 46%;
+  max-height: 46%;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: var(--watermark-opacity, 0.75);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  -webkit-user-drag: none;
+}
 .photo-card .meta {
   padding: 8px 10px;
   font-size: 12px;

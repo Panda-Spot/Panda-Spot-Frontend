@@ -16,6 +16,7 @@ import useBrandColours from '../hooks/useBrandColours.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
+import GalleryMedia from '../components/GalleryMedia.jsx'
 import FavouritesDrawer from '../components/gallery/FavouritesDrawer.jsx'
 import { formatDate } from '../utils/formatters.js'
 
@@ -301,14 +302,21 @@ export default function ClientGallery() {
         <div className="photo-grid">
           {photos.map((p) => (
             <div className="photo-card no-select" key={p.photo_id}>
-              <div className="protected-photo-frame" data-watermark={watermarkText} style={{ position: 'relative' }}>
-                <img
+              <div className="protected-photo-frame" data-watermark={event.watermark_image_url ? '' : watermarkText} style={{ position: 'relative' }}>
+                <GalleryMedia
                   src={fileUrl(p.protected_thumbnail_url || p.protected_url)}
-                  alt={p.filename}
-                  draggable="false"
-                  onDragStart={(e) => e.preventDefault()}
-                  onContextMenu={(e) => e.preventDefault()}
+                  filename={p.filename}
+                  style={{ width: '100%', display: 'block' }}
                 />
+                {event.watermark_image_url && (
+                  <img
+                    src={fileUrl(event.watermark_image_url)}
+                    alt=""
+                    className="watermark-image-overlay"
+                    draggable="false"
+                    onError={(e) => { e.currentTarget.style.display = 'none' }}
+                  />
+                )}
                 {pickSet.has(p.photo_id) && (
                   <span
                     className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold"

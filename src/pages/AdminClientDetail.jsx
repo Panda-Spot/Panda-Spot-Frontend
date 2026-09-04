@@ -7,6 +7,7 @@ import {
   getAdminUser,
   grantAdminUserFreeAccess,
   listAdminPlans,
+  resetAdminUserWorkspace,
   resendAdminUserVerification,
   revokeAdminUserFreeAccess,
   setAdminUserBranding,
@@ -23,6 +24,8 @@ import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Lightbox from '../components/Lightbox.jsx'
+import GalleryMedia from '../components/GalleryMedia.jsx'
+import { isVideoFile } from '../utils/media.js'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
@@ -49,6 +52,8 @@ export default function AdminClientDetail() {
   const [revokingGrant, setRevokingGrant] = useState(false)
   const [storageConfirmInput, setStorageConfirmInput] = useState('')
   const [wipingStorage, setWipingStorage] = useState(false)
+  const [resetConfirmInput, setResetConfirmInput] = useState('')
+  const [resettingWorkspace, setResettingWorkspace] = useState(false)
   const [eventLimitInput, setEventLimitInput] = useState('')
   const [storageLimitInput, setStorageLimitInput] = useState('')
   const [retentionDaysInput, setRetentionDaysInput] = useState('')
@@ -254,6 +259,27 @@ export default function AdminClientDetail() {
       setError(e.message)
     } finally {
       setWipingStorage(false)
+    }
+  }
+
+  const handleResetWorkspace = async () => {
+    const confirmed = await confirm(
+      `Delete every event, photo, client access, support ticket, billing document, receipt, and service for ${client.email}? The studio account and subscription history stay.`,
+      { title: 'Full studio reset?', confirmLabel: 'Reset studio' }
+    )
+    if (!confirmed) return
+    setResettingWorkspace(true)
+    setError('')
+    setLifecycleMessage('')
+    try {
+      const result = await resetAdminUserWorkspace(userId, resetConfirmInput)
+      setLifecycleMessage(`Studio reset complete. Removed ${result.deleted_event_count} event${result.deleted_event_count === 1 ? '' : 's'} and ${result.deleted_support_ticket_count} support ticket${result.deleted_support_ticket_count === 1 ? '' : 's'}.`)
+      setResetConfirmInput('')
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setResettingWorkspace(false)
     }
   }
 
@@ -530,6 +556,9 @@ export default function AdminClientDetail() {
 
           {(() => {
             const filtered = userPhotos.filter((p) => photoFilter === 'all' || (p.source || 'upload') === photoFilter)
+            // Guest-style Lightbox is stills-only — videos play inline.
+            const viewable = filtered.filter((p) => !isVideoFile(p.filename))
+            const openIndex = (photoId) => viewable.findIndex((p) => p.photo_id === photoId)
             if (filtered.length === 0) {
               return (
                 <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
@@ -539,19 +568,22 @@ export default function AdminClientDetail() {
             }
             return (
               <div className="photo-grid" style={{ marginTop: 12 }}>
-                {filtered.map((p, idx) => (
+                {filtered.map((p) => (
                   <div className="photo-card" key={p.photo_id}>
-                    <img
+                    <GalleryMedia
                       src={fileUrl(p.thumbnail_url || p.url)}
-                      alt={p.filename}
-                      style={{ cursor: 'pointer', height: 180, objectFit: 'cover' }}
-                      onClick={() => setLightboxIndex(idx)}
+                      filename={p.filename}
+                      style={{ cursor: isVideoFile(p.filename) ? undefined : 'pointer', height: 180, objectFit: 'cover', width: '100%' }}
+                      onClick={isVideoFile(p.filename) ? undefined : () => setLightboxIndex(openIndex(p.photo_id))}
                     />
                     <div className="meta">
                       <span style={{ fontSize: 11, fontWeight: 600 }}>
-                        {p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
+                        {isVideoFile(p.filename) ? 'Video' : p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
                       </span>
-                      <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                      <span>
+                        {!isVideoFile(p.filename) && <>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>}
+                        {p.archived_at && <span className="hint"> · archived</span>}
+                      </span>
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
                       {p.event_name && <span>{p.event_name}</span>}
@@ -567,6 +599,7 @@ export default function AdminClientDetail() {
             <Lightbox
               matches={userPhotos
                 .filter((p) => photoFilter === 'all' || (p.source || 'upload') === photoFilter)
+                .filter((p) => !isVideoFile(p.filename))
                 .map((p) => ({
                   photo_id: p.photo_id,
                   filename: p.filename,
@@ -652,6 +685,25 @@ export default function AdminClientDetail() {
               style={{ marginTop: 10 }}
             >
               Wipe studio storage
+            </GoldButton>
+            <p className="subtle" style={{ marginTop: 16 }}>
+              Full reset removes every event, client/gallery access, support ticket, billing document, receipt, and studio service. The account, login, subscription, and wallet history stay.
+            </p>
+            <input
+              className="text-input"
+              placeholder={client.email}
+              value={resetConfirmInput}
+              onChange={(e) => setResetConfirmInput(e.target.value)}
+            />
+            <GoldButton
+              variant="danger"
+              type="button"
+              onClick={handleResetWorkspace}
+              loading={resettingWorkspace}
+              disabled={resetConfirmInput.trim().toLowerCase() !== client.email.toLowerCase()}
+              style={{ marginTop: 10 }}
+            >
+              Full studio reset
             </GoldButton>
           </>
         )}

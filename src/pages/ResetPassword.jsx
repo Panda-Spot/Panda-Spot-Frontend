@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { confirmPasswordReset } from '../api.js'
+import PasswordStrength from '../components/ui/PasswordStrength.jsx'
 
 export default function ResetPassword() {
   const { token } = useParams()
@@ -39,6 +40,7 @@ export default function ResetPassword() {
           <>
             <label className="field-label" htmlFor="password">New password</label>
             <input id="password" className="text-input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordStrength value={password} />
             <label className="field-label" htmlFor="confirm">Confirm password</label>
             <input id="confirm" className="text-input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             {error && <p className="error">{error}</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Receipt } from 'lucide-react'
+import { BadgeIndianRupee, FileText, IndianRupee, Receipt } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
@@ -20,12 +20,15 @@ import {
   listQuotations,
   recordPayment,
   updateBillingSettings,
+  updateQuotation,
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
+import StatCard from '../components/ui/StatCard.jsx'
+import BillingStatusTracker from '../components/billing/BillingStatusTracker.jsx'
 
 const PAYMENT_METHODS = ['CASH', 'GPAY', 'CARD', 'BANK_TRANSFER', 'CHEQUE']
 const GOLD = '#F59E0B'
@@ -55,6 +58,7 @@ export default function BillingDocuments() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [quotationFilter, setQuotationFilter] = useState('all')
+  const [billFilter, setBillFilter] = useState('all')
   const [search, setSearch] = useState('')
 
   const [serviceName, setServiceName] = useState('')
@@ -64,6 +68,7 @@ export default function BillingDocuments() {
   const [clientName, setClientName] = useState('')
   const [discountAmount, setDiscountAmount] = useState('0')
   const [items, setItems] = useState([emptyItem()])
+  const [editingId, setEditingId] = useState(null)
 
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('CASH')
@@ -120,22 +125,47 @@ export default function BillingDocuments() {
     setItems((prev) => [...prev, { name: service.name, price: service.price ?? '', quantity: 1, discount_per_unit: 0 }])
   }
 
+  const resetQuotationForm = () => {
+    setClientEmail('')
+    setClientName('')
+    setDiscountAmount('0')
+    setItems([emptyItem()])
+    setEditingId(null)
+  }
+
   const handleCreateQuotation = async (e) => {
     e.preventDefault()
     if (!clientEmail.trim()) return
     const validItems = items.filter((it) => it.name.trim() && it.price !== '')
     await withBusy(async () => {
-      await createQuotation(
-        clientEmail.trim(),
-        clientName.trim(),
-        validItems.map((it) => ({ name: it.name, price: Number(it.price), quantity: Number(it.quantity) || 1, discount_per_unit: Number(it.discount_per_unit) || 0 })),
-        Number(discountAmount) || 0
-      )
-      setClientEmail('')
-      setClientName('')
-      setDiscountAmount('0')
-      setItems([emptyItem()])
+      if (editingId) {
+        await updateQuotation(
+          editingId,
+          validItems.map((it) => ({ name: it.name, price: Number(it.price), quantity: Number(it.quantity) || 1, discount_per_unit: Number(it.discount_per_unit) || 0 })),
+          Number(discountAmount) || 0
+        )
+      } else {
+        await createQuotation(
+          clientEmail.trim(),
+          clientName.trim(),
+          validItems.map((it) => ({ name: it.name, price: Number(it.price), quantity: Number(it.quantity) || 1, discount_per_unit: Number(it.discount_per_unit) || 0 })),
+          Number(discountAmount) || 0
+        )
+      }
+      resetQuotationForm()
     })
+  }
+
+  const handleEditQuotation = (item) => {
+    if (item.status !== 'DRAFT') return
+    setEditingId(item.id)
+    setClientEmail(item.client?.email || '')
+    setClientName(item.client?.name || '')
+    setDiscountAmount(String(item.discount_amount ?? 0))
+    setItems(item.items.length > 0
+      ? item.items.map((it) => ({ name: it.name, price: String(it.price ?? ''), quantity: it.quantity, discount_per_unit: String(it.discount_per_unit ?? 0) }))
+      : [emptyItem()])
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Confirming is one-way and irreversible: line items are copied into a new
@@ -163,8 +193,11 @@ export default function BillingDocuments() {
   const openBill = async (id) => {
     setError('')
     try {
-      setSelectedBill(await getBill(id))
-      setPaymentAmount('')
+      const bill = await getBill(id)
+      setSelectedBill(bill)
+      // Prefill the remaining balance (the server still caps overpay) —
+      // recording a full payment is then one click.
+      setPaymentAmount(bill.remaining != null ? String(bill.remaining) : '')
     } catch (e) {
       setError(e.message)
     }
@@ -201,9 +234,18 @@ export default function BillingDocuments() {
     return (item.client?.email || '').toLowerCase().includes(q) || String(item.quotation_number).includes(q)
   })
   const visibleBills = bills.filter((b) => {
+    if (billFilter !== 'all' && b.status !== billFilter.toUpperCase()) return false
     if (!q) return true
     return (b.client?.email || '').toLowerCase().includes(q) || String(b.bill_number).includes(q)
   })
+
+  // Headline stats from the same rows the tables render — no extra requests.
+  const draftQuotations = quotations.filter((item) => item.status === 'DRAFT')
+  const totalQuotedValue = quotations.reduce((sum, item) => sum + (Number(item.payable) || 0), 0)
+  const totalCollected = bills.reduce(
+    (sum, b) => sum + (b.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0),
+    0
+  )
 
   // Collections per month over the last 6 months, from real payment rows.
   const revenueByMonth = useMemo(() => {
@@ -261,6 +303,13 @@ export default function BillingDocuments() {
         </p>
       </div>
       {error && <p className="error">{error}</p>}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Quotations" value={quotations.length} icon={Receipt} />
+        <StatCard label="Draft quotations" value={draftQuotations.length} icon={FileText} />
+        <StatCard label="Total quoted value" value={totalQuotedValue} icon={IndianRupee} />
+        <StatCard label="Total collected" value={totalCollected} icon={BadgeIndianRupee} />
+      </div>
 
       <div className="grid xl:grid-cols-3 gap-5">
         <GlassCard hover={false} className="xl:col-span-2">
@@ -340,11 +389,14 @@ export default function BillingDocuments() {
       </GlassCard>
 
       <GlassCard hover={false}>
-        <div className="guest-link-label">New quotation</div>
+        <div className="guest-link-label">{editingId ? 'Edit draft quotation' : 'New quotation'}</div>
+        {editingId && (
+          <p className="hint">Editing a draft — client can&apos;t be changed once created. Save, or cancel below.</p>
+        )}
         <form onSubmit={handleCreateQuotation}>
           <div className="row">
-            <input className="text-input" type="email" placeholder="Client email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
-            <input className="text-input" placeholder="Client name (optional)" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+            <input className="text-input" type="email" placeholder="Client email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} disabled={!!editingId} />
+            <input className="text-input" placeholder="Client name (optional)" value={clientName} onChange={(e) => setClientName(e.target.value)} disabled={!!editingId} />
           </div>
           {items.map((it, idx) => (
             <div className="row" key={idx} style={{ marginTop: 8 }}>
@@ -361,9 +413,14 @@ export default function BillingDocuments() {
             <label className="field-label" htmlFor="q-discount">Whole-quotation discount</label>
             <input id="q-discount" className="text-input" type="number" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} style={{ maxWidth: 140 }} />
           </div>
-          <GoldButton type="submit" disabled={busy || !clientEmail.trim()} style={{ marginTop: 8 }}>
-            Save quotation
+          <GoldButton type="submit" disabled={busy || (!editingId && !clientEmail.trim())} style={{ marginTop: 8 }}>
+            {editingId ? 'Save changes' : 'Save quotation'}
           </GoldButton>
+          {editingId && (
+            <GoldButton variant="ghost" type="button" onClick={resetQuotationForm} style={{ marginTop: 8 }}>
+              Cancel edit
+            </GoldButton>
+          )}
         </form>
       </GlassCard>
 
@@ -399,20 +456,29 @@ export default function BillingDocuments() {
         />
         <ul className="team-list" style={{ marginTop: 8 }}>
           {visibleQuotations.map((item) => (
-            <li key={item.id} className="team-list-item">
-              <span>
-                #{item.quotation_number} — {item.client?.email} — ₹{item.payable}{' '}
-                <Badge variant={item.status === 'CONFIRMED' ? 'gold' : 'default'}>{item.status}</Badge>
-              </span>
-              <span>
-                <GoldButton size="sm" variant="ghost" type="button" onClick={() => handlePdf(() => downloadQuotationPdf(item.id, item.quotation_number))} disabled={busy}>PDF</GoldButton>
+            <li key={item.id} className="team-list-item" style={{ display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ flex: 1 }}>
+                  #{item.quotation_number} — {item.client?.email} — ₹{item.payable}{' '}
+                  <Badge variant={item.status === 'CONFIRMED' ? 'gold' : 'default'}>{item.status}</Badge>
+                </span>
+                <span>
+                  <GoldButton size="sm" variant="ghost" type="button" onClick={() => handlePdf(() => downloadQuotationPdf(item.id, item.quotation_number))} disabled={busy}>PDF</GoldButton>
                 {item.status === 'DRAFT' && (
                   <>
                     <GoldButton size="sm" variant="outline" type="button" onClick={() => handleConfirm(item.id, item.quotation_number)} disabled={busy}>Confirm → Bill</GoldButton>
+                    <GoldButton size="sm" variant="ghost" type="button" onClick={() => handleEditQuotation(item)} disabled={busy}>Edit</GoldButton>
                     <button className="btn secondary" type="button" onClick={() => handleDelete(item.id, item.quotation_number)} disabled={busy}>Delete</button>
                   </>
                 )}
-              </span>
+                </span>
+              </div>
+              {item.bill && (
+                <p className="hint" style={{ marginTop: 4 }}>
+                  Bill #{item.bill.bill_number} — <Badge variant={billBadge(item.bill.status)}>{item.bill.status}</Badge>{' '}
+                  ₹{item.bill.paid} paid / ₹{item.bill.payable} · {item.bill.receipt_count} receipt{item.bill.receipt_count === 1 ? '' : 's'}
+                </p>
+              )}
             </li>
           ))}
           {visibleQuotations.length === 0 && <li className="hint">No quotations match.</li>}
@@ -420,7 +486,30 @@ export default function BillingDocuments() {
       </GlassCard>
 
       <GlassCard hover={false}>
-        <div className="guest-link-label">Bills</div>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="guest-link-label">Bills</div>
+          <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'unpaid', label: 'Unpaid' },
+              { key: 'partially_paid', label: 'Partial' },
+              { key: 'paid', label: 'Paid' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setBillFilter(key)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{
+                  background: billFilter === key ? 'var(--bg-surface)' : 'transparent',
+                  color: billFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <ul className="team-list">
           {visibleBills.map((b) => (
             <li key={b.id} className="team-list-item">
@@ -438,6 +527,7 @@ export default function BillingDocuments() {
       {selectedBill && (
         <GlassCard hover={false}>
           <div className="guest-link-label">Bill #{selectedBill.bill_number}</div>
+          <BillingStatusTracker bill={selectedBill} />
           <p className="subtle">{selectedBill.client?.email} — <Badge variant={billBadge(selectedBill.status)}>{selectedBill.status}</Badge></p>
           <p className="hint">Payable ₹{selectedBill.payable} — Paid ₹{selectedBill.paid} — Remaining ₹{selectedBill.remaining}</p>
           <GoldButton variant="outline" type="button" onClick={() => handlePdf(() => downloadBillPdf(selectedBill.id, selectedBill.bill_number))} disabled={busy}>
@@ -456,7 +546,7 @@ export default function BillingDocuments() {
           </ul>
           {selectedBill.status !== 'PAID' && (
             <form className="row" onSubmit={handleRecordPayment} style={{ marginTop: 8 }}>
-              <input className="text-input" type="number" placeholder="Amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} style={{ maxWidth: 140 }} />
+              <input className="text-input" type="number" min="0" max={selectedBill.remaining ?? undefined} placeholder="Amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} style={{ maxWidth: 140 }} />
               <select className="text-input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ maxWidth: 160 }}>
                 {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>

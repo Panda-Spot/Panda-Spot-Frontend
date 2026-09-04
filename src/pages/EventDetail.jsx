@@ -6,7 +6,11 @@ import {
   addStudioPick,
   approvePhoto,
   archiveEvent,
+  archivePhoto,
   backupExistingPhotosToDrive,
+  bulkSetMembership,
+  getEventFaceGroups,
+  getPhotoFaces,
   cancelInvite,
   connectDriveFolder,
   createSubGallery,
@@ -33,6 +37,7 @@ import {
   removeStudioPick,
   restoreClient,
   restoreEvent,
+  restorePhoto,
   revokeClient,
   setDriveAutoSync,
   setEventAllowDownload,
@@ -58,6 +63,10 @@ import { useAuth } from '../auth.jsx'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
 import { uploadLargeFile } from '../lib/largeUpload.js'
+import GalleryMedia from '../components/GalleryMedia.jsx'
+import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
+import FaceGroupsView from '../components/FaceGroupsView.jsx'
+import { isVideoFile } from '../utils/media.js'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
@@ -164,6 +173,8 @@ export default function EventDetail() {
   const [uploadingCover, setUploadingCover] = useState(false)
   const [zipping, setZipping] = useState(false)
   const [zipProgress, setZipProgress] = useState(null) // { loaded, total|null, speed }
+  const [zippingPicks, setZippingPicks] = useState(false)
+  const [picksZipProgress, setPicksZipProgress] = useState(null)
   // Studio read-side of Photo Selection: grouped/merged favourites + picks.
   const [favView, setFavView] = useState('grouped') // grouped | merged
   const [eventFavourites, setEventFavourites] = useState(null)
@@ -211,6 +222,31 @@ export default function EventDetail() {
   const [liveNotice, setLiveNotice] = useState('')
   const [startingEvent, setStartingEvent] = useState(false)
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [photoStatusFilter, setPhotoStatusFilter] = useState('active') // active | archived | all
+  // Phase 21 — three workspace tabs: manager (files in/out), selection
+  // (Photo Selection members + clients), ai (Face Search members + guests).
+  const [activeTab, setActiveTab] = useState('manager') // manager | selection | ai
+  const [managerSelected, setManagerSelected] = useState({}) // photo_id -> true
+  const [bulking, setBulking] = useState(null)
+  // Phase 22 — face viewer modal state for the AI member grid.
+  const [viewingPhoto, setViewingPhoto] = useState(null)
+  const [viewingFaces, setViewingFaces] = useState([])
+  const [facesLoading, setFacesLoading] = useState(false)
+  // Phase 22 — AI Faces sub-tab (auto face groups).
+  const [aiView, setAiView] = useState('members') // members | faces
+  const [faceGroupsState, setFaceGroupsState] = useState({ loading: false, error: '', data: null })
+  const [openGroupId, setOpenGroupId] = useState(null)
+
+  // Load face groups on first opening the Faces sub-tab (and refresh
+  // whenever the photo list changes, since new faces alter clusters).
+  useEffect(() => {
+    if (aiView !== 'faces' || activeTab !== 'ai' || !event?.face_search_enabled) return
+    if (faceGroupsState.data || faceGroupsState.loading) return
+    setFaceGroupsState({ loading: true, error: '', data: null })
+    getEventFaceGroups(eventId)
+      .then((data) => setFaceGroupsState({ loading: false, error: '', data }))
+      .catch((e) => setFaceGroupsState({ loading: false, error: e.message, data: null }))
+  }, [aiView, activeTab, event?.face_search_enabled, eventId]) // eslint-disable-line react-hooks/exhaustive-deps
   const cleanupRef = useRef(null)
   const liveStreamCleanupRef = useRef(null)
   const initialTabAppliedRef = useRef(false)
@@ -269,9 +305,9 @@ export default function EventDetail() {
         }
       })
       .catch((e) => setError(e.message))
-    listPhotos(eventId).then(setPhotos).catch((e) => setError(e.message))
+    listPhotos(eventId, photoStatusFilter).then(setPhotos).catch((e) => setError(e.message))
     getEventAnalytics(eventId).then(setAnalytics).catch(() => setAnalytics(null))
-  }, [eventId, loadTeam, loadClients, loadFavourites, loadPicks])
+  }, [eventId, photoStatusFilter, loadTeam, loadClients, loadFavourites, loadPicks])
 
   useEffect(load, [load])
 
@@ -613,13 +649,16 @@ export default function EventDetail() {
     }
   }
 
-  const handleStudioZip = async () => {
-    if (!event || zipping) return
-    setZipping(true)
-    setZipProgress({ loaded: 0, total: null, speed: 0 })
+  // Shared streaming download: fetches a zip path with auth, reports
+  // byte/speed progress, and saves the finished blob. Used by both the
+  // full-gallery zip and the studio-picks zip below.
+  const streamZipToDisk = async (zipPath, filename, setBusy, setProg) => {
+    if (!event) return
+    setBusy(true)
+    setProg({ loaded: 0, total: null, speed: 0 })
     try {
       const token = getToken()
-      const res = await fetch(fileUrl(`/events/${eventId}/download-zip`), {
+      const res = await fetch(fileUrl(zipPath), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       if (!res.ok) {
@@ -643,13 +682,13 @@ export default function EventDetail() {
         chunks.push(value)
         loaded += value.length
         const elapsed = Math.max(0.1, (Date.now() - startedAt) / 1000)
-        setZipProgress({ loaded, total, speed: loaded / elapsed })
+        setProg({ loaded, total, speed: loaded / elapsed })
       }
       const blob = new Blob(chunks, { type: 'application/zip' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${(event.name || 'event').replace(/[^\w\-]+/g, '-').slice(0, 60)}.zip`
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -657,8 +696,183 @@ export default function EventDetail() {
     } catch (e) {
       showToast(e.message, { type: 'error' })
     } finally {
-      setZipping(false)
-      setZipProgress(null)
+      setBusy(false)
+      setProg(null)
+    }
+  }
+
+  const zipFilename = (suffix) =>
+    `${(event?.name || 'event').replace(/[^\w\-]+/g, '-').slice(0, 60)}${suffix}.zip`
+
+  const handleStudioZip = async () => {
+    if (zipping) return
+    await streamZipToDisk(`/events/${eventId}/download-zip`, zipFilename(''), setZipping, setZipProgress)
+  }
+
+  const handlePicksZip = async () => {
+    if (zippingPicks) return
+    await streamZipToDisk(`/events/${eventId}/studio-picks/download-zip`, zipFilename('-picks'), setZippingPicks, setPicksZipProgress)
+  }
+
+  const handleArchivePhoto = async (photoId, filename) => {
+    try {
+      await archivePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, archived_at: new Date().toISOString() } : p)))
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`"${filename}" archived — hidden from guests and clients.`)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRestorePhoto = async (photoId, filename) => {
+    try {
+      await restorePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, archived_at: null } : p)))
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`"${filename}" restored.`)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  // Phase 21 — manager multi/all/particular selection into the two
+  // feature memberships (zero-copy: only DB flags change, files stay
+  // put). Visible-grid ids for "select all", explicit ids otherwise.
+  const visibleManageablePhotos = (photos || []).filter(
+    (p) => p.approval_status !== 'pending'
+      && (sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+  )
+
+  const toggleManagerSelect = (photoId) => {
+    setManagerSelected((prev) => {
+      const next = { ...prev }
+      if (next[photoId]) delete next[photoId]
+      else next[photoId] = true
+      return next
+    })
+  }
+
+  const toggleManagerSelectAllVisible = () => {
+    const ids = visibleManageablePhotos.map((p) => p.photo_id)
+    const allSelected = ids.length > 0 && ids.every((id) => managerSelected[id])
+    if (allSelected) {
+      setManagerSelected({})
+    } else {
+      const next = {}
+      for (const id of ids) next[id] = true
+      setManagerSelected(next)
+    }
+  }
+
+  const selectedCount = Object.keys(managerSelected).length
+
+  // Phase 21 — per-tab member views, derived from the same photo list the
+  // manager shows (so the current status filter applies in every tab).
+  const selectionMembers = () => (photos || []).filter(
+    (p) => p.approval_status !== 'pending' && p.photo_selection_visible !== false
+  )
+  const aiMembers = () => (photos || []).filter(
+    (p) => p.approval_status !== 'pending' && p.face_search_visible !== false
+  )
+
+  const openFaceViewer = async (photo) => {
+    setViewingPhoto(photo)
+    setViewingFaces([])
+    setFacesLoading(true)
+    try {
+      const data = await getPhotoFaces(eventId, photo.photo_id)
+      setViewingFaces(data.faces || [])
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setFacesLoading(false)
+    }
+  }
+
+  const handleBulkRemoveVisible = async (feature) => {    const members = feature === 'selection' ? selectionMembers() : aiMembers()
+    if (members.length === 0) return
+    const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
+    const confirmed = await confirm(
+      `Remove ${members.length} visible photo(s) from ${feature === 'selection' ? 'Photo Selection' : 'AI Search'}? Files stay in the manager — only membership flags change.`,
+      { title: 'Remove from feature?', confirmLabel: 'Remove', danger: false }
+    )
+    if (!confirmed) return
+    setBulking('remove')
+    try {
+      const res = await bulkSetMembership(eventId, {
+        photoIds: members.map((p) => p.photo_id),
+        ...patch,
+      })
+      showToast(`${res.updated} photo(s) removed.`)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  const handleBulkMembership = async (patch, label) => {
+    const ids = Object.keys(managerSelected)
+    if (ids.length === 0) {
+      showToast('Select photos in the manager grid first', { type: 'error' })
+      return
+    }
+    setBulking(label)
+    try {
+      const res = await bulkSetMembership(eventId, { photoIds: ids, ...patch })
+      if (res.job_id) {
+        appendLog(`Indexing ${ids.length} photo(s) for Face Search in the background…`)
+        watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+      } else {
+        load()
+      }
+      // Newly indexed faces alter clusters — drop cached groups so the
+      // Faces sub-tab refetches fresh on next open.
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      if (res.skipped?.length > 0) {
+        showToast(`${res.updated} updated, ${res.skipped.length} skipped`, { type: 'error' })
+      } else {
+        showToast(`${res.updated} photo(s) updated.`)
+      }
+      setManagerSelected({})
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  const handleBulkAddAllVisible = async (patch, label) => {
+    if (visibleManageablePhotos.length === 0) {
+      showToast('No visible photos to update', { type: 'error' })
+      return
+    }
+    const confirmed = await confirm(
+      `Apply to all ${visibleManageablePhotos.length} visible photo(s) (current source/status filters)?`,
+      { title: label, confirmLabel: 'Apply', danger: false }
+    )
+    if (!confirmed) return
+    setBulking(label)
+    try {
+      const res = await bulkSetMembership(eventId, {
+        all: { source: sourceFilter === 'all' ? undefined : sourceFilter, status: photoStatusFilter },
+        ...patch,
+      })
+      if (res.job_id) {
+        appendLog(`Indexing photos for Face Search in the background…`)
+        watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+      } else {
+        load()
+      }
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`${res.updated} photo(s) updated.`)
+      setManagerSelected({})
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
     }
   }
 
@@ -1262,6 +1476,11 @@ export default function EventDetail() {
             }
           : p
       )))
+      // Membership flags feed face-group clustering — bust the cache so
+      // the Faces sub-tab refetches fresh on next open.
+      if (patch.face_search_visible !== undefined) {
+        setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      }
     } catch (e) {
       setPhotos(previous)
       showToast(e.message, { type: 'error' })
@@ -1333,35 +1552,18 @@ export default function EventDetail() {
               {event.description && <span>{event.description}</span>}
             </p>
           )}
-          <p className="hint">
-            {event.published_at
-              ? `Published ${new Date(event.published_at).toLocaleDateString()} — Photo Selection clients see the gallery as ready.`
-              : 'Not published yet — publishing marks uploads as finished for Photo Selection clients.'}
-            {' '}Guest downloads are {event.allow_download ? 'allowed' : 'turned off (view-only)'}.
-          </p>
+          {event.archived_at && (
+            <p className="hint">Archived — hidden from guests and clients until restored.</p>
+          )}
           <div className="row" style={{ flexWrap: 'wrap' }}>
             <button className="btn secondary" type="button" onClick={openEditDetails}>
               <Pencil size={14} /> Edit details
             </button>
-            {!event.published_at && (
-              <button className="btn secondary" type="button" onClick={handlePublish} disabled={publishing}>
-                {publishing ? 'Publishing…' : 'Publish event'}
-              </button>
-            )}
             {!event.archived_at && (
               <button className="btn secondary" type="button" onClick={handleArchive} disabled={archiving}>
                 <Archive size={14} /> {archiving ? 'Archiving…' : 'Archive'}
               </button>
             )}
-            <label className="checkbox-row" title="When off, guests and clients can view and favourite but can't download originals">
-              <input
-                type="checkbox"
-                checked={!!event.allow_download}
-                disabled={togglingDownload}
-                onChange={(e) => handleAllowDownload(e.target.checked)}
-              />
-              Allow downloads
-            </label>
           </div>
           <div className="row" style={{ flexWrap: 'wrap', marginTop: 8 }}>
             <label className="btn secondary" style={{ cursor: 'pointer' }}>
@@ -1373,29 +1575,12 @@ export default function EventDetail() {
                 Remove cover
               </button>
             )}
-            <button className="btn secondary" type="button" onClick={handleStudioZip} disabled={zipping}>
-              <Download size={14} /> {zipping ? 'Preparing zip…' : 'Download all photos (zip)'}
-            </button>
           </div>
-          {zipping && zipProgress && (
-            <div style={{ marginTop: 8 }}>
-              <div className="progress-bar">
-                {zipProgress.total
-                  ? <div className="progress-bar-fill" style={{ width: `${Math.min(100, Math.round((zipProgress.loaded / zipProgress.total) * 100))}%` }} />
-                  : <div className="progress-bar-fill" style={{ width: '100%', opacity: 0.5 }} />}
-              </div>
-              <p className="hint">
-                {formatBytes(zipProgress.loaded)}
-                {zipProgress.total ? ` of ${formatBytes(zipProgress.total)}` : ' downloaded'}
-                {' · '}{formatBytes(Math.round(zipProgress.speed))}/s
-              </p>
-            </div>
-          )}
         </div>
       )}
 
       {event && (
-        <div className="card guest-link-card">
+        <div className="card guest-link-card" style={{ display: activeTab === 'ai' ? undefined : 'none' }}>
           <div className="guest-link-label">Guest link — share this so guests can find their photos</div>
           <div className="row">
             <input className="text-input" readOnly value={guestLink(event.guestSlug)} onFocus={(e) => e.target.select()} />
@@ -1417,6 +1602,14 @@ export default function EventDetail() {
               {(event.storage_used_bytes / 1e9).toFixed(2)}GB / {(event.storage_limit_bytes / 1e9).toFixed(0)}GB storage used
             </p>
           </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn secondary" type="button" onClick={() => setShowGuestCard((v) => !v)}>
+              {showGuestCard ? 'Hide guest card' : 'Generate guest card'}
+            </button>
+          </div>
+          {showGuestCard && (
+            <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
+          )}
         </div>
       )}
 
@@ -1450,8 +1643,39 @@ export default function EventDetail() {
         </div>
       )}
 
+      {/* Phase 21 — workspace tabs. Manager holds every file movement
+          (upload/import/export); Photo Selection and AI Selection each
+          show only their own members + related tools. Same photos,
+          zero-copy — only membership flags change, via the bulk bar in
+          the manager or per-photo Remove in each tab. */}
+      {event && (
+        <div className="card" style={{ padding: '12px 16px' }}>
+          <div className="row source-filter-row" style={{ margin: 0 }}>
+            {[
+              { key: 'manager', label: 'Manager — files in & out' },
+              ...(event.photo_selection_enabled ? [{ key: 'selection', label: 'Photo Selection' }] : []),
+              ...(event.face_search_enabled ? [{ key: 'ai', label: 'AI Selection' }] : []),
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                className={activeTab === opt.key ? 'upload-tab active' : 'upload-tab'}
+                onClick={() => setActiveTab(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {!event.face_search_enabled && !event.photo_selection_enabled && (
+            <p className="hint" style={{ marginTop: 8 }}>
+              Turn on Face Search and/or Photo Selection above — each unlocks its own workspace tab here.
+            </p>
+          )}
+        </div>
+      )}
+
       {analytics && (
-        <div className="card analytics-card">
+        <div className="card analytics-card" style={{ display: activeTab === 'ai' ? undefined : 'none' }}>
           <div className="guest-link-label">Analytics</div>
           <div className="stat-grid">
             <StatTile icon={Search} value={analytics.total_searches} label="searches" />
@@ -1470,12 +1694,102 @@ export default function EventDetail() {
         </div>
       )}
 
-      {event && (
-        <div className="card guest-card-section">
-          <div className="row">
-            <button className="btn secondary" type="button" onClick={() => setShowGuestCard((v) => !v)}>
-              {showGuestCard ? 'Hide guest card' : 'Generate guest card'}
+      {/* Phase 21 — AI tab member grid: only face-searchable photos, with
+          their index state. Add more from the Manager tab. Phase 22 —
+          Members | Faces sub-tabs; click any photo for fullscreen +
+          face closeups. */}
+      {activeTab === 'ai' && event?.face_search_enabled && (
+        <div className="card">
+          <div className="guest-link-label">
+            AI members ({aiMembers().length})
+          </div>
+          <p className="hint">
+            Only these photos are selfie-searchable by guests. Photos without face data index in the background once added.
+          </p>
+          <div className="row source-filter-row" style={{ marginBottom: 8 }}>
+            {[
+              { key: 'members', label: `Members` },
+              { key: 'faces', label: `Faces${faceGroups ? ` (${faceGroups.group_count})` : ''}` },
+            ].map((opt) => (
+              <button
+                key={`ai-${opt.key}`}
+                type="button"
+                className={aiView === opt.key ? 'upload-tab active' : 'upload-tab'}
+                onClick={() => setAiView(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {aiView === 'faces' ? (
+            <FaceGroupsView
+              eventId={eventId}
+              groupsState={faceGroupsState}
+              onOpenGroup={setOpenGroupId}
+              openGroupId={openGroupId}
+              onOpenPhoto={openFaceViewer}
+            />
+          ) : (
+          <>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <button
+              className="btn secondary"
+              type="button"
+              disabled={bulking || aiMembers().length === 0}
+              onClick={() => handleBulkRemoveVisible('ai')}
+            >
+              Remove all visible from AI Search
             </button>
+          </div>
+          {aiMembers().length === 0 ? (
+            <p className="hint">Nothing in AI Search yet — select photos in the Manager tab and add them.</p>
+          ) : (
+            <div className="photo-grid">
+              {aiMembers().map((p) => (
+                <div className="photo-card" key={p.photo_id}>
+                  <div style={{ cursor: 'zoom-in' }} onClick={() => openFaceViewer(p)} title="Open fullscreen + face closeups">
+                    <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                  </div>
+                  <div className="meta">
+                    <span className="hint">
+                      {p.face_indexed_at
+                        ? `${p.face_count} face${p.face_count === 1 ? '' : 's'} indexed`
+                        : 'Indexing…'}
+                    </span>
+                    <button
+                      className="dismiss-btn"
+                      type="button"
+                      onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
+                      disabled={!!savingPhotoFeatures[p.photo_id]}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          </>
+          )}
+        </div>
+      )}
+
+      <PhotoFaceViewer
+        photo={viewingPhoto}
+        faces={viewingFaces}
+        loading={facesLoading}
+        onClose={() => { setViewingPhoto(null); setViewingFaces([]) }}
+        onRemove={viewingPhoto ? () => {
+          handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
+          setViewingPhoto(null)
+          setViewingFaces([])
+        } : undefined}
+      />
+
+      {event && (
+        <div className="card guest-card-section" style={{ display: activeTab === 'manager' ? undefined : 'none' }}>
+          <div className="guest-link-label">File tools</div>
+          <div className="row">
             {user?.drive_backup_beta && event.started && (
               <button className="btn secondary" type="button" onClick={() => setShowExportModal(true)}>
                 Export to Google Drive
@@ -1507,14 +1821,11 @@ export default function EventDetail() {
               </button>
             )}
           </div>
-          {showGuestCard && (
-            <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
-          )}
         </div>
       )}
 
       {event?.started && showGuestUploadCard && (
-        <div className="card">
+        <div className="card" style={{ display: activeTab === 'manager' ? undefined : 'none' }}>
           <div className="guest-link-label">Guest uploads</div>
           <p className="hint">
             Let guests add their own shots to the gallery via a separate link/QR. Face indexing runs after approval
@@ -1574,9 +1885,9 @@ export default function EventDetail() {
                     .sort((a, b) => (b.moderation_flagged ? 1 : 0) - (a.moderation_flagged ? 1 : 0))
                     .map((p) => (
                     <div className={p.moderation_flagged ? 'photo-card flagged-card' : 'photo-card'} key={p.photo_id}>
-                      <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                      <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
                       <div className="meta">
-                        <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                        <span>{isVideoFile(p.filename) ? 'Video' : <>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>}</span>
                         {p.moderation_flagged && <span className="flagged-label">Flagged — review first</span>}
                       </div>
                       <div className="match-card-actions">
@@ -1607,7 +1918,7 @@ export default function EventDetail() {
       )}
 
       {event?.started && showSlideshowCard && (
-        <div className="card">
+        <div className="card" style={{ display: activeTab === 'manager' ? undefined : 'none' }}>
           <div className="guest-link-label">Live slideshow</div>
           <p className="hint">
             A full-screen, auto-advancing carousel for a venue TV/screen — updates live as photos land from any
@@ -1624,7 +1935,7 @@ export default function EventDetail() {
       )}
 
       {event?.started && !event.is_sub_gallery && showSubGalleryCard && (
-        <div className="card">
+        <div className="card" style={{ display: activeTab === 'manager' ? undefined : 'none' }}>
           <div className="guest-link-label">Sub-galleries</div>
           <p className="hint">
             Split this event into separate galleries (e.g. "Ceremony" / "Reception") — guests scan the one shared
@@ -1838,11 +2149,96 @@ export default function EventDetail() {
         </div>
       )}
 
+      {/* Phase 21 — Selection tab: everything client-facing for Photo
+          Selection lives here and only here: publish state, download
+          permission, member photos, clients, favourites, picks. */}
+      {activeTab === 'selection' && event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+        <div className="card">
+          <div className="guest-link-label">Client gallery</div>
+          <p className="hint">
+            {event.published_at
+              ? `Published ${new Date(event.published_at).toLocaleDateString()} — Photo Selection clients see the gallery as ready.`
+              : 'Not published yet — publishing marks uploads as finished for Photo Selection clients.'}
+            {' '}Guest downloads are {event.allow_download ? 'allowed' : 'turned off (view-only)'}.
+          </p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            {!event.published_at && (
+              <button className="btn secondary" type="button" onClick={handlePublish} disabled={publishing}>
+                {publishing ? 'Publishing…' : 'Publish event'}
+              </button>
+            )}
+            <label className="checkbox-row" title="When off, guests and clients can view and favourite but can't download originals">
+              <input
+                type="checkbox"
+                checked={!!event.allow_download}
+                disabled={togglingDownload}
+                onChange={(e) => handleAllowDownload(e.target.checked)}
+              />
+              Allow downloads
+            </label>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'selection' && event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+        <div className="card">
+          <div className="guest-link-label">
+            Selection members ({selectionMembers().length})
+          </div>
+          <p className="hint">
+            Only these photos appear in client galleries. Add more from the Manager tab — remove here, one by one or all visible at once.
+          </p>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <button
+              className="btn secondary"
+              type="button"
+              disabled={bulking || selectionMembers().length === 0}
+              onClick={() => handleBulkRemoveVisible('selection')}
+            >
+              Remove all visible from Photo Selection
+            </button>
+          </div>
+          {selectionMembers().length === 0 ? (
+            <p className="hint">Nothing in Photo Selection yet — select photos in the Manager tab and add them.</p>
+          ) : (
+            <div className="photo-grid">
+              {selectionMembers().map((p) => (
+                <div className="photo-card" key={p.photo_id}>
+                  <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                  <div className="meta">
+                    <span className="hint">{p.filename}</span>
+                    <button
+                      className="dismiss-btn"
+                      type="button"
+                      title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                      onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                      disabled={togglingPickId === p.photo_id}
+                      style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
+                    >
+                      <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
+                    </button>
+                    <button
+                      className="dismiss-btn"
+                      type="button"
+                      onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
+                      disabled={!!savingPhotoFeatures[p.photo_id]}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MERGE (Studio-Verse Photo Selection): only shown once the studio
           has turned this feature on for the event (see the Features card
           above) — inviting clients to a feature that isn't active would
-          just be confusing. */}
-      {event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+          just be confusing. Lives on the Selection tab with everything
+          else client-facing. */}
+      {activeTab === 'selection' && event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
         <div className="card team-card">
           <div className="guest-link-label">Clients</div>
           <p className="hint">Invite a client to log in and favourite their photos from this event.</p>
@@ -1964,11 +2360,29 @@ export default function EventDetail() {
       {/* MERGE (Studio-Verse Favourites tab, Phase 18E): the studio's read
           side of Photo Selection — per-client groups or a deduplicated
           merged view with who-favourited-this attribution, plus the
-          studio's own separate picks (star). */}
-      {event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
+          studio's own separate picks (star). Lives on the Selection tab. */}
+      {activeTab === 'selection' && event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator') && (
         <div className="card team-card">
           <div className="guest-link-label">Favourites</div>
           <p className="hint">What each client picked — and your own separate studio picks (star) over the same photos.</p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={handlePicksZip}
+              disabled={zippingPicks || studioPicks.length === 0}
+              title={studioPicks.length === 0 ? 'Star some photos as studio picks first' : 'Download your studio picks as a zip'}
+            >
+              <Download size={14} /> {zippingPicks ? 'Preparing picks zip…' : `Download picks (${studioPicks.length})`}
+            </button>
+          </div>
+          {zippingPicks && picksZipProgress && (
+            <p className="hint">
+              {formatBytes(picksZipProgress.loaded)}
+              {picksZipProgress.total ? ` of ${formatBytes(picksZipProgress.total)}` : ' downloaded'}
+              {' · '}{formatBytes(Math.round(picksZipProgress.speed))}/s
+            </p>
+          )}
           <div className="row source-filter-row">
             {[
               { key: 'grouped', label: 'By client' },
@@ -2007,7 +2421,7 @@ export default function EventDetail() {
                     <div className="photo-grid">
                       {g.photos.map((p) => (
                         <div className="photo-card" key={p.photo_id}>
-                          <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                          <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
                           <div className="meta">
                             <span className="hint">{p.filename}</span>
                             <button
@@ -2034,7 +2448,7 @@ export default function EventDetail() {
             <div className="photo-grid">
               {eventFavourites.merged.map((p) => (
                 <div className="photo-card" key={p.photo_id}>
-                  <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+                  <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
                   <div className="meta">
                     <span className="hint">
                       {p.favourited_by.map((u) => u.name || u.email).join(', ')}
@@ -2057,6 +2471,7 @@ export default function EventDetail() {
         </div>
       )}
 
+      {activeTab === 'manager' && (<>
       {event && !event.started ? (
         <div className="card upload-section">
           <div className="guest-link-label">Start this event</div>
@@ -2098,9 +2513,9 @@ export default function EventDetail() {
         {uploadTab === 'files' ? (
           <Dropzone
             onFiles={handleFiles}
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
             disabled={uploading}
-            hint="JPG, PNG, or WebP — drop multiple photos at once (files over 20MB upload in resumable chunks)"
+            hint="Photos (JPG/PNG/WebP, face-indexed) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks"
           />
         ) : uploadTab === 'shoots' ? (
           <div className="drive-import">
@@ -2175,7 +2590,7 @@ export default function EventDetail() {
         ) : (
           <div className="drive-import">
             <ul className="notice-list">
-              <li>Imported photos aren't stored on PandaSpot's server — only thumbnails and face-search data are kept.</li>
+              <li>Imported photos and videos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails (photos) and face-search data are kept.</li>
               <li>Downloads and shares fetch the original from your Drive folder live.</li>
               <li>Keep the folder shared as "Anyone with the link can view" — if you later restrict or delete files there, those specific photos can no longer be downloaded through PandaSpot (search still works fine).</li>
               <li>Connecting scans and imports every photo currently in the folder, so it can take a while for a large one.</li>
@@ -2243,14 +2658,105 @@ export default function EventDetail() {
       </div>
       )}
 
+      {event?.started && (
+        <div className="card">
+          <div className="guest-link-label">Export</div>
+          <p className="hint">Download every approved photo as one zip — your own copy, regardless of guest download settings.</p>
+          <div className="row" style={{ flexWrap: 'wrap' }}>
+            <button className="btn secondary" type="button" onClick={handleStudioZip} disabled={zipping}>
+              <Download size={14} /> {zipping ? 'Preparing zip…' : 'Download all photos (zip)'}
+            </button>
+          </div>
+          {zipping && zipProgress && (
+            <div style={{ marginTop: 8 }}>
+              <div className="progress-bar">
+                {zipProgress.total
+                  ? <div className="progress-bar-fill" style={{ width: `${Math.min(100, Math.round((zipProgress.loaded / zipProgress.total) * 100))}%` }} />
+                  : <div className="progress-bar-fill" style={{ width: '100%', opacity: 0.5 }} />}
+              </div>
+              <p className="hint">
+                {formatBytes(zipProgress.loaded)}
+                {zipProgress.total ? ` of ${formatBytes(zipProgress.total)}` : ' downloaded'}
+                {' · '}{formatBytes(Math.round(zipProgress.speed))}/s
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      </>)}
+
       {error && <p className="error">{error}</p>}
 
       {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
+      {activeTab === 'manager' && (<>
       {photos.filter((p) => p.approval_status !== 'pending').length === 0 ? (
-        <p className="hint">No photos uploaded yet.</p>
+        <p className="hint">
+          {photoStatusFilter === 'archived'
+            ? 'No archived photos — archiving hides a photo from guests and clients without deleting it.'
+            : 'No photos uploaded yet.'}
+        </p>
       ) : (
         <>
+        <div className="row source-filter-row">
+          {[
+            { key: 'active', label: 'Active' },
+            { key: 'archived', label: 'Archived' },
+            { key: 'all', label: 'All' },
+          ].map((opt) => (
+            <button
+              key={`status-${opt.key}`}
+              type="button"
+              className={photoStatusFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+              onClick={() => setPhotoStatusFilter(opt.key)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {(event?.photo_selection_enabled || event?.face_search_enabled) && visibleManageablePhotos.length > 0 && (
+          <div className="card" style={{ padding: '10px 14px' }}>
+            <div className="row" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+              <label className="checkbox-row" style={{ margin: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={visibleManageablePhotos.length > 0 && visibleManageablePhotos.every((p) => managerSelected[p.photo_id])}
+                  onChange={toggleManagerSelectAllVisible}
+                />
+                Select all visible ({visibleManageablePhotos.length})
+              </label>
+              <span className="hint">{selectedCount} selected</span>
+              {event?.photo_selection_enabled && (
+                <>
+                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
+                    {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount} to Photo Selection`}
+                  </button>
+                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
+                    Add all visible
+                  </button>
+                </>
+              )}
+              {event?.face_search_enabled && (
+                <>
+                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
+                    {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount} to AI Search`}
+                  </button>
+                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
+                    Add all visible
+                  </button>
+                </>
+              )}
+              {selectedCount > 0 && (
+                <button className="dismiss-btn" type="button" onClick={() => setManagerSelected({})}>
+                  Clear
+                </button>
+              )}
+            </div>
+            <p className="hint" style={{ marginTop: 6 }}>
+              Zero-copy — files stay where they are, only membership flags change. Adding to AI Search face-indexes new photos in the background.
+            </p>
+          </div>
+        )}
         <div className="row source-filter-row">
           {[
             { key: 'all', label: 'All' },
@@ -2296,19 +2802,42 @@ export default function EventDetail() {
                 .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
                 .map((p) => (
             <div className="photo-card" key={p.photo_id}>
-              <img src={fileUrl(p.thumbnail_url || p.url)} alt={p.filename} />
+              <div style={{ position: 'relative' }}>
+                <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                {(event?.photo_selection_enabled || event?.face_search_enabled) && (
+                  <input
+                    type="checkbox"
+                    title="Select for bulk add to Photo Selection / AI Search"
+                    checked={!!managerSelected[p.photo_id]}
+                    onChange={() => toggleManagerSelect(p.photo_id)}
+                    style={{ position: 'absolute', top: 8, left: 8, width: 20, height: 20, cursor: 'pointer', accentColor: '#F59E0B' }}
+                  />
+                )}
+              </div>
               <div className="meta">
-                <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
-                {event?.photo_selection_enabled && (
+                <span>
+                  {isVideoFile(p.filename) ? (
+                    <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
+                  ) : (
+                    <>{p.face_count} face{p.face_count === 1 ? '' : 's'}{p.archived_at && <span className="hint"> · archived</span>}</>
+                  )}
+                </span>
+                {p.archived_at ? (
                   <button
                     className="dismiss-btn"
                     type="button"
-                    title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                    onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                    disabled={togglingPickId === p.photo_id}
-                    style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
+                    onClick={() => handleRestorePhoto(p.photo_id, p.filename)}
                   >
-                    <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
+                    Restore
+                  </button>
+                ) : (
+                  <button
+                    className="dismiss-btn"
+                    type="button"
+                    title="Hide from guests and clients without deleting"
+                    onClick={() => handleArchivePhoto(p.photo_id, p.filename)}
+                  >
+                    Archive
                   </button>
                 )}
                 <button
@@ -2320,32 +2849,13 @@ export default function EventDetail() {
                   {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
                 </button>
               </div>
-              <div className="photo-feature-membership">
-                <label className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={p.face_search_visible !== false}
-                    disabled={!!savingPhotoFeatures[p.photo_id]}
-                    onChange={(e) => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: e.target.checked })}
-                  />
-                  Face Search
-                </label>
-                <label className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={p.photo_selection_visible !== false}
-                    disabled={!!savingPhotoFeatures[p.photo_id]}
-                    onChange={(e) => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: e.target.checked })}
-                  />
-                  Photo Selection
-                </label>
-              </div>
             </div>
           ))}
         </div>
       )}
     </>
   )}
+      </>)}
 
       {event && (
         <Modal open={showEditDetails} onClose={() => setShowEditDetails(false)} title="Edit event details">

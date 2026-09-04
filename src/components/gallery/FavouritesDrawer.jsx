@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Heart, Download } from 'lucide-react'
 import Drawer from '../ui/Drawer'
 import GoldButton from '../ui/GoldButton'
+import GalleryMedia from '../GalleryMedia'
 import { downloadClientFavouritesZip, fileUrl } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 
@@ -9,12 +10,12 @@ function ThumbImage({ photo }) {
   const src = photo.protected_thumbnail_url || photo.protected_url
   if (!src) return <div className="skeleton w-20 h-20 rounded-lg flex-shrink-0" />
   return (
-    <img
+    <GalleryMedia
       src={fileUrl(src)}
-      alt=""
+      filename={photo.filename}
+      controls={false}
+      preload="metadata"
       className="w-20 h-20 object-cover rounded-lg flex-shrink-0 no-select"
-      draggable={false}
-      onContextMenu={(e) => e.preventDefault()}
     />
   )
 }

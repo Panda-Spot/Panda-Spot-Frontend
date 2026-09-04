@@ -70,9 +70,9 @@ export default function GuestUpload() {
           </p>
           <Dropzone
             onFiles={handleFiles}
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
             disabled={uploading || !event}
-            hint="JPG, PNG, or WebP — up to 10 at a time"
+            hint="Photos or video (MP4/MOV/WebM/MKV/AVI) — up to 10 at a time"
           />
           {uploading && <p className="hint" style={{ marginTop: 12 }}>Uploading…</p>}
           {error && <p className="error">{error}</p>}

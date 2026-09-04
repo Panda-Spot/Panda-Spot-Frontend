@@ -31,6 +31,21 @@ async function request(path, options) {
     } catch {
       // response wasn't JSON — keep the generic message
     }
+    // Session guard (mirrors Studio-Verse's axios 401 interceptor): a 401
+    // on an authenticated call means the token died (expiry, logout
+    // elsewhere, suspension) — drop it and bounce to login instead of
+    // leaving the app in a broken logged-in state. Auth endpoints manage
+    // their own errors, so they never trigger this.
+    if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      try {
+        clearToken()
+      } catch {
+        // storage unavailable — redirect still unsticks the UI
+      }
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login"
+      }
+    }
     throw err
   }
   if (res.status === 204) return null
@@ -216,13 +231,34 @@ export const removeStudioPick = (eventId, photoId) =>
 export const startEvent = (eventId) =>
   request(`/events/${eventId}/start`, { method: "POST" })
 
-export const listPhotos = (eventId) => request(`/events/${eventId}/photos`)
+export const listPhotos = (eventId, status) => {
+  const params = new URLSearchParams()
+  if (status) params.set("status", status)
+  const qs = params.toString()
+  return request(`/events/${eventId}/photos${qs ? `?${qs}` : ""}`)
+}
 
 export const updatePhotoFeatureMembership = (eventId, photoId, patch) =>
   request(`/events/${eventId}/photos/${photoId}/features`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+  })
+
+// Bulk zero-copy membership: set flags across an id list or a
+// server-side `all` selector ({ source?, status?, approval? }). Adding to
+// Face Search may return a job_id for background face-indexing — watch it
+// like an upload job.
+export const bulkSetMembership = (eventId, { photoIds, all, faceSearchVisible, photoSelectionVisible }) =>
+  request(`/events/${eventId}/photos/bulk-features`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      photo_ids: photoIds,
+      all,
+      face_search_visible: faceSearchVisible,
+      photo_selection_visible: photoSelectionVisible,
+    }),
   })
 
 export const deletePhoto = (eventId, photoId) =>
@@ -407,14 +443,38 @@ export const abortLargeUpload = (eventId, stageId) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ stage_id: stageId }),
   })
-export const saveBranding = (studioName, brandColor, logoFile, watermarkIntensity) => {
+export const saveBranding = (studioName, brandColor, logoFile, watermarkIntensity, watermarkFile, removeWatermark) => {
   const form = new FormData()
   form.append("studio_name", studioName || "")
   form.append("brand_color", brandColor || "")
   form.append("watermark_intensity", String(watermarkIntensity ?? 0.75))
   if (logoFile) form.append("logo", logoFile)
+  if (watermarkFile) form.append("watermark", watermarkFile)
+  if (removeWatermark) form.append("remove_watermark", "true")
   return request("/branding", { method: "POST", body: form })
 }
+
+// Studio photo archive controls (mirrors the event-level pair).
+export const archivePhoto = (eventId, photoId) =>
+  request(`/events/${eventId}/photos/${photoId}/archive`, { method: "POST" })
+
+export const restorePhoto = (eventId, photoId) =>
+  request(`/events/${eventId}/photos/${photoId}/restore`, { method: "POST" })
+
+export const getPhotoFaces = (eventId, photoId) =>
+  request(`/events/${eventId}/photos/${photoId}/faces`)
+
+export const getEventFaceGroups = (eventId) =>
+  request(`/events/${eventId}/face-groups`)
+
+// Provision a client account directly (no email round trip) — returns a
+// one-time generated password when the studio didn't set one.
+export const createClientAccount = (eventId, { email, name, password, favouriteCap }) =>
+  request(`/events/${eventId}/clients/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, name, password, favourite_cap: favouriteCap ?? undefined }),
+  })
 
 // --- Analytics (photographer, authenticated) ---
 
@@ -424,9 +484,10 @@ export const getEventAnalytics = (eventId) => request(`/events/${eventId}/analyt
 
 export const getAdminOverview = () => request("/admin/overview")
 
-export const listAdminUsers = (search, page = 1, role) => {
+export const listAdminUsers = (search, page = 1, role, status) => {
   const params = new URLSearchParams({ search: search || "", page: String(page) })
   if (role) params.set("role", role)
+  if (status) params.set("status", status)
   return request(`/admin/users?${params.toString()}`)
 }
 
@@ -469,6 +530,13 @@ export const setAdminUserBranding = (userId, watermarkIntensity) =>
 
 export const wipeAdminUserStorage = (userId, confirmEmail) =>
   request(`/admin/users/${userId}/storage`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm_email: confirmEmail }),
+  })
+
+export const resetAdminUserWorkspace = (userId, confirmEmail) =>
+  request(`/admin/users/${userId}/reset`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ confirm_email: confirmEmail }),
@@ -679,6 +747,9 @@ export const inviteClient = (eventId, email, favouriteCap) =>
 
 export const listClients = (eventId) => request(`/events/${eventId}/clients`)
 
+export const checkClientDuplicate = (eventId, email) =>
+  request(`/events/${eventId}/clients/check?email=${encodeURIComponent(email)}`)
+
 export const removeClient = (eventId, userId) =>
   request(`/events/${eventId}/clients/${userId}`, { method: "DELETE" })
 
@@ -829,6 +900,13 @@ export const createQuotation = (clientEmail, clientName, items, discountAmount) 
 
 export const confirmQuotation = (quotationId) =>
   request(`/billing/quotations/${quotationId}/confirm`, { method: "POST" })
+
+export const updateQuotation = (quotationId, items, discountAmount) =>
+  request(`/billing/quotations/${quotationId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, discount_amount: discountAmount }),
+  })
 
 export const deleteQuotation = (quotationId) =>
   request(`/billing/quotations/${quotationId}`, { method: "DELETE" })

@@ -124,6 +124,32 @@ export default function Billing() {
 
       {error && <p className="error">{error}</p>}
 
+      {subscription?.status === 'GRACE' && (
+        <div className="px-4 py-3 rounded-xl flex items-center gap-3"
+          style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.25)' }}>
+          <div className="flex-1">
+            <p className="text-sm font-semibold" style={{ color: '#FBBF24' }}>
+              Uploads are disabled — grace period
+              {subscription.grace_ends_at && (
+                <> ends {new Date(subscription.grace_ends_at).toLocaleDateString()} ({Math.max(0, Math.ceil((new Date(subscription.grace_ends_at) - new Date()) / 86400000))} day(s) left)</>
+              )}
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Your events stay visible, but new uploads are blocked. Renew below before the grace window lapses or content is purged.
+            </p>
+          </div>
+        </div>
+      )}
+      {subscription?.status === 'EXPIRED' && (
+        <div className="px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <p className="text-sm font-semibold" style={{ color: '#F87171' }}>Subscription expired</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Subscribe to a plan below to restore uploads.
+          </p>
+        </div>
+      )}
+
       <GlassCard hover={false}>
         <div className="guest-link-label">Subscription</div>
         {subscription ? (
@@ -159,7 +185,9 @@ export default function Billing() {
           <div className="photo-grid" style={{ marginTop: 12 }}>
             {subscriptionPlans.map((p) => {
               const isCurrent = subscription?.plan_name === p.planName;
-              const isHigher = subscription && Number(p.price) > Number(subscriptionPlans.find((sp) => sp.planName === subscription.plan_name)?.price ?? 0);
+              const currentPrice = Number(subscriptionPlans.find((sp) => sp.planName === subscription?.plan_name)?.price ?? 0);
+              const priceDiff = Number(p.price) - currentPrice;
+              const isHigher = subscription && priceDiff > 0;
               return (
                 <div className="photo-card" key={p.id} style={{ padding: 16 }}>
                   <div className="guest-link-label">{p.planName}</div>
@@ -170,7 +198,7 @@ export default function Billing() {
                   ) : subscription && subscription.status !== 'GRACE' && subscription.status !== 'EXPIRED' && subscription.plan_name ? (
                     isHigher ? (
                       <GoldButton size="sm" type="button" disabled={busy} onClick={() => withBusy(() => upgradeSubscription(p.id))}>
-                        Upgrade
+                        Upgrade (+₹{priceDiff})
                       </GoldButton>
                     ) : (
                       <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => handleDowngrade(p.id, p.planName)}>

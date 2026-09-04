@@ -12,6 +12,7 @@ import useBrandColours from '../hooks/useBrandColours.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
+import GalleryMedia from '../components/GalleryMedia.jsx'
 
 // The client's favourited subset of one event, with a zip download (if the
 // studio allows it). Mirrors the favourites bottom-sheet content as its own
@@ -110,14 +111,21 @@ export default function ClientFavourites() {
           <div className="photo-grid">
             {favourites.map((p) => (
               <div className="photo-card no-select" key={p.photo_id}>
-                <div className="protected-photo-frame" data-watermark={watermarkText}>
-                  <img
+                <div className="protected-photo-frame" data-watermark={event.watermark_image_url ? '' : watermarkText} style={{ position: 'relative' }}>
+                  <GalleryMedia
                     src={fileUrl(p.protected_thumbnail_url || p.protected_url)}
-                    alt={p.filename}
-                    draggable="false"
-                    onDragStart={(e) => e.preventDefault()}
-                    onContextMenu={(e) => e.preventDefault()}
+                    filename={p.filename}
+                    style={{ width: '100%', display: 'block' }}
                   />
+                  {event.watermark_image_url && (
+                    <img
+                      src={fileUrl(event.watermark_image_url)}
+                      alt=""
+                      className="watermark-image-overlay"
+                      draggable="false"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  )}
                 </div>
                 <div className="meta">
                   <span className="hint">{p.filename}</span>

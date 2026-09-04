@@ -11,6 +11,8 @@ import {
   setAdminEventExpiry,
 } from '../api.js'
 import Lightbox from '../components/Lightbox.jsx'
+import GalleryMedia from '../components/GalleryMedia.jsx'
+import { isVideoFile } from '../utils/media.js'
 
 function formatBytes(bytes) {
   return `${(bytes / 1e9).toFixed(2)}GB`
@@ -191,6 +193,12 @@ export default function AdminEventDetail() {
 
           {(() => {
             const filtered = photos.filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter);
+            // The guest-style Lightbox only handles stills (match %
+            // caption, image element) — videos play inline in their tile,
+            // so the lightbox list contains stills only, with tile clicks
+            // mapped onto that list.
+            const viewable = filtered.filter((p) => !isVideoFile(p.filename));
+            const openIndex = (photoId) => viewable.findIndex((p) => p.photo_id === photoId);
             if (filtered.length === 0) {
               return (
                 <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
@@ -200,19 +208,22 @@ export default function AdminEventDetail() {
             }
             return (
               <div className="photo-grid" style={{ marginTop: 12 }}>
-                {filtered.map((p, idx) => (
+                {filtered.map((p) => (
                   <div className="photo-card" key={p.photo_id}>
-                    <img
+                    <GalleryMedia
                       src={fileUrl(p.thumbnail_url || p.url)}
-                      alt={p.filename}
-                      style={{ cursor: 'pointer', height: 180, objectFit: 'cover' }}
-                      onClick={() => setLightboxIndex(idx)}
+                      filename={p.filename}
+                      style={{ cursor: isVideoFile(p.filename) ? undefined : 'pointer', height: 180, objectFit: 'cover', width: '100%' }}
+                      onClick={isVideoFile(p.filename) ? undefined : () => setLightboxIndex(openIndex(p.photo_id))}
                     />
                     <div className="meta">
                       <span style={{ fontSize: 11, fontWeight: 600 }}>
-                        {p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
+                        {isVideoFile(p.filename) ? 'Video' : p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
                       </span>
-                      <span>{p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                      <span>
+                        {!isVideoFile(p.filename) && <>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>}
+                        {p.archived_at && <span className="hint"> · archived</span>}
+                      </span>
                     </div>
                     {(p.client_favourites_count > 0 || p.likes_count > 0) && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
@@ -230,6 +241,7 @@ export default function AdminEventDetail() {
             <Lightbox
               matches={photos
                 .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+                .filter((p) => !isVideoFile(p.filename))
                 .map((p) => ({
                   photo_id: p.photo_id,
                   filename: p.filename,

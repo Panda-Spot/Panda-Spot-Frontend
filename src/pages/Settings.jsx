@@ -7,6 +7,7 @@ import { useShutterNavigate } from '../context/ShutterContext.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import GoldInput from '../components/ui/GoldInput.jsx'
+import PasswordStrength from '../components/ui/PasswordStrength.jsx'
 
 // Shared account page (all authenticated roles): password tab for everyone,
 // plus a Super-Admin-only Accounts tab with unlock/reset tools for any
@@ -130,6 +131,7 @@ export default function Settings() {
           <form onSubmit={handleChangePassword} className="mt-2">
             <GoldInput label="Current password" name="cur-pass" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
             <GoldInput label="New password (min 8 characters)" name="new-pass" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <PasswordStrength value={newPassword} />
             <GoldInput label="Confirm new password" name="confirm-pass" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             <GoldButton type="submit" loading={changing} className="w-full justify-center">
               Change password

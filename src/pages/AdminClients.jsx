@@ -17,6 +17,7 @@ export default function AdminClients() {
   const { showToast } = useToast()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState('all')
   const [data, setData] = useState(null)
   const [plans, setPlans] = useState([])
   const [error, setError] = useState('')
@@ -26,10 +27,10 @@ export default function AdminClients() {
   const [draft, setDraft] = useState({ name: '', email: '', password: '', plan_id: '', free_access_until: '' })
 
   const load = useCallback(() => {
-    listAdminUsers(search, page, 'ADMIN')
+    listAdminUsers(search, page, 'ADMIN', statusFilter)
       .then(setData)
       .catch((e) => setError(e.message))
-  }, [search, page])
+  }, [search, page, statusFilter])
 
   useEffect(() => {
     const t = setTimeout(load, 250) // debounce search typing
@@ -90,6 +91,12 @@ export default function AdminClients() {
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
 
+  const setGrantPreset = (months) => {
+    const d = new Date()
+    d.setMonth(d.getMonth() + months)
+    setDraft((prev) => ({ ...prev, free_access_until: d.toISOString().slice(0, 10) }))
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -115,6 +122,11 @@ export default function AdminClients() {
             {plans.map((p) => <option key={p.id} value={p.id}>{p.planName}</option>)}
           </select>
           <input className="text-input" type="date" value={draft.free_access_until} onChange={(e) => setDraft((d) => ({ ...d, free_access_until: e.target.value }))} disabled={!draft.plan_id} />
+          {[1, 3, 6, 12].map((m) => (
+            <button key={m} className="btn secondary" type="button" disabled={!draft.plan_id} onClick={() => setGrantPreset(m)} title={`Free until ${m} month(s) from now`}>
+              {m}m
+            </button>
+          ))}
           <GoldButton type="submit" loading={creating} disabled={!draft.name.trim() || !draft.email.trim() || (!!draft.plan_id && !draft.free_access_until)}>
             Create studio
           </GoldButton>
@@ -132,15 +144,38 @@ export default function AdminClients() {
       </GlassCard>
 
       <GlassCard hover={false}>
-        <input
-          className="text-input w-full"
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={(e) => {
-            setPage(1)
-            setSearch(e.target.value)
-          }}
-        />
+        <div className="flex gap-3 flex-wrap items-center">
+          <input
+            className="text-input flex-1"
+            style={{ minWidth: 220 }}
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => {
+              setPage(1)
+              setSearch(e.target.value)
+            }}
+          />
+          <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'active', label: 'Active' },
+              { key: 'suspended', label: 'Suspended' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setStatusFilter(key); setPage(1) }}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{
+                  background: statusFilter === key ? 'var(--bg-surface)' : 'transparent',
+                  color: statusFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </GlassCard>
 
       {error && <p className="error">{error}</p>}

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, Search, UserPlus, Users } from 'lucide-react'
 import {
+  checkClientDuplicate,
+  createClientAccount,
   inviteClient,
   listClients,
   listEvents,
@@ -32,6 +34,29 @@ export default function Clients() {
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState(null) // user_id
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteTab, setInviteTab] = useState('existing') // existing | new
+  const [newName, setNewName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [createdCredentials, setCreatedCredentials] = useState(null)
+  const [duplicate, setDuplicate] = useState(null)
+
+  // Advisory duplicate check while typing an email — warns before sending
+  // a double invite, never blocks (same advisory-only contract as
+  // Studio-Verse's checkDuplicateClient).
+  useEffect(() => {
+    if (!inviteOpen) return
+    const email = inviteEmail.trim().toLowerCase()
+    if (!inviteEventId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setDuplicate(null)
+      return
+    }
+    const t = setTimeout(() => {
+      checkClientDuplicate(inviteEventId, email)
+        .then(setDuplicate)
+        .catch(() => setDuplicate(null))
+    }, 400)
+    return () => clearTimeout(t)
+  }, [inviteOpen, inviteEventId, inviteEmail])
   const [inviteEventId, setInviteEventId] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteCap, setInviteCap] = useState('')
@@ -108,17 +133,52 @@ export default function Clients() {
     setInviting(true)
     try {
       const cap = inviteCap.trim() === '' ? undefined : Number(inviteCap)
-      await inviteClient(inviteEventId, inviteEmail.trim(), cap)
-      showToast(`Invite sent to ${inviteEmail.trim()}`)
-      setInviteOpen(false)
-      setInviteEmail('')
-      setInviteCap('')
+      if (inviteTab === 'new') {
+        if (newPassword && newPassword.length < 8) {
+          showToast('Password must be at least 8 characters', { type: 'error' })
+          return
+        }
+        const res = await createClientAccount(inviteEventId, {
+          email: inviteEmail.trim(),
+          name: newName.trim() || undefined,
+          password: newPassword || undefined,
+          favouriteCap: cap,
+        })
+        if (res.status === 'created' && res.generated_password) {
+          setCreatedCredentials({ email: res.email, password: res.generated_password })
+        } else {
+          showToast(`Added — ${res.email} can view this event immediately.`)
+          closeInviteModal()
+        }
+      } else {
+        await inviteClient(inviteEventId, inviteEmail.trim(), cap)
+        showToast(`Invite sent to ${inviteEmail.trim()}`)
+        closeInviteModal()
+      }
       load()
     } catch (err) {
       showToast(err.message, { type: 'error' })
     } finally {
       setInviting(false)
     }
+  }
+
+  const closeInviteModal = () => {
+    setInviteOpen(false)
+    setInviteEmail('')
+    setInviteCap('')
+    setNewName('')
+    setNewPassword('')
+    setCreatedCredentials(null)
+    setDuplicate(null)
+    setInviteTab('existing')
+  }
+
+  const openInviteModal = () => {
+    setInviteEventId(events[0]?.id || '')
+    setInviteTab('existing')
+    setCreatedCredentials(null)
+    setInviteOpen(true)
   }
 
   const handleRemove = async (eventId, eventName, client) => {
@@ -161,7 +221,7 @@ export default function Clients() {
         </div>
         <GoldButton
           icon={<UserPlus size={14} />}
-          onClick={() => { setInviteEventId(events[0]?.id || ''); setInviteOpen(true) }}
+          onClick={openInviteModal}
           disabled={events.length === 0}
         >
           Invite client
@@ -252,22 +312,78 @@ export default function Clients() {
         </div>
       )}
 
-      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite client" size="sm">
-        <form onSubmit={handleInvite}>
-          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }} htmlFor="inv-event">Event</label>
-          <select
-            id="inv-event"
-            className="w-full mt-1 mb-4 rounded-lg px-3 py-2 text-sm"
-            style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
-            value={inviteEventId}
-            onChange={(e) => setInviteEventId(e.target.value)}
-          >
-            {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-          </select>
-          <GoldInput label="Client email" name="inv-email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-          <GoldInput label="Favourite cap (optional, blank = unlimited)" name="inv-cap" type="number" value={inviteCap} onChange={(e) => setInviteCap(e.target.value)} />
-          <GoldButton type="submit" loading={inviting} className="w-full justify-center">Send invite</GoldButton>
-        </form>
+      <Modal open={inviteOpen} onClose={closeInviteModal} title="Add client" size="sm">
+        {createdCredentials ? (
+          <div>
+            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Account created for <strong>{createdCredentials.email}</strong> — share this one-time password now, it won&apos;t be shown again:
+            </p>
+            <p className="text-base font-mono font-bold mb-4 p-3 rounded-lg text-center"
+              style={{ background: 'var(--bg-elevated)', color: 'var(--accent-primary)', userSelect: 'all' }}>
+              {createdCredentials.password}
+            </p>
+            <GoldButton className="w-full justify-center" onClick={closeInviteModal}>Done</GoldButton>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-1 p-1 rounded-xl w-fit mb-4" style={{ background: 'var(--bg-elevated)' }}>
+              {[
+                { key: 'existing', label: 'Email invite' },
+                { key: 'new', label: 'New account' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setInviteTab(key)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{
+                    background: inviteTab === key ? 'var(--bg-surface)' : 'transparent',
+                    color: inviteTab === key ? '#F59E0B' : 'var(--text-secondary)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <form onSubmit={handleInvite}>
+              <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }} htmlFor="inv-event">Event</label>
+              <select
+                id="inv-event"
+                className="w-full mt-1 mb-4 rounded-lg px-3 py-2 text-sm"
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+                value={inviteEventId}
+                onChange={(e) => setInviteEventId(e.target.value)}
+              >
+                {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+              </select>
+              <GoldInput label="Client email" name="inv-email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+              {duplicate?.already_in_event && (
+                <p className="hint" style={{ color: '#FBBF24' }}>
+                  {duplicate.name || inviteEmail.trim()} already has access to this event.
+                </p>
+              )}
+              {duplicate?.exists && !duplicate.already_in_event && (
+                <p className="hint">
+                  {duplicate.name || inviteEmail.trim()} already has an account
+                  {duplicate.role && duplicate.role !== 'USER' ? ` (${duplicate.role})` : ''} — inviting will link it to this event.
+                </p>
+              )}
+              {inviteTab === 'new' && (
+                <>
+                  <GoldInput label="Client name (optional)" name="inv-name" type="text" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                  <GoldInput label="Password (optional — blank = generate)" name="inv-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </>
+              )}
+              <GoldInput label="Favourite cap (optional, blank = unlimited)" name="inv-cap" type="number" value={inviteCap} onChange={(e) => setInviteCap(e.target.value)} />
+              <GoldButton type="submit" loading={inviting} className="w-full justify-center">
+                {inviteTab === 'new' ? 'Create account' : 'Send invite'}
+              </GoldButton>
+              {inviteTab === 'new' && (
+                <p className="hint mt-2">Creates the login immediately with access to this event — no email round trip.</p>
+              )}
+            </form>
+          </>
+        )}
       </Modal>
     </div>
   )

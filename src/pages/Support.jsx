@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
+import { LifeBuoy } from 'lucide-react'
 import { createSupportTicket, listClientEvents, listSupportTickets, replySupportTicket, setSupportTicketStatus } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import GlassCard from '../components/ui/GlassCard.jsx'
+import GoldButton from '../components/ui/GoldButton.jsx'
+import Badge from '../components/ui/Badge.jsx'
 
 const STATUS_OPTIONS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
+
+const statusVariant = (status) =>
+  status === 'OPEN' ? 'gold' : status === 'IN_PROGRESS' ? 'info' : status === 'RESOLVED' ? 'success' : 'default'
 
 // MERGE (Studio-Verse Support Tickets): one page for requesters, studio
 // admins handling client tickets, and SUPER_ADMIN handling every ticket.
@@ -17,6 +24,7 @@ export default function Support() {
   const [message, setMessage] = useState('')
   const [eventId, setEventId] = useState('')
   const [replyDrafts, setReplyDrafts] = useState({})
+  const [statusFilter, setStatusFilter] = useState('all')
   const [busy, setBusy] = useState(false)
 
   const load = () => {
@@ -85,13 +93,22 @@ export default function Support() {
   if (error && !tickets) return <p className="error">{error}</p>
   if (!tickets) return <p className="hint">Loading…</p>
 
+  const visibleTickets = statusFilter === 'all' ? tickets : tickets.filter((t) => t.status === statusFilter)
+
   return (
-    <div>
-      <h1 className="section-title">Support</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <LifeBuoy size={22} className="text-gold-500" /> {isSuperAdmin ? 'Support Tickets' : 'Support'}
+        </h1>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          {isSuperAdmin ? 'Every tenant ticket across the platform.' : 'Raise a ticket and track replies here.'}
+        </p>
+      </div>
       {error && <p className="error">{error}</p>}
 
       {!isSuperAdmin && (
-        <div className="card billing-card">
+        <GlassCard hover={false}>
           <div className="guest-link-label">Raise a new ticket</div>
           <form onSubmit={handleCreate}>
             {isClient && (
@@ -104,17 +121,35 @@ export default function Support() {
             )}
             <input className="text-input" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
             <textarea className="text-input" style={{ marginTop: 8, minHeight: 80 }} placeholder="Describe your issue (optional)" value={message} onChange={(e) => setMessage(e.target.value)} />
-            <button className="btn" type="submit" disabled={busy || !subject.trim() || (isClient && !eventId)} style={{ marginTop: 8 }}>Submit</button>
+            <GoldButton type="submit" loading={busy} disabled={!subject.trim() || (isClient && !eventId)} style={{ marginTop: 8 }}>Submit</GoldButton>
           </form>
-        </div>
+        </GlassCard>
       )}
 
-      {tickets.length === 0 && <p className="hint">No tickets yet.</p>}
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+        {['all', ...STATUS_OPTIONS].map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatusFilter(key)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{
+              background: statusFilter === key ? 'var(--bg-surface)' : 'transparent',
+              color: statusFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+            }}
+          >
+            {key === 'all' ? 'All' : key.replace('_', ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
+          </button>
+        ))}
+      </div>
 
-      {tickets.map((t) => (
-        <div className="card billing-card" key={t.id}>
+      {visibleTickets.length === 0 && <p className="hint">{tickets.length === 0 ? 'No tickets yet.' : 'No tickets with this status.'}</p>}
+
+      {visibleTickets.map((t) => (
+        <GlassCard hover={false} key={t.id}>
           <div className="guest-link-label">
-            {t.subject} <span className="hint">({t.status}{t.event ? ` — ${t.event.name}` : ''}{isSuperAdmin && t.tenant ? ` — ${t.tenant.email}` : ''})</span>
+            {t.subject} <Badge variant={statusVariant(t.status)}>{t.status}</Badge>{' '}
+            <span className="hint">({t.event ? `${t.event.name}` : ''}{t.event && isSuperAdmin && t.tenant ? ' — ' : ''}{isSuperAdmin && t.tenant ? t.tenant.email : ''})</span>
           </div>
           <ul className="team-list">
             {t.replies.map((r) => (
@@ -138,18 +173,18 @@ export default function Support() {
                 value={replyDrafts[t.id] || ''}
                 onChange={(e) => setReplyDrafts((prev) => ({ ...prev, [t.id]: e.target.value }))}
               />
-              <button className="btn secondary" type="submit" disabled={busy}>Reply</button>
+              <GoldButton size="sm" variant="outline" type="submit" loading={busy}>Reply</GoldButton>
             </form>
           )}
 
           <div className="row" style={{ marginTop: 8 }}>
             {STATUS_OPTIONS.filter((s) => isSuperAdmin || ['OPEN', 'RESOLVED'].includes(s)).map((s) => (
-              <button key={s} className="btn secondary" type="button" disabled={busy || t.status === s} onClick={() => handleStatus(t.id, s)}>
+              <GoldButton key={s} size="sm" variant="ghost" type="button" disabled={busy || t.status === s} onClick={() => handleStatus(t.id, s)}>
                 Mark {s.replace('_', ' ').toLowerCase()}
-              </button>
+              </GoldButton>
             ))}
           </div>
-        </div>
+        </GlassCard>
       ))}
     </div>
   )

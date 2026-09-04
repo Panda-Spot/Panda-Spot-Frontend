@@ -6,7 +6,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts'
-import { createEvent, getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api.js'
+import { createEvent, fileUrl, getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { greetingTime } from '../utils/formatters.js'
 import StatCard from '../components/ui/StatCard.jsx'
@@ -507,8 +507,17 @@ export default function Dashboard() {
           <ul className="event-list">
             {events.map((ev) => (
               <li key={ev.id} className="event-list-item">
-                <Link to={`/events/${ev.id}`}>
-                  <span>
+                <Link to={`/events/${ev.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {ev.cover_url ? (
+                    <img
+                      src={fileUrl(ev.cover_url)}
+                      alt=""
+                      style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                      draggable={false}
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  ) : null}
+                  <span style={{ flex: 1 }}>
                     {ev.name}
                     <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
                   </span>

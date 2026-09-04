@@ -390,6 +390,11 @@ export default function GuestEvent() {
                   <span>{m.people_matched != null ? `${m.people_matched} of your group` : 'Match'}</span>
                   <span>{Math.round(m.similarity * 100)}%</span>
                 </div>
+                {m.match_via_group && (
+                  <p className="hint" style={{ margin: '2px 0 0', fontSize: 11 }}>
+                    Found via face group — same person as a strong match
+                  </p>
+                )}
                 <ReactionBar
                   reactions={m.reactions}
                   myReaction={m.my_reaction}
