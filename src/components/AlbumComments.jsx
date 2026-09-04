@@ -1,15 +1,21 @@
 import { useState } from 'react'
-import { Check, MessageSquare, Pin, Reply } from 'lucide-react'
+import { Check, MessageSquare, Pin, Reply, Trash2, Undo2 } from 'lucide-react'
 
-// Threaded album feedback (Phase 23) — shared by studio + client. Pins
-// (numbered, page-attributed) and general notes render newest-last; replies
-// thread one level deep; resolution is studio-side via canResolve.
+// Threaded album feedback (Phase 23 core, Phase 6 depth) — shared by
+// studio + client. Pins (numbered, page-attributed) and general notes,
+// newest-last; replies thread one level deep; resolution is studio-side
+// (resolve + unresolve); deletion is studio-wide or own-comment while
+// unlocked. Filter tabs focus triage: open / resolved / all.
 export default function AlbumComments({
   comments = [],
   pageNumberOf = null,
   locked = false,
   canResolve = false,
   onResolve = null,
+  onUnresolve = null,
+  canDeleteAny = false,
+  currentUserId = null,
+  onDeleteComment = null,
   pendingPin = null,
   onCancelPin = null,
   onPostPin = null,
@@ -23,8 +29,20 @@ export default function AlbumComments({
   const [replyText, setReplyText] = useState('')
   const [noteText, setNoteText] = useState('')
   const [pinText, setPinText] = useState('')
+  const [filter, setFilter] = useState('open') // open | resolved | all
 
   const ordered = [...(comments || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  const openCount = ordered.filter((c) => !c.resolved_at).length
+  const resolvedCount = ordered.length - openCount
+  const visible = ordered.filter((c) =>
+    filter === 'all' ? true : filter === 'open' ? !c.resolved_at : !!c.resolved_at
+  )
+
+  const canDelete = (c) => {
+    if (locked || !onDeleteComment) return false
+    if (canDeleteAny) return true
+    return currentUserId != null && c.author?.id === currentUserId
+  }
 
   const submitReply = async (parentId) => {
     if (!replyText.trim() || !onPostReply) return
@@ -75,31 +93,52 @@ export default function AlbumComments({
         </span>
       </div>
       <p style={{ fontSize: 13, margin: '6px 0', whiteSpace: 'pre-wrap' }}>{c.message}</p>
-      {!isReply && (
-        <div className="row" style={{ gap: 8 }}>
-          {!locked && (
-            <button
-              type="button"
-              className="btn secondary"
-              style={{ padding: '2px 8px', fontSize: 12 }}
-              onClick={() => { setReplyOpen(replyOpen === c.id ? null : c.id); setReplyText('') }}
-            >
-              <Reply size={12} /> Reply
-            </button>
-          )}
-          {canResolve && !c.resolved_at && (
-            <button
-              type="button"
-              className="btn secondary"
-              style={{ padding: '2px 8px', fontSize: 12 }}
-              disabled={busy}
-              onClick={() => onResolve?.(c.id)}
-            >
-              <Check size={12} /> Resolve
-            </button>
-          )}
-        </div>
-      )}
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        {!isReply && !locked && (
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ padding: '2px 8px', fontSize: 12 }}
+            onClick={() => { setReplyOpen(replyOpen === c.id ? null : c.id); setReplyText('') }}
+          >
+            <Reply size={12} /> Reply
+          </button>
+        )}
+        {!isReply && canResolve && !locked && !c.resolved_at && (
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ padding: '2px 8px', fontSize: 12 }}
+            disabled={busy}
+            onClick={() => onResolve?.(c.id)}
+          >
+            <Check size={12} /> Resolve
+          </button>
+        )}
+        {!isReply && canResolve && !locked && c.resolved_at && (
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ padding: '2px 8px', fontSize: 12 }}
+            disabled={busy}
+            onClick={() => onUnresolve?.(c.id)}
+          >
+            <Undo2 size={12} /> Reopen
+          </button>
+        )}
+        {canDelete(c) && (
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ padding: '2px 8px', fontSize: 12 }}
+            disabled={busy}
+            title={canDeleteAny ? 'Delete (replies go too)' : 'Delete your comment'}
+            onClick={() => onDeleteComment?.(c.id, isReply)}
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
       {!isReply && replyOpen === c.id && !locked && (
         <div className="row" style={{ marginTop: 8, gap: 6 }}>
           <input
@@ -150,10 +189,34 @@ export default function AlbumComments({
         </div>
       )}
 
+      {ordered.length > 0 && (
+        <div className="row source-filter-row" style={{ marginBottom: 8 }}>
+          {[
+            { key: 'open', label: `Open (${openCount})` },
+            { key: 'resolved', label: `Resolved (${resolvedCount})` },
+            { key: 'all', label: `All (${ordered.length})` },
+          ].map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              className={filter === opt.key ? 'upload-tab active' : 'upload-tab'}
+              onClick={() => setFilter(opt.key)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {ordered.length === 0 && !pendingPin && (
         <p className="hint">No feedback yet — pins dropped on a spread and general notes appear here.</p>
       )}
-      {ordered.map((c) => (
+      {ordered.length > 0 && visible.length === 0 && (
+        <p className="hint">
+          {filter === 'open' ? 'Nothing open — every thread is resolved.' : 'Nothing resolved yet.'}
+        </p>
+      )}
+      {visible.map((c) => (
         <div key={c.id}>
           {renderComment(c, false)}
           {(c.replies || []).map((r) => renderComment(r, true))}

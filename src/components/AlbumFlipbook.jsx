@@ -416,6 +416,11 @@ export default function AlbumFlipbook({
         {ordered[clamp(index)]?.filename}
         {spread && visible[1] && visible[1].page_id !== visible[0].page_id ? ` · ${visible[1].filename}` : ''}
         {failedCount > 0 ? ` · ${failedCount} spread${failedCount === 1 ? '' : 's'} failed to load` : ''}
+        {/* Phase 6: open-pin count per visible spread. */}
+        {visible.map((page) => {
+          const open = pinsFor(page.page_id).filter((p) => !p.resolved_at).length
+          return open > 0 ? ` · p.${page.page_number}: ${open} open pin${open === 1 ? '' : 's'}` : ''
+        }).join('')}
       </p>
     </div>
   )

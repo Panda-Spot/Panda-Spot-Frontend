@@ -1209,6 +1209,16 @@ export const postAlbumComment = (eventId, albumId, { versionId, pageId, parentId
 export const resolveAlbumComment = (eventId, albumId, commentId) =>
   request(`/events/${eventId}/albums/${albumId}/comments/${commentId}/resolve`, { method: "POST" })
 
+// Phase 6: unresolve (reopen), delete, and per-revision thread listing.
+export const unresolveAlbumComment = (eventId, albumId, commentId) =>
+  request(`/events/${eventId}/albums/${albumId}/comments/${commentId}/unresolve`, { method: "POST" })
+
+export const deleteAlbumComment = (eventId, albumId, commentId) =>
+  request(`/events/${eventId}/albums/${albumId}/comments/${commentId}`, { method: "DELETE" })
+
+export const listVersionComments = (eventId, albumId, versionId) =>
+  request(`/events/${eventId}/albums/${albumId}/versions/${versionId}/comments`)
+
 // Client side: only non-DRAFT albums are visible; approve/request-changes
 // flip SENT albums, APPROVED locks everything but viewing.
 export const listClientAlbums = (eventId) => request(`/client/events/${eventId}/albums`)
@@ -1238,6 +1248,10 @@ export const requestAlbumChanges = (eventId, albumId, message) =>
 
 export const approveAlbum = (eventId, albumId) =>
   request(`/client/events/${eventId}/albums/${albumId}/approve`, { method: "POST" })
+
+// Phase 6: clients delete their own in-review comments.
+export const deleteClientAlbumComment = (eventId, albumId, commentId) =>
+  request(`/client/events/${eventId}/albums/${albumId}/comments/${commentId}`, { method: "DELETE" })
 
 // Platform support: read-only album list per event + SUPER_ADMIN status override.
 export const listAdminAlbums = (eventId) => request(`/admin/events/${eventId}/albums`)

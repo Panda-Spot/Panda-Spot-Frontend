@@ -18,6 +18,8 @@ import {
   reorderAlbumPages,
   resolveAlbumComment,
   sendAlbum,
+  deleteAlbumComment,
+  unresolveAlbumComment,
   uploadAlbumVersion,
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
@@ -391,6 +393,13 @@ export default function StudioAlbum() {
               canResolve
               busy={busy}
               onResolve={async (id) => { try { await resolveAlbumComment(eventId, albumId, id); await load() } catch (e) { showToast(e.message, { type: 'error' }) } }}
+              onUnresolve={async (id) => { try { await unresolveAlbumComment(eventId, albumId, id); await load() } catch (e) { showToast(e.message, { type: 'error' }) } }}
+              canDeleteAny
+              onDeleteComment={async (id) => {
+                const okDel = await confirm('Delete this comment and its replies? This can’t be undone.', { title: 'Delete comment?', confirmLabel: 'Delete', danger: true })
+                if (!okDel) return
+                try { await deleteAlbumComment(eventId, albumId, id); await load() } catch (e) { showToast(e.message, { type: 'error' }) }
+              }}
               pendingPin={pendingPin}
               onCancelPin={() => setPendingPin(null)}
               onPostPin={(message) => postComment({ ...pendingPin, pageId: pendingPin.pageId, message })}

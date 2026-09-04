@@ -3,12 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, MapPin, Undo2 } from 'lucide-react'
 import {
   approveAlbum,
+  deleteClientAlbumComment,
   getClientAlbum,
   postClientAlbumComment,
   requestAlbumChanges,
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { useAuth } from '../auth.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import AlbumFlipbook from '../components/AlbumFlipbook.jsx'
 import AlbumComments from '../components/AlbumComments.jsx'
@@ -22,6 +24,7 @@ export default function ClientAlbum() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const { showToast } = useToast()
+  const { user } = useAuth()
   const [album, setAlbum] = useState(null)
   const [error, setError] = useState('')
   const [versionId, setVersionId] = useState(null)
@@ -194,6 +197,10 @@ export default function ClientAlbum() {
               pageNumberOf={pageNumberOf}
               locked={locked}
               busy={busy}
+              currentUserId={user?.id || null}
+              onDeleteComment={async (id) => {
+                try { await deleteClientAlbumComment(eventId, albumId, id); await load() } catch (e) { showToast(e.message, { type: 'error' }) }
+              }}
               pendingPin={pendingPin}
               onCancelPin={() => setPendingPin(null)}
               onPostPin={(message) => postComment({ ...pendingPin, pageId: pendingPin.pageId, message })}
