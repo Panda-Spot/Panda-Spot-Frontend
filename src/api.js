@@ -10,6 +10,12 @@ async function request(path, options) {
   const token = getToken()
   const headers = { ...(options?.headers || {}) }
   if (token) headers.Authorization = `Bearer ${token}`
+  // Gallery unlock tokens ride along on guest calls automatically.
+  if (path.startsWith("/e/")) {
+    const slug = path.split("/")[2]
+    const galleryKey = slug ? getGalleryKey(slug) : null
+    if (galleryKey && !headers["x-gallery-key"]) headers["x-gallery-key"] = galleryKey
+  }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: "include",
@@ -25,9 +31,11 @@ async function request(path, options) {
       message = body.detail || body.message || body.error || message
       err.message = message
       // Pass through structured failure context (e.g. client access
-      // denials carry event_name + reason for the Access Expired screen).
+      // denials carry event_name + reason for the Access Expired screen,
+      // guest gates carry a machine-readable code).
       if (body.event_name !== undefined) err.event_name = body.event_name
       if (body.reason !== undefined) err.reason = body.reason
+      if (body.code !== undefined) err.code = body.code
     } catch {
       // response wasn't JSON — keep the generic message
     }
@@ -53,6 +61,36 @@ async function request(path, options) {
 }
 
 export const fileUrl = (path) => `${BASE_URL}${path}`
+
+// Phase 3 (gallery access upgrade): unlock tokens live in memory +
+// sessionStorage per event slug, and request() attaches them to every
+// guest (/e/…) call automatically — callers never thread keys by hand.
+const galleryTokens = {}
+function readStoredGalleryKey(slug) {
+  try {
+    return sessionStorage.getItem(`pandaspot-gallery-${slug}`)
+  } catch {
+    return null
+  }
+}
+export const setGalleryKey = (slug, token) => {
+  if (token) {
+    galleryTokens[slug] = token
+    try {
+      sessionStorage.setItem(`pandaspot-gallery-${slug}`, token)
+    } catch {
+      // private mode — memory still holds it for this tab
+    }
+  } else {
+    delete galleryTokens[slug]
+    try {
+      sessionStorage.removeItem(`pandaspot-gallery-${slug}`)
+    } catch {
+      // nothing stored — nothing to clear
+    }
+  }
+}
+export const getGalleryKey = (slug) => galleryTokens[slug] || readStoredGalleryKey(slug) || null
 
 export async function downloadFile(path, filename) {
   const token = getToken()
@@ -630,6 +668,18 @@ export const updateAdminPlatformSettings = (patch) =>
 
 export const getPublicEvent = (slug) => request(`/e/${slug}`)
 
+// Phase 3: trade the studio's private access key for a gallery unlock
+// token, stored for all later guest calls on this slug.
+export const unlockGallery = async (slug, accessKey) => {
+  const data = await request(`/e/${slug}/unlock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_key: accessKey }),
+  })
+  setGalleryKey(slug, data.gallery_token)
+  return data
+}
+
 export const searchBySelfies = (slug, selfieFiles, guestClientId, consented) => {
   const form = new FormData()
   for (const file of selfieFiles) form.append("selfies", file)
@@ -748,6 +798,14 @@ export const resolveAdminDataRequest = (eventId, requestId, action) =>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action }),
+  })
+
+// Platform support: gallery access override (mode, key, expiry).
+export const updateAdminEventAccess = (eventId, patch) =>
+  request(`/admin/events/${eventId}/access`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
   })
 
 // --- Guest uploads / moderation (photographer, authenticated) ---

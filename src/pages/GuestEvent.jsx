@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Share2, Download, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Share2, Download, X, Lock, KeyRound } from 'lucide-react'
 import {
   downloadMatches,
   fileUrl,
+  getGalleryKey,
   getGuestDataRequestStatus,
   getPublicEvent,
   reactToPhoto,
@@ -13,6 +15,7 @@ import {
   sendMatchFeedback,
   submitGuestDataRequest,
   subscribeToMatchAlerts,
+  unlockGallery,
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
@@ -57,6 +60,12 @@ export default function GuestEvent() {
   const [drMessage, setDrMessage] = useState('')
   const [drRequests, setDrRequests] = useState([])
   const [drBusy, setDrBusy] = useState(false)
+  // Phase 3 (gallery access upgrade): private-key prompt state. Unlock
+  // tokens persist per slug, so a reload stays unlocked.
+  const [accessKey, setAccessKey] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
+  const [unlockError, setUnlockError] = useState('')
+  const [unlocked, setUnlocked] = useState(false)
   // Holds { key, promise } for a search already kicked off the instant the
   // guest finished picking selfies — before they've even tapped "Find My
   // Photos". By the time they do tap it, the upload + face-detect + match
@@ -72,7 +81,10 @@ export default function GuestEvent() {
 
   useEffect(() => {
     getPublicEvent(slug)
-      .then(setEvent)
+      .then((ev) => {
+        setEvent(ev)
+        setUnlocked(!!getGalleryKey(slug))
+      })
       .catch((e) => setLoadError(e.message))
     getGuestDataRequestStatus(slug, getGuestClientId())
       .then(setDrRequests)
@@ -196,8 +208,24 @@ export default function GuestEvent() {
     }
   }
 
-  const handleDataRequest = async (e) => {
+  const handleUnlock = async (e) => {
     e.preventDefault()
+    if (!accessKey.trim()) return
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      await unlockGallery(slug, accessKey.trim())
+      setAccessKey('')
+      setUnlocked(true)
+      setError('')
+    } catch (err) {
+      setUnlockError(err.message)
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
+  const handleDataRequest = async (e) => {    e.preventDefault()
     setDrBusy(true)
     setDrMessage('')
     try {
@@ -361,7 +389,44 @@ export default function GuestEvent() {
         </div>
       ) : event?.expired ? (
         <div className="card">
-          <p className="subtle">This event's search window has closed. Contact the photographer if you still need help finding your photos.</p>
+          <p className="subtle" style={{ fontWeight: 700 }}>
+            {event?.studio_name ? `${event.studio_name} — ` : ''}This gallery has closed.
+          </p>
+          <p className="subtle">This event&apos;s guest access window has ended. Contact {event?.studio_name || 'your photographer'} if you still need help finding your photos.</p>
+        </div>
+      ) : event?.login_required ? (
+        <div className="card" style={{ textAlign: 'center', padding: '32px 20px' }}>
+          <Lock size={30} style={{ color: 'var(--text-tertiary)', marginBottom: 10 }} />
+          <p className="subtle" style={{ fontWeight: 700 }}>
+            {event?.studio_name ? `${event.studio_name} — ` : ''}Private gallery
+          </p>
+          <p className="subtle">This gallery is open to invited clients only. Log in with your client account to continue.</p>
+          <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
+            <Link className="btn" to="/login">Log in</Link>
+          </div>
+        </div>
+      ) : event?.locked && !unlocked ? (
+        <div className="card" style={{ textAlign: 'center', padding: '32px 20px' }}>
+          <KeyRound size={30} style={{ color: 'var(--text-tertiary)', marginBottom: 10 }} />
+          <p className="subtle" style={{ fontWeight: 700 }}>
+            {event?.studio_name ? `${event.studio_name} — ` : ''}Locked gallery
+          </p>
+          <p className="subtle">Enter the access key from your photographer to open {event?.name || 'this gallery'}.</p>
+          <form className="row" style={{ justifyContent: 'center', marginTop: 12, gap: 8 }} onSubmit={handleUnlock}>
+            <input
+              className="text-input"
+              type="password"
+              autoComplete="off"
+              placeholder="Access key"
+              value={accessKey}
+              onChange={(e) => setAccessKey(e.target.value)}
+              style={{ maxWidth: 220 }}
+            />
+            <button className="btn" type="submit" disabled={unlocking || !accessKey.trim()}>
+              {unlocking ? 'Unlocking…' : 'Unlock'}
+            </button>
+          </form>
+          {unlockError && <p className="error" style={{ marginTop: 8 }}>{unlockError}</p>}
         </div>
       ) : event && !event.face_search_enabled ? (
         <div className="card">
@@ -455,7 +520,7 @@ export default function GuestEvent() {
         </div>
       )}
 
-      {event && !event.expired && (
+      {event && !event.expired && !event.login_required && (!event.locked || unlocked) && (
         <div className="card" style={{ marginTop: 12 }}>
           <div className="guest-link-label">Your data</div>
           <p className="hint">Ask for a copy of your Face Search data, or ask the studio to delete it.</p>

@@ -13,6 +13,7 @@ import {
   overrideAlbumStatus,
   resolveAdminDataRequest,
   setAdminEventExpiry,
+  updateAdminEventAccess,
 } from '../api.js'
 import Lightbox from '../components/Lightbox.jsx'
 import GalleryMedia from '../components/GalleryMedia.jsx'
@@ -51,6 +52,13 @@ export default function AdminEventDetail() {
   const [dataRequestsError, setDataRequestsError] = useState('')
   const [resolvingId, setResolvingId] = useState(null)
   const [exportResult, setExportResult] = useState(null)
+  // Phase 3 (gallery access upgrade): platform override form.
+  const [accessMode, setAccessMode] = useState('')
+  const [accessKey, setAccessKey] = useState('')
+  const [accessExpiry, setAccessExpiry] = useState('')
+  const [accessPreset, setAccessPreset] = useState('custom')
+  const [savingAccess, setSavingAccess] = useState(false)
+  const [accessMessage, setAccessMessage] = useState('')
 
   const loadDataRequests = useCallback(() => {
     setDataRequestsError('')
@@ -163,6 +171,35 @@ export default function AdminEventDetail() {
       setError(e.message)
     } finally {
       setResolvingId(null)
+    }
+  }
+
+  const handleSaveAccess = async (e) => {
+    e.preventDefault()
+    setSavingAccess(true)
+    setError('')
+    setAccessMessage('')
+    try {
+      const body = { access_mode: accessMode || undefined }
+      if (accessKey.trim()) body.access_key = accessKey.trim()
+      if (accessExpiry) {
+        body.expires_at = new Date(`${accessExpiry}T23:59:59`).toISOString()
+        body.expiry_preset = accessPreset
+      } else if (accessPreset !== 'custom') {
+        const days = { '7_days': 7, '30_days': 30, '90_days': 90 }[accessPreset]
+        const d = new Date()
+        d.setDate(d.getDate() + days)
+        body.expires_at = d.toISOString()
+        body.expiry_preset = accessPreset
+      }
+      const res = await updateAdminEventAccess(eventId, body)
+      setAccessKey('')
+      setAccessMessage(`Saved — mode ${res.access_mode}, key ${res.access_key_set ? 'set' : 'not set'}.`)
+      load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingAccess(false)
     }
   }
 
@@ -421,8 +458,55 @@ export default function AdminEventDetail() {
         </>
       )}
 
-      <h2 className="section-title">Guest-access expiry</h2>
-      <form className="card row" onSubmit={handleSaveExpiry}>
+      <h2 className="section-title">Gallery access override</h2>
+      <div className="card">
+        <p className="hint">
+          Current: mode <strong>{event.access_mode || 'public'}</strong> · key {event.access_key_set ? 'set' : 'not set'} ·{' '}
+          closes {event.expires_at ? new Date(event.expires_at).toLocaleDateString() : '—'} ({event.expiry_preset || 'custom'})
+        </p>
+        <form className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }} onSubmit={handleSaveAccess}>
+          <div>
+            <label className="field-label" htmlFor="admin-access-mode">Mode</label>
+            <select id="admin-access-mode" className="text-input" value={accessMode} onChange={(e) => setAccessMode(e.target.value)}>
+              <option value="">No change</option>
+              <option value="public">Public link</option>
+              <option value="private_key">Private key</option>
+              <option value="client_login">Client login</option>
+              <option value="invite_only">Invite only</option>
+            </select>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="admin-access-key">New key (optional)</label>
+            <input
+              id="admin-access-key" className="text-input" type="text" autoComplete="off"
+              placeholder="Set or replace key" value={accessKey}
+              onChange={(e) => setAccessKey(e.target.value)} maxLength={200} style={{ maxWidth: 200 }}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="admin-access-preset">Preset</label>
+            <select id="admin-access-preset" className="text-input" value={accessPreset} onChange={(e) => setAccessPreset(e.target.value)}>
+              <option value="custom">Custom</option>
+              <option value="7_days">7 days</option>
+              <option value="30_days">30 days</option>
+              <option value="90_days">90 days</option>
+            </select>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="admin-access-expiry">Closes on</label>
+            <input
+              id="admin-access-expiry" className="text-input" type="date"
+              value={accessExpiry} onChange={(e) => setAccessExpiry(e.target.value)} style={{ maxWidth: 170 }}
+            />
+          </div>
+          <button className="btn" type="submit" disabled={savingAccess}>
+            {savingAccess ? 'Saving…' : 'Save access'}
+          </button>
+          {accessMessage && <span className="hint">{accessMessage}</span>}
+        </form>
+      </div>
+
+      <h2 className="section-title">Guest-access expiry</h2>      <form className="card row" onSubmit={handleSaveExpiry}>
         <input
           className="text-input"
           type="date"

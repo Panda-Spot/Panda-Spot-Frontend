@@ -71,6 +71,7 @@ import { useToast } from '../toast.jsx'
 import { uploadLargeFile } from '../lib/largeUpload.js'
 import GalleryMedia from '../components/GalleryMedia.jsx'
 import PrivacySettingsCard from '../components/PrivacySettingsCard.jsx'
+import AccessSettingsCard from '../components/AccessSettingsCard.jsx'
 import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
 import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
@@ -245,6 +246,9 @@ export default function EventDetail() {
   // Phase 2 — Face Search privacy settings draft + save.
   const [privacyDraft, setPrivacyDraft] = useState(null)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
+  // Phase 3 — Gallery access settings draft + save.
+  const [accessDraft, setAccessDraft] = useState(null)
+  const [savingAccess, setSavingAccess] = useState(false)
 
   const handleSelectionExport = async () => {
     setExporting(true)
@@ -1658,6 +1662,35 @@ export default function EventDetail() {
             <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
           )}
         </div>
+      )}
+
+      {/* Phase 3 — Gallery access: mode, private key, expiry presets. */}
+      {event && (event.role === 'owner' || event.role === 'collaborator') && (
+        <AccessSettingsCard
+          event={event}
+          draft={accessDraft}
+          setDraft={setAccessDraft}
+          saving={savingAccess}
+          guestLinkUrl={guestLink(event.guestSlug)}
+          copied={copied}
+          onCopyLink={handleCopy}
+          onSave={async (patch) => {
+            const body = { access_mode: patch.access_mode, expiry_preset: patch.expiry_preset };
+            if (patch.access_key !== undefined) body.access_key = patch.access_key;
+            if (patch.expires_at) body.expires_at = patch.expires_at;
+            setSavingAccess(true);
+            try {
+              await updateEvent(eventId, body);
+              setAccessDraft(null);
+              showToast('Access settings saved');
+              load();
+            } catch (e) {
+              showToast(e.message, { type: 'error' });
+            } finally {
+              setSavingAccess(false);
+            }
+          }}
+        />
       )}
 
       {event && (
