@@ -786,7 +786,8 @@ export const subscribeToAnalyzeProgress = (eventId, jobId, { onProgress, onDone,
   return () => source.close()
 }
 
-export const listDuplicateGroups = (eventId) => request(`/events/${eventId}/tools/duplicates`)
+export const listDuplicateGroups = (eventId, { mode = "exact", threshold = 10 } = {}) =>
+  request(`/events/${eventId}/tools/duplicates?mode=${mode}${mode === "near" ? `&threshold=${threshold}` : ""}`)
 
 export const getCoverSuggestions = (eventId) => request(`/events/${eventId}/tools/cover-suggestions`)
 

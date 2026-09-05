@@ -68,15 +68,20 @@ export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds, se
     }
   };
 
-  const loadDups = async () => {
+  const [dupMode, setDupMode] = useState('exact') // exact | near
+  const [dupThreshold, setDupThreshold] = useState(10)
+
+  const loadDups = async (mode = dupMode, threshold = dupThreshold) => {
     setDupsLoading(true);
     try {
-      const groups = await listDuplicateGroups(eventId);
+      const res = await listDuplicateGroups(eventId, { mode, threshold });
+      const groups = res.groups || [];
       setDups(groups);
+      setDupMode(mode);
       const ids = new Set();
       groups.forEach((g) => g.photos.forEach((p) => ids.add(p.photo_id)));
       setDupIds?.(ids);
-      if (groups.length === 0) showToast('No exact duplicates found');
+      if (groups.length === 0) showToast(mode === 'near' ? 'No look-alike groups found' : 'No exact duplicates found');
     } catch (e) {
       showToast(e.message, { type: 'error' });
     } finally {
@@ -148,9 +153,23 @@ export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds, se
         <button className="btn secondary" type="button" disabled={!!job || photos.length === 0} onClick={() => startAnalyze('all')}>
           {job ? `Analyzing… ${job.completed}/${job.total}` : 'Analyze all photos'}
         </button>
-        <button className="btn secondary" type="button" disabled={dupsLoading || photos.length === 0} onClick={loadDups}>
-          {dupsLoading ? 'Scanning…' : 'Find duplicates'}
+        <button className="btn secondary" type="button" disabled={dupsLoading || photos.length === 0} onClick={() => loadDups('exact')}>
+          {dupsLoading ? 'Scanning…' : 'Exact duplicates'}
         </button>
+        <button className="btn secondary" type="button" disabled={dupsLoading || photos.length === 0} onClick={() => loadDups('near', dupThreshold)} title="Burst shots and look-alike frames grouped by visual similarity">
+          {dupsLoading ? 'Scanning…' : 'Look-alikes'}
+        </button>
+        {dupMode === 'near' && (
+          <select
+            className="text-input" value={dupThreshold} title="Similarity strictness — lower is stricter"
+            onChange={(e) => { const t = Number(e.target.value); setDupThreshold(t); if (dups) loadDups('near', t); }}
+            style={{ maxWidth: 150 }}
+          >
+            <option value={5}>Strict (≈5 bits)</option>
+            <option value={10}>Balanced (≈10)</option>
+            <option value={16}>Loose (≈16)</option>
+          </select>
+        )}
         <button className="btn secondary" type="button" disabled={coversLoading} onClick={loadCovers}>
           {coversLoading ? 'Scoring…' : 'Suggest covers'}
         </button>
@@ -166,10 +185,13 @@ export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds, se
 
       {dups && dups.length > 0 && (
         <div style={{ marginTop: 10 }}>
-          <div className="guest-link-label">Exact duplicates ({dups.length} group{dups.length === 1 ? '' : 's'})</div>
+          <div className="guest-link-label">{dupMode === 'near' ? 'Look-alikes' : 'Exact duplicates'} ({dups.length} group{dups.length === 1 ? '' : 's'})</div>
           {dups.map((g) => (
-            <div key={g.file_hash} className="card" style={{ padding: '8px 10px', marginBottom: 8 }}>
-              <p className="hint">{g.count} identical files · hash {g.file_hash.slice(0, 12)}…</p>
+            <div key={g.key || g.file_hash} className="card" style={{ padding: '8px 10px', marginBottom: 8 }}>
+              <p className="hint">
+                {g.count} {dupMode === 'near' ? 'look-alike' : 'identical'} file{g.count === 1 ? '' : 's'}
+                {dupMode === 'near' ? ` · up to ${g.max_distance} bits apart` : ` · hash ${(g.file_hash || '').slice(0, 12)}…`}
+              </p>
               <div className="photo-grid">
                 {g.photos.map((p) => (
                   <div className="photo-card" key={p.photo_id}>
