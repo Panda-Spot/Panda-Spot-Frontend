@@ -751,7 +751,72 @@ export const uploadSponsorLogo = (eventId, logoBlob) => {
 }
 
 export const deleteSponsorLogo = (eventId) =>
-  request(`/events/${eventId}/sponsor-logo`, { method: "DELETE" })// Public SSE feed of new approved photos landing — same event shape as
+  request(`/events/${eventId}/sponsor-logo`, { method: "DELETE" })
+
+// --- Photography tools pack (Phase 9) ---
+// Analyze runs as a background job (202 + job_id); watch the SSE stream
+// for progress like an upload job.
+
+export const analyzePhotos = (eventId, { photoIds, all }) =>
+  request(`/events/${eventId}/tools/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_ids: photoIds, all }),
+  })
+
+export const subscribeToAnalyzeProgress = (eventId, jobId, { onProgress, onDone, onError }) => {
+  const url = `${BASE_URL}/events/${eventId}/tools/analyze/${jobId}/stream${getToken() ? `?token=${encodeURIComponent(getToken())}` : ""}`
+  const source = new EventSource(url)
+  source.onmessage = (e) => {
+    const data = JSON.parse(e.data)
+    if (data.type === "done") {
+      onDone?.(data)
+      source.close()
+    } else if (data.type === "error") {
+      onError?.(data)
+      source.close()
+    } else {
+      onProgress?.(data)
+    }
+  }
+  source.onerror = () => {
+    onError?.({ message: "Analyze stream disconnected" })
+    source.close()
+  }
+  return () => source.close()
+}
+
+export const listDuplicateGroups = (eventId) => request(`/events/${eventId}/tools/duplicates`)
+
+export const getCoverSuggestions = (eventId) => request(`/events/${eventId}/tools/cover-suggestions`)
+
+export const setPhotoRating = (eventId, photoId, rating) =>
+  request(`/events/${eventId}/photos/${photoId}/rating`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rating }),
+  })
+
+export const setPhotoColorTag = (eventId, photoId, colorTag) =>
+  request(`/events/${eventId}/photos/${photoId}/color-tag`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ color_tag: colorTag }),
+  })
+
+export const batchRenamePhotos = (eventId, renames) =>
+  request(`/events/${eventId}/photos/rename`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ renames }),
+  })
+
+export const setCoverFromPhoto = (eventId, photoId) =>
+  request(`/events/${eventId}/cover/from-photo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_id: photoId }),
+  })// Public SSE feed of new approved photos landing — same event shape as
 // subscribeToLiveEvents above, just unauthenticated and scoped by
 // guestSlug instead of a token. Powers the live slideshow view.
 export const subscribeToPublicLiveEvents = (slug, { onPhotoAdded }) => {

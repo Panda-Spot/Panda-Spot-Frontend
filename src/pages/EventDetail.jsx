@@ -74,6 +74,8 @@ import GalleryMedia from '../components/GalleryMedia.jsx'
 import PrivacySettingsCard from '../components/PrivacySettingsCard.jsx'
 import AccessSettingsCard from '../components/AccessSettingsCard.jsx'
 import TVSettingsForm from '../components/TVSettingsForm.jsx'
+import PhotoToolsCard, { BLURRY_BELOW } from '../components/PhotoToolsCard.jsx'
+import PhotoMetaModal from '../components/PhotoMetaModal.jsx'
 import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
 import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
@@ -269,6 +271,23 @@ export default function EventDetail() {
   }
   const [managerSelected, setManagerSelected] = useState({}) // photo_id -> true
   const [bulking, setBulking] = useState(null)
+  // Phase 9 (photo tools): inspector photo, tool filters, duplicate set.
+  const [metaPhotoId, setMetaPhotoId] = useState(null)
+  const [dupIds, setDupIds] = useState(null)
+  const [toolsFilter, setToolsFilter] = useState({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })
+  const matchesToolsFilter = (p) => {
+    const f = toolsFilter
+    if (f.faces === '0' && (p.face_count || 0) !== 0) return false
+    if (f.faces === '1' && (p.face_count || 0) !== 1) return false
+    if (f.faces === '2+' && (p.face_count || 0) < 2) return false
+    if (f.blur === 'sharp' && !(p.sharpness != null && p.sharpness >= BLURRY_BELOW)) return false
+    if (f.blur === 'blurry' && !(p.sharpness != null && p.sharpness < BLURRY_BELOW)) return false
+    if (f.blur === 'unmeasured' && p.sharpness != null) return false
+    if (f.dupOnly && !(dupIds && dupIds.has(p.photo_id))) return false
+    if ((p.rating || 0) < f.minRating) return false
+    if (f.tag !== 'all' && (p.color_tag || '') !== f.tag) return false
+    return true
+  }
   // Phase 22 — face viewer modal state for the AI member grid.
   const [viewingPhoto, setViewingPhoto] = useState(null)
   const [viewingFaces, setViewingFaces] = useState([])
@@ -3022,6 +3041,68 @@ export default function EventDetail() {
             </p>
           </div>
         )}
+        {/* Phase 9 (photo tools): analyze/duplicates/covers/rename + filters. */}
+        <PhotoToolsCard
+          eventId={eventId}
+          photos={photos.filter((p) => p.approval_status !== 'pending')}
+          onAnalyzed={load}
+          dupIds={dupIds}
+          setDupIds={setDupIds}
+          onOpenMeta={(photoId) => setMetaPhotoId(photoId)}
+        />
+        <div className="card" style={{ padding: '10px 14px' }}>
+          <div className="guest-link-label">Tool filters</div>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+            <div>
+              <label className="field-label" htmlFor="tf-blur">Sharpness</label>
+              <select id="tf-blur" className="text-input" value={toolsFilter.blur} onChange={(e) => setToolsFilter((f) => ({ ...f, blur: e.target.value }))}>
+                <option value="all">Any</option>
+                <option value="sharp">Sharp (≥ {BLURRY_BELOW})</option>
+                <option value="blurry">Blurry (&lt; {BLURRY_BELOW})</option>
+                <option value="unmeasured">Not measured</option>
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="tf-faces">Faces</label>
+              <select id="tf-faces" className="text-input" value={toolsFilter.faces} onChange={(e) => setToolsFilter((f) => ({ ...f, faces: e.target.value }))}>
+                <option value="all">Any</option>
+                <option value="0">0 faces</option>
+                <option value="1">1 face</option>
+                <option value="2+">2+ faces</option>
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="tf-rating">Min rating</label>
+              <select id="tf-rating" className="text-input" value={toolsFilter.minRating} onChange={(e) => setToolsFilter((f) => ({ ...f, minRating: Number(e.target.value) }))}>
+                {[0, 1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n === 0 ? 'Any' : `${n}★+`}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="tf-tag">Color tag</label>
+              <select id="tf-tag" className="text-input" value={toolsFilter.tag} onChange={(e) => setToolsFilter((f) => ({ ...f, tag: e.target.value }))}>
+                <option value="all">Any</option>
+                <option value="">None</option>
+                {['red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((c) => (
+                  <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <label className="checkbox-row" style={{ margin: 0 }}>
+              <input
+                type="checkbox" checked={toolsFilter.dupOnly}
+                disabled={!dupIds}
+                title={dupIds ? 'Show only exact duplicates' : 'Run “Find duplicates” first'}
+                onChange={(e) => setToolsFilter((f) => ({ ...f, dupOnly: e.target.checked }))}
+              />
+              Duplicates only
+            </label>
+            <button className="btn secondary" type="button" onClick={() => setToolsFilter({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })}>
+              Clear
+            </button>
+          </div>
+        </div>
         <div className="row source-filter-row">
           {[
             { key: 'all', label: 'All' },
@@ -3048,6 +3129,7 @@ export default function EventDetail() {
         {photos
           .filter((p) => p.approval_status !== 'pending')
           .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+          .filter(matchesToolsFilter)
           .length === 0 ? (
             <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
               No photos found under the "{
@@ -3065,6 +3147,7 @@ export default function EventDetail() {
               {photos
                 .filter((p) => p.approval_status !== 'pending')
                 .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+                .filter(matchesToolsFilter)
                 .map((p) => (
             <div className="photo-card" key={p.photo_id}>
               <div style={{ position: 'relative' }}>
@@ -3086,6 +3169,9 @@ export default function EventDetail() {
                   ) : (
                     <>{p.face_count} face{p.face_count === 1 ? '' : 's'}{p.archived_at && <span className="hint"> · archived</span>}</>
                   )}
+                  {(p.rating || 0) > 0 && <span title={`${p.rating} stars`}> · {'★'.repeat(p.rating)}</span>}
+                  {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
+                  {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
                 </span>
                 {p.archived_at ? (
                   <button
@@ -3123,6 +3209,14 @@ export default function EventDetail() {
                 >
                   {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
                 </button>
+                <button
+                  className="dismiss-btn"
+                  type="button"
+                  title="Metadata, rating, downloads, cover"
+                  onClick={() => setMetaPhotoId(p.photo_id)}
+                >
+                  Info
+                </button>
               </div>
             </div>
           ))}
@@ -3133,8 +3227,7 @@ export default function EventDetail() {
       </>)}
 
       {event && (
-        <Modal open={showEditDetails} onClose={() => setShowEditDetails(false)} title="Edit event details">
-          <form onSubmit={handleSaveDetails}>
+        <Modal open={showEditDetails} onClose={() => setShowEditDetails(false)} title="Edit event details">          <form onSubmit={handleSaveDetails}>
             <label className="field-label" htmlFor="ev-name">Event name</label>
             <input
               id="ev-name"
@@ -3224,9 +3317,18 @@ export default function EventDetail() {
           <div className="guest-link-label">Danger zone</div>
           <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event.</p>
           <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
-            {deletingEvent ? 'Deleting…' : 'Delete event'}
+            {deletingEvent ? 'Deleting.' : 'Delete event'}
           </button>
         </div>
+      )}
+      {/* Phase 9: per-photo inspector (metadata, rating/tag, presets, cover). */}
+      {metaPhotoId && (
+        <PhotoMetaModal
+          eventId={eventId}
+          photo={photos.find((p) => p.photo_id === metaPhotoId) || null}
+          onClose={() => setMetaPhotoId(null)}
+          onChanged={load}
+        />
       )}
     </div>
   )
