@@ -1319,6 +1319,12 @@ export const reorderAlbumPages = (eventId, albumId, versionId, pageIds) =>
 export const deleteAlbumPage = (eventId, albumId, versionId, pageId) =>
   request(`/events/${eventId}/albums/${albumId}/versions/${versionId}/pages/${pageId}`, { method: "DELETE" })
 
+export const replaceAlbumPageFile = (eventId, albumId, versionId, pageId, file) => {
+  const form = new FormData()
+  form.append("image", file, file.name)
+  return request(`/events/${eventId}/albums/${albumId}/versions/${versionId}/pages/${pageId}/file`, { method: "PUT", body: form })
+}
+
 export const reopenAlbum = (eventId, albumId) =>
   request(`/events/${eventId}/albums/${albumId}/reopen`, { method: "POST" })
 
@@ -1668,6 +1674,17 @@ export const acceptClientContract = (contractId, name) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   })
+
+// Phase 12 fix: blob URL for the inline PDF preview (iframes can't send
+// the Authorization header, so the component fetches it authed).
+export const previewClientContractFile = async (contractId) => {
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}/client/contracts/${contractId}/file`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Contract file unavailable (${res.status})`)
+  return URL.createObjectURL(await res.blob())
+}
 
 export const listClientQuestionnaires = () => request("/client/questionnaires")
 

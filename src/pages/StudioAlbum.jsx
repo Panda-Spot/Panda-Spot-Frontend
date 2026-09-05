@@ -18,6 +18,7 @@ import {
   renameAlbum,
   reopenAlbum,
   reorderAlbumPages,
+  replaceAlbumPageFile,
   resolveAlbumComment,
   sendAlbum,
   deleteAlbumComment,
@@ -153,6 +154,23 @@ export default function StudioAlbum() {
     setBusy(true)
     try { await deleteAlbumPage(eventId, albumId, version.id, page.page_id); await refresh('Spread deleted') }
     catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
+  }
+
+  // In-place file swap: order, pins, and revision untouched — only pixels change.
+  const replaceTargetRef = useRef(null)
+  const [replaceTarget, setReplaceTarget] = useState(null)
+  const handleReplaceFile = async (file) => {
+    if (!file || !version || !replaceTarget || locked) return
+    setBusy(true)
+    try {
+      await replaceAlbumPageFile(eventId, albumId, version.id, replaceTarget.page_id, file)
+      setReplaceTarget(null)
+      await refresh('Spread replaced')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const openPicker = async () => {
@@ -386,9 +404,16 @@ export default function StudioAlbum() {
                       <button type="button" className="dismiss-btn" title="Move later" disabled={busy || i === arr.length - 1} onClick={() => handleMovePage(p.page_id, 1)}>
                         <ChevronRight size={14} />
                       </button>
+                      <button type="button" className="dismiss-btn" title="Replace this spread's file (order and pins kept)" disabled={busy} onClick={() => { setReplaceTarget(p); replaceTargetRef.current?.click() }}>
+                        <Upload size={13} />
+                      </button>
                       <button type="button" className="dismiss-btn" title="Delete spread" disabled={busy || arr.length <= 1} onClick={() => handleDeletePage(p)}>
                         <Trash2 size={13} />
                       </button>
+                      <input
+                        ref={replaceTargetRef} type="file" accept="image/*" style={{ display: 'none' }}
+                        onChange={(e) => { handleReplaceFile(e.target.files?.[0]); e.target.value = '' }}
+                      />
                     </span>
                   )}
                 </div>

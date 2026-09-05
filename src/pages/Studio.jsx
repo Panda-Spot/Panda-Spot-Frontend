@@ -71,7 +71,7 @@ export default function Studio() {
   const [calendar, setCalendar] = useState(null)
   const [calMonth, setCalMonth] = useState(() => new Date().toISOString().slice(0, 7))
   const [packages, setPackages] = useState([])
-  const [pkgForm, setPkgForm] = useState({ name: '', price: '', deliverables: '' })
+  const [pkgForm, setPkgForm] = useState({ name: '', price: '', deliverables: '', included_photos: '', included_albums: '', included_events: '' })
   const [templates, setTemplates] = useState([])
   const [tplName, setTplName] = useState('')
   const [contracts, setContracts] = useState([])
@@ -84,11 +84,11 @@ export default function Studio() {
   const [viewQ, setViewQ] = useState(null)
   const [bookings, setBookings] = useState([])
   const [bookingFilter, setBookingFilter] = useState('')
-  const [bookingForm, setBookingForm] = useState({ client_name: '', client_email: '', event_type: '', event_date: '', agreed_amount: '' })
+  const [bookingForm, setBookingForm] = useState({ client_name: '', client_email: '', event_type: '', event_date: '', agreed_amount: '', package_id: '', event_id: '', bill_id: '' })
   const [bookingDetail, setBookingDetail] = useState(null)
   const [expenses, setExpenses] = useState([])
   const [report, setReport] = useState(null)
-  const [expenseForm, setExpenseForm] = useState({ category: '', amount: '', vendor: '', notes: '' })
+  const [expenseForm, setExpenseForm] = useState({ category: '', amount: '', vendor: '', notes: '', event_id: '', spent_at: '' })
 
   const reload = async () => {
     setLoading(true)
@@ -142,8 +142,11 @@ export default function Studio() {
         name: pkgForm.name.trim(),
         price: Number(pkgForm.price),
         deliverables: pkgForm.deliverables.split('\n').map((d) => d.trim()).filter(Boolean),
+        included_photos: pkgForm.included_photos === '' ? undefined : Number(pkgForm.included_photos),
+        included_albums: pkgForm.included_albums === '' ? undefined : Number(pkgForm.included_albums),
+        included_events: pkgForm.included_events === '' ? undefined : Number(pkgForm.included_events),
       })
-      setPkgForm({ name: '', price: '', deliverables: '' })
+      setPkgForm({ name: '', price: '', deliverables: '', included_photos: '', included_albums: '', included_events: '' })
       showToast('Package created')
       reload()
     } catch (err) {
@@ -229,8 +232,11 @@ export default function Studio() {
         event_type: bookingForm.event_type.trim() || undefined,
         event_date: bookingForm.event_date || undefined,
         agreed_amount: bookingForm.agreed_amount === '' ? undefined : Number(bookingForm.agreed_amount),
+        package_id: bookingForm.package_id.trim() || undefined,
+        event_id: bookingForm.event_id.trim() || undefined,
+        bill_id: bookingForm.bill_id.trim() || undefined,
       })
-      setBookingForm({ client_name: '', client_email: '', event_type: '', event_date: '', agreed_amount: '' })
+      setBookingForm({ client_name: '', client_email: '', event_type: '', event_date: '', agreed_amount: '', package_id: '', event_id: '', bill_id: '' })
       showToast('Booking created')
       reload()
     } catch (err) {
@@ -246,8 +252,10 @@ export default function Studio() {
         amount: Number(expenseForm.amount),
         vendor: expenseForm.vendor.trim() || undefined,
         notes: expenseForm.notes.trim() || undefined,
+        event_id: expenseForm.event_id.trim() || undefined,
+        spent_at: expenseForm.spent_at || undefined,
       })
-      setExpenseForm({ category: '', amount: '', vendor: '', notes: '' })
+      setExpenseForm({ category: '', amount: '', vendor: '', notes: '', event_id: '', spent_at: '' })
       showToast('Expense recorded')
       reload()
     } catch (err) {
@@ -360,6 +368,18 @@ export default function Studio() {
             <div style={{ flex: 1, minWidth: 200 }}>
               <label className="field-label" htmlFor="pkg-del">Deliverables (one per line)</label>
               <textarea id="pkg-del" className="text-input" rows={2} value={pkgForm.deliverables} onChange={(e) => setPkgForm({ ...pkgForm, deliverables: e.target.value })} placeholder={"300 edited photos\n40-page album"} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="pkg-photos">Photos incl.</label>
+              <input id="pkg-photos" className="text-input" type="number" min="0" value={pkgForm.included_photos} onChange={(e) => setPkgForm({ ...pkgForm, included_photos: e.target.value })} style={{ maxWidth: 100 }} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="pkg-albums">Albums incl.</label>
+              <input id="pkg-albums" className="text-input" type="number" min="0" value={pkgForm.included_albums} onChange={(e) => setPkgForm({ ...pkgForm, included_albums: e.target.value })} style={{ maxWidth: 100 }} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="pkg-events">Events incl.</label>
+              <input id="pkg-events" className="text-input" type="number" min="0" value={pkgForm.included_events} onChange={(e) => setPkgForm({ ...pkgForm, included_events: e.target.value })} style={{ maxWidth: 100 }} />
             </div>
             <button className="btn" type="submit">Add package</button>
           </form>
@@ -553,6 +573,21 @@ export default function Studio() {
               <label className="field-label" htmlFor="bk-amt">Agreed amount (₹)</label>
               <input id="bk-amt" className="text-input" type="number" min="0" value={bookingForm.agreed_amount} onChange={(e) => setBookingForm({ ...bookingForm, agreed_amount: e.target.value })} style={{ maxWidth: 140 }} />
             </div>
+            <div>
+              <label className="field-label" htmlFor="bk-pkg">Package</label>
+              <select id="bk-pkg" className="text-input" value={bookingForm.package_id} onChange={(e) => setBookingForm({ ...bookingForm, package_id: e.target.value })} style={{ maxWidth: 180 }}>
+                <option value="">None</option>
+                {packages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="bk-event">Event id</label>
+              <input id="bk-event" className="text-input" value={bookingForm.event_id} onChange={(e) => setBookingForm({ ...bookingForm, event_id: e.target.value })} placeholder="event uuid" style={{ maxWidth: 170 }} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="bk-bill">Bill id</label>
+              <input id="bk-bill" className="text-input" value={bookingForm.bill_id} onChange={(e) => setBookingForm({ ...bookingForm, bill_id: e.target.value })} placeholder="bill uuid (Invoicing)" style={{ maxWidth: 170 }} />
+            </div>
             <button className="btn" type="submit">Add booking</button>
           </form>
           <ul className="team-list">
@@ -626,6 +661,14 @@ export default function Studio() {
               <div style={{ flex: 1, minWidth: 160 }}>
                 <label className="field-label" htmlFor="ex-notes">Notes</label>
                 <input id="ex-notes" className="text-input" value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} maxLength={1000} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ex-event">Event id</label>
+                <input id="ex-event" className="text-input" value={expenseForm.event_id} onChange={(e) => setExpenseForm({ ...expenseForm, event_id: e.target.value })} placeholder="optional" style={{ maxWidth: 170 }} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ex-spent">Spent on</label>
+                <input id="ex-spent" className="text-input" type="date" value={expenseForm.spent_at} onChange={(e) => setExpenseForm({ ...expenseForm, spent_at: e.target.value })} />
               </div>
               <button className="btn" type="submit">Record</button>
             </form>

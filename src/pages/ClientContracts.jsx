@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react'
-import { acceptClientContract, getClientContract, listClientContracts } from '../api.js'
+import { acceptClientContract, getClientContract, listClientContracts, previewClientContractFile } from '../api.js'
 import { useToast } from '../toast.jsx'
 
 // Client-side contracts (Phase 12): review assigned agreements and
@@ -49,16 +49,38 @@ export function ClientContractDetail() {
   const [contract, setContract] = useState(null)
   const [error, setError] = useState('')
   const [name, setName] = useState('')
+  const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState(null)
+  const [pdfError, setPdfError] = useState('')
 
   useEffect(() => {
     getClientContract(id).then(setContract).catch((e) => setError(e.message))
   }, [id])
 
+  // Inline PDF preview (fetched authed — iframes can't send the header).
+  useEffect(() => {
+    let url = null
+    let cancelled = false
+    if (contract?.file_url) {
+      previewClientContractFile(id)
+        .then((u) => { if (!cancelled) { url = u; setPdfUrl(u) } else URL.revokeObjectURL(u) })
+        .catch(() => { if (!cancelled) setPdfError('Preview unavailable — the signed copy below still counts.') })
+    }
+    return () => {
+      cancelled = true
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [id, contract?.file_url])
+
   const accept = async (e) => {
     e.preventDefault()
     if (!name.trim()) {
       setError('Please type your full name to accept.')
+      return
+    }
+    if (!agreed) {
+      setError('Please tick the agreement checkbox as well.')
       return
     }
     setBusy(true)
@@ -91,15 +113,26 @@ export function ClientContractDetail() {
         </div>
       ) : (
         <div className="card">
-          <p className="hint">Read the agreement your studio shared, then type your full name below to accept it.</p>
-          <form className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }} onSubmit={accept}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label className="field-label" htmlFor="sign-name">Full name (acts as your signature)</label>
-              <input id="sign-name" className="text-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+          <p className="hint">Read the agreement your studio shared, tick the box, then type your full name below to accept it.</p>
+          {pdfUrl ? (
+            <iframe title="Contract preview" src={pdfUrl} style={{ width: '100%', height: '50vh', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', marginTop: 8 }} />
+          ) : (
+            <p className="hint">{pdfError || 'Loading preview…'}</p>
+          )}
+          <form style={{ display: 'grid', gap: 8, marginTop: 10 }} onSubmit={accept}>
+            <label className="row" style={{ gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3 }} />
+              <span className="subtle">I have read this agreement and I accept its terms.</span>
+            </label>
+            <div className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label className="field-label" htmlFor="sign-name">Full name (acts as your signature)</label>
+                <input id="sign-name" className="text-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+              </div>
+              <button className="btn" type="submit" disabled={busy || !agreed}>
+                {busy ? 'Signing…' : 'Accept & sign'}
+              </button>
             </div>
-            <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Signing…' : 'Accept & sign'}
-            </button>
           </form>
           {error && <p className="error" style={{ marginTop: 8 }}>{error}</p>}
         </div>

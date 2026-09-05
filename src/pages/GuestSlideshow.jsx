@@ -5,6 +5,7 @@ import { KeyRound, Lock, Maximize } from 'lucide-react'
 import {
   fileUrl,
   getGalleryKey,
+  getPublicEvent,
   getTvFeed,
   subscribeToPublicLiveEvents,
   unlockGallery,
@@ -29,6 +30,9 @@ export default function GuestSlideshow() {
   const [accessKey, setAccessKey] = useState('')
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState('')
+  // Phase 11 gap fix: dedicated branded expired screen (the feed 410s,
+  // so branding comes from the still-public metadata endpoint).
+  const [expiredBrand, setExpiredBrand] = useState(null)
   const intervalRef = useRef(null)
   const pollRef = useRef(null)
   const shellRef = useRef(null)
@@ -39,12 +43,19 @@ export default function GuestSlideshow() {
       setFeed(data)
       setPhotos(data.photos || [])
       setLocked(false)
+      setExpiredBrand(null)
       if (!silent) setLoadError('')
       return data
     } catch (e) {
       if (e.code === 'locked') {
         setLocked(true)
         setLoadError('')
+      } else if (e.code === 'expired' || e.status === 410) {
+        // Branded closed screen: metadata stays public past expiry.
+        getPublicEvent(slug)
+          .then((ev) => setExpiredBrand({ studio_name: ev.studio_name, logo_url: ev.logo_url, name: ev.name }))
+          .catch(() => setExpiredBrand({}))
+        if (!silent) setLoadError('')
       } else if (!silent) {
         setLoadError(e.message)
       }
@@ -57,6 +68,7 @@ export default function GuestSlideshow() {
     setPhotos([])
     setIndex(0)
     setLocked(false)
+    setExpiredBrand(null)
     setLoadError('')
     loadFeed(false)
   }, [slug, loadFeed])
@@ -150,6 +162,12 @@ export default function GuestSlideshow() {
       {loadError ? (
         <div className="slideshow-waiting">
           <p className="error">{loadError}</p>
+        </div>
+      ) : expiredBrand ? (
+        <div className="slideshow-waiting">
+          {expiredBrand.logo_url && <img className="slideshow-logo" src={fileUrl(expiredBrand.logo_url)} alt="" />}
+          <h1>{expiredBrand.studio_name ? `${expiredBrand.studio_name} — ` : ''}This gallery has closed</h1>
+          <p>This event&apos;s guest access window has ended. Contact {expiredBrand.studio_name || 'your photographer'} if you still need your photos.</p>
         </div>
       ) : locked && !hasKey ? (
         <div className="slideshow-waiting">
