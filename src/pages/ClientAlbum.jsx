@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Download, MapPin, Undo2 } from 'lucide-react'
 import {
@@ -16,6 +16,7 @@ import GoldButton from '../components/ui/GoldButton.jsx'
 import AlbumFlipbook from '../components/AlbumFlipbook.jsx'
 import AlbumComments from '../components/AlbumComments.jsx'
 import { ALBUM_STATUS_META } from '../components/albumMeta.js'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 
 // Client album review (Phase 23): flip through sent versions, drop pins /
 // reply in threads, then request changes (optional note) or approve —
@@ -35,6 +36,9 @@ export default function ClientAlbum() {
   const [selectedPinId, setSelectedPinId] = useState(null)
   const [changeNote, setChangeNote] = useState('')
   const [changeOpen, setChangeOpen] = useState(false)
+  const rootRef = useRef(null)
+  // Phase 11: review page follows the event's gallery theme.
+  useGalleryTheme(rootRef, album?.theme?.is_default === false ? album.theme : null)
 
   const load = useCallback(async () => {
     try {
@@ -109,7 +113,7 @@ export default function ClientAlbum() {
   }
 
   return (
-    <div>
+    <div ref={rootRef}>
       <Link className="back-link" to={`/client/${eventId}`}><ArrowLeft size={13} style={{ display: 'inline' }} /> Back to gallery</Link>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

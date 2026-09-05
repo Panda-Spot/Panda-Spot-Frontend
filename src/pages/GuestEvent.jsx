@@ -21,6 +21,7 @@ import {
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
 import LeadCaptureForm from '../components/LeadCaptureForm.jsx'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
 import CameraShutter from '../components/CameraShutter.jsx'
@@ -379,12 +380,16 @@ export default function GuestEvent() {
   }
 
   const accentStyle = event?.brand_color ? { '--accent': event.brand_color } : undefined
+  const shellRef = useRef(null)
+  // Phase 11: database-driven theme (event override → studio default →
+  // built-in) overrides the legacy single brand color when present.
+  useGalleryTheme(shellRef, event?.theme?.is_default === false ? event.theme : null)
   const heroStyle = event?.brand_color
     ? { background: `linear-gradient(135deg, ${event.brand_color}, var(--accent-2))` }
     : undefined
 
   return (
-    <div className="guest-shell" style={accentStyle}>
+    <div ref={shellRef} className="guest-shell" style={accentStyle}>
       {!shutterOpened && (
         <div className="guest-shutter-overlay" style={{ background: heroStyle?.background || 'var(--bg)' }}>
           <CameraShutter size="lg" reveal onOpened={() => setShutterOpened(true)} />
@@ -403,7 +408,7 @@ export default function GuestEvent() {
         ) : (
           <p className="subtle">{event ? event.name : 'Loading event…'}</p>
         )}
-        {event?.logo_url && <p className="guest-powered-by">Powered by PandaSpot</p>}
+        {event?.logo_url && !event?.theme?.hide_pandaspot_brand && <p className="guest-powered-by">Powered by PandaSpot</p>}
       </div>
 
       {event?.sub_galleries?.length > 0 ? (

@@ -14,6 +14,7 @@ import {
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
 import useBrandColours from '../hooks/useBrandColours.js'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
@@ -90,6 +91,8 @@ export default function ClientGallery() {
   }, [])
 
   useBrandColours(containerRef, event?.brand_color || null, null)
+  // Phase 11: database theme wins over the legacy single brand color.
+  useGalleryTheme(containerRef, event?.theme?.is_default === false ? event.theme : null)
 
   const handleToggleFavourite = async (photoId, currentlyFavourite) => {
     setTogglingId(photoId)
@@ -172,6 +175,11 @@ export default function ClientGallery() {
   const locked = !!event.submitted_at
   const watermarkText = event.watermark_text || event.event_name || 'PandaSpot'
   const watermarkIntensity = Number.isFinite(Number(event.watermark_intensity)) ? Number(event.watermark_intensity) : 0.75
+  // Phase 11: the theme's watermark style overrides the legacy default
+  // (image when uploaded, text otherwise).
+  const watermarkStyle = event.theme?.watermark_style || (event.watermark_image_url ? 'logo' : 'text')
+  const showWatermarkImage = watermarkStyle === 'logo' && !!event.watermark_image_url
+  const showWatermarkText = watermarkStyle === 'text'
   const pickSet = new Set(studioPicks)
 
   const expiresDate = event.access_expires ? new Date(event.access_expires) : null
@@ -330,13 +338,13 @@ export default function ClientGallery() {
         <div className="photo-grid">
           {photos.map((p) => (
             <div className="photo-card no-select" key={p.photo_id}>
-              <div className="protected-photo-frame" data-watermark={event.watermark_image_url ? '' : watermarkText} style={{ position: 'relative' }}>
+              <div className="protected-photo-frame" data-watermark={showWatermarkText ? watermarkText : ''} style={{ position: 'relative' }}>
                 <GalleryMedia
                   src={fileUrl(p.protected_thumbnail_url || p.protected_url)}
                   filename={p.filename}
                   style={{ width: '100%', display: 'block' }}
                 />
-                {event.watermark_image_url && (
+                {showWatermarkImage && (
                   <img
                     src={fileUrl(event.watermark_image_url)}
                     alt=""

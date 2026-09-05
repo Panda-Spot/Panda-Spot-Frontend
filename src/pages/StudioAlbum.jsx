@@ -30,6 +30,7 @@ import GoldButton from '../components/ui/GoldButton.jsx'
 import AlbumFlipbook from '../components/AlbumFlipbook.jsx'
 import AlbumComments from '../components/AlbumComments.jsx'
 import { ALBUM_STATUS_META } from '../components/albumMeta.js'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 
 // Studio album workspace (Phase 23): stage sources (favourites picker or
 // any event photos), upload spread versions or a print PDF, send/reopen,
@@ -55,6 +56,9 @@ export default function StudioAlbum() {
   const [picked, setPicked] = useState(new Set())
   const fileRef = useRef(null)
   const pdfRef = useRef(null)
+  const rootRef = useRef(null)
+  // Phase 11: review workspace follows the event's gallery theme.
+  useGalleryTheme(rootRef, album?.theme?.is_default === false ? album.theme : null)
 
   const load = useCallback(async () => {
     try {
@@ -194,7 +198,7 @@ export default function StudioAlbum() {
   const stagedIds = new Set((album.sources || []).map((s) => s.photo_id))
 
   return (
-    <div>
+    <div ref={rootRef}>
       <Link className="back-link" to={`/events/${eventId}`}><ArrowLeft size={13} style={{ display: 'inline' }} /> Back to event</Link>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

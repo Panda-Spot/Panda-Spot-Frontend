@@ -22,6 +22,9 @@ export default function GuestCard({
   urlPath = '',
   instruction = 'Scan to find your photos',
   filenameSuffix = 'guest-card',
+  // Phase 11: when the event's theme enables studio-styled share cards,
+  // pass it in — its primary color becomes the card accent.
+  theme = null,
 }) {
   const canvasRef = useRef(null)
   const [branding, setBranding] = useState(null)
@@ -43,7 +46,9 @@ export default function GuestCard({
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
-      const accent = branding?.brand_color || DEFAULT_ACCENT
+      const accent = theme?.custom_share_card && /^#[0-9a-fA-F]{6}$/.test(theme?.primary_color || '')
+        ? theme.primary_color
+        : branding?.brand_color || DEFAULT_ACCENT
 
       // Background
       ctx.fillStyle = '#ffffff'
@@ -124,7 +129,7 @@ export default function GuestCard({
     return () => {
       cancelled = true
     }
-  }, [branding, eventName, guestUrl, instruction])
+  }, [branding, eventName, guestUrl, instruction, theme?.primary_color, theme?.custom_share_card])
 
   const handleDownload = () => {
     const canvas = canvasRef.current

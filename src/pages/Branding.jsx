@@ -142,6 +142,10 @@ export default function Branding() {
         <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           How your studio appears on guest pages and guest cards — name, logo, and brand color.
         </p>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+          For full gallery themes, presets, your studio address, and custom domains, see{' '}
+          <Link to="/themes" style={{ color: 'var(--accent)' }}>Gallery Themes</Link>.
+        </p>
       </div>
 
       <GlassCard hover={false}>

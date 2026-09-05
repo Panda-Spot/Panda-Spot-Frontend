@@ -34,6 +34,7 @@ import GuestSlideshow from './pages/GuestSlideshow.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Branding from './pages/Branding.jsx'
+import GalleryThemes from './pages/GalleryThemes.jsx'
 import Billing from './pages/Billing.jsx'
 import BillingDocuments from './pages/BillingDocuments.jsx'
 import Support from './pages/Support.jsx'
@@ -302,6 +303,16 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <Branding />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/themes"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <GalleryThemes />
             </ProtectedRoute>
           </AppShell>
         }

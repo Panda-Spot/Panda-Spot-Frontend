@@ -154,6 +154,37 @@
   margin-top: 20px;
 }
 
+/* --- Phase 11 gallery themes: button radius + gallery layouts. These
+   only apply inside a themed container (data-theme set by
+   useGalleryTheme), so unthemed pages keep their exact look. --- */
+[data-theme] .btn {
+  border-radius: var(--theme-radius);
+}
+[data-gallery-layout="masonry"] .photo-grid,
+[data-gallery-layout="masonry"] .match-grid {
+  display: block;
+  columns: 3 180px;
+  column-gap: 14px;
+}
+[data-gallery-layout="masonry"] .photo-grid .photo-card,
+[data-gallery-layout="masonry"] .match-grid .photo-card {
+  break-inside: avoid;
+  margin-bottom: 14px;
+}
+[data-gallery-layout="cinematic"] .photo-grid,
+[data-gallery-layout="cinematic"] .match-grid {
+  grid-template-columns: 1fr;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 640px) {
+  [data-gallery-layout="masonry"] .photo-grid,
+  [data-gallery-layout="masonry"] .match-grid {
+    columns: 2 140px;
+  }
+}
+
 .photo-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

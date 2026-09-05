@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   LogOut,
   Menu,
+  Palette,
   Receipt,
   Settings,
   Store,
@@ -43,6 +44,7 @@ const STUDIO_NAV = [
   { to: '/billing', icon: Wallet, label: 'Billing' },
   { to: '/billing/documents', icon: Receipt, label: 'Invoicing' },
   { to: '/branding', icon: Store, label: 'Studio Profile' },
+  { to: '/themes', icon: Palette, label: 'Gallery Themes' },
 ]
 
 const PLATFORM_NAV = [
@@ -64,6 +66,7 @@ const PAGE_TITLES = [
   { test: (p) => p.startsWith('/clients'), title: 'Clients' },
   { test: (p) => p === '/access', title: 'Access Board' },
   { test: (p) => p === '/branding', title: 'Studio Profile' },
+  { test: (p) => p === '/themes', title: 'Gallery Themes' },
   { test: (p) => p === '/billing', title: 'Billing' },
   { test: (p) => p === '/billing/documents', title: 'Invoicing' },
   { test: (p) => p === '/support', title: 'Support' },

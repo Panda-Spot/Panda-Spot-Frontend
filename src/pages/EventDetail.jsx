@@ -72,6 +72,7 @@ import { useToast } from '../toast.jsx'
 import { uploadLargeFile } from '../lib/largeUpload.js'
 import GalleryMedia from '../components/GalleryMedia.jsx'
 import PrivacySettingsCard from '../components/PrivacySettingsCard.jsx'
+import EventThemePicker from '../components/EventThemePicker.jsx'
 import AccessSettingsCard from '../components/AccessSettingsCard.jsx'
 import TVSettingsForm from '../components/TVSettingsForm.jsx'
 import PhotoToolsCard, { BLURRY_BELOW } from '../components/PhotoToolsCard.jsx'
@@ -1821,6 +1822,11 @@ export default function EventDetail() {
             }
           }}
         />
+      )}
+
+      {/* Phase 11 — per-event gallery theme override (studio default otherwise). */}
+      {event && (event.role === 'owner' || event.role === 'collaborator') && (
+        <EventThemePicker eventId={eventId} currentThemeId={event.gallery_theme_id} onSaved={load} />
       )}
 
       {/* Phase 21 — workspace tabs. Manager holds every file movement

@@ -9,6 +9,7 @@ import {
   subscribeToPublicLiveEvents,
   unlockGallery,
 } from '../api.js'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 
 // Live TV wall (Phase 8): the venue projector screen. Runs off the public
 // on-air feed (branding + settings + moderated photos), advances on the
@@ -139,6 +140,8 @@ export default function GuestSlideshow() {
   const current = photos[index]
   const event = feed?.event || null
   const settings = feed?.settings || {}
+  // Phase 11: TV wall themes itself from the feed (event → studio → default).
+  useGalleryTheme(shellRef, feed?.theme?.is_default === false ? feed.theme : null)
   const showQr = settings.tv_show_qr !== false && !!qrDataUrl
   const hasKey = !!getGalleryKey(slug)
 

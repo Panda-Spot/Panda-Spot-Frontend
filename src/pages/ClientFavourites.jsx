@@ -12,6 +12,7 @@ import {
 } from '../api.js'
 import { useToast } from '../toast.jsx'
 import useBrandColours from '../hooks/useBrandColours.js'
+import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
@@ -53,6 +54,8 @@ export default function ClientFavourites() {
   }, [eventId])
 
   useBrandColours(containerRef, event?.brand_color || null, null)
+  // Phase 11: database theme wins over the legacy single brand color.
+  useGalleryTheme(containerRef, event?.theme?.is_default === false ? event.theme : null)
 
   const favourites = (photos || []).filter((p) => p.is_favourite)
   const allowDownload = event?.allow_download !== false

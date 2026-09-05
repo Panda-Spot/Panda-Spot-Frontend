@@ -1445,3 +1445,53 @@ export const downloadAlbumSourcesZip = async (eventId, albumId, filename) => {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+// --- Gallery themes + domains (Phase 11) ---
+
+export const listThemes = () => request("/branding/themes")
+
+export const createTheme = (payload) =>
+  request("/branding/themes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const updateTheme = (themeId, patch) =>
+  request(`/branding/themes/${themeId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const deleteTheme = (themeId) =>
+  request(`/branding/themes/${themeId}`, { method: "DELETE" })
+
+export const setDefaultTheme = (themeId) =>
+  request("/branding/themes/default", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ theme_id: themeId }),
+  })
+
+export const getDomains = () => request("/branding/domains")
+
+export const claimSubdomain = (slug) =>
+  request("/branding/subdomain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug }),
+  })
+
+export const addCustomDomain = (host) =>
+  request("/branding/domains", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ host }),
+  })
+
+export const verifyCustomDomain = (domainId) =>
+  request(`/branding/domains/${domainId}/verify`, { method: "POST" })
+
+export const deleteDomain = (domainId) =>
+  request(`/branding/domains/${domainId}`, { method: "DELETE" })
