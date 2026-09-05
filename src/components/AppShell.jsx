@@ -4,12 +4,15 @@ import { gsap } from 'gsap'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart3,
+  Briefcase,
   Building2,
   Calendar,
   Camera,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   CreditCard,
+  FileText,
   LayoutDashboard,
   LayoutGrid,
   LifeBuoy,
@@ -45,6 +48,7 @@ const STUDIO_NAV = [
   { to: '/billing/documents', icon: Receipt, label: 'Invoicing' },
   { to: '/branding', icon: Store, label: 'Studio Profile' },
   { to: '/themes', icon: Palette, label: 'Gallery Themes' },
+  { to: '/studio', icon: Briefcase, label: 'Studio' },
 ]
 
 const PLATFORM_NAV = [
@@ -57,6 +61,8 @@ const PLATFORM_NAV = [
 
 const CLIENT_NAV = [
   { to: '/client', icon: Camera, label: 'My Gallery' },
+  { to: '/client/contracts', icon: FileText, label: 'Contracts' },
+  { to: '/client/questionnaires', icon: ClipboardList, label: 'Questionnaires' },
 ]
 
 const PAGE_TITLES = [
@@ -67,6 +73,7 @@ const PAGE_TITLES = [
   { test: (p) => p === '/access', title: 'Access Board' },
   { test: (p) => p === '/branding', title: 'Studio Profile' },
   { test: (p) => p === '/themes', title: 'Gallery Themes' },
+  { test: (p) => p === '/studio', title: 'Studio' },
   { test: (p) => p === '/billing', title: 'Billing' },
   { test: (p) => p === '/billing/documents', title: 'Invoicing' },
   { test: (p) => p === '/support', title: 'Support' },

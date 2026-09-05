@@ -53,6 +53,10 @@ import ClientFavourites from './pages/ClientFavourites.jsx'
 import ClientAlbum from './pages/ClientAlbum.jsx'
 import StudioAlbum from './pages/StudioAlbum.jsx'
 import EventAttendees from './pages/EventAttendees.jsx'
+import Studio from './pages/Studio.jsx'
+import Inquire from './pages/Inquire.jsx'
+import { ClientContracts, ClientContractDetail } from './pages/ClientContracts.jsx'
+import ClientQuestionnaires from './pages/ClientQuestionnaires.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -116,6 +120,8 @@ function App() {
       <Route path="/e/:slug" element={<GuestEvent />} />
       <Route path="/e/:slug/upload" element={<GuestUpload />} />
       <Route path="/e/:slug/slideshow" element={<GuestSlideshow />} />
+      {/* Public booking inquiry form per studio subdomain slug */}
+      <Route path="/inquire/:slug" element={<Inquire />} />
 
       {/* 3. Authentication & Account Recovery Routes */}
       <Route
@@ -293,6 +299,48 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <EventAttendees />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      {/* Business studio suite (Phase 12) */}
+      <Route
+        path="/studio"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Studio />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      {/* Client contracts + questionnaires (Phase 12) */}
+      <Route
+        path="/client/contracts"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientContracts />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/client/contracts/:contractId"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientContractDetail />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/client/questionnaires"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <ClientQuestionnaires />
             </ProtectedRoute>
           </AppShell>
         }

@@ -1495,3 +1495,185 @@ export const verifyCustomDomain = (domainId) =>
 
 export const deleteDomain = (domainId) =>
   request(`/branding/domains/${domainId}`, { method: "DELETE" })
+
+// --- Business studio suite (Phase 12) ---
+
+export const submitInquiry = (slug, payload) =>
+  request(`/studio/inquire/${slug}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const listInquiries = (status) =>
+  request(`/studio/inquiries${status ? `?status=${status}` : ""}`)
+
+export const setInquiryStatus = (inquiryId, status) =>
+  request(`/studio/inquiries/${inquiryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+
+export const convertInquiry = (inquiryId, { eventName } = {}) =>
+  request(`/studio/inquiries/${inquiryId}/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_name: eventName || undefined }),
+  })
+
+export const getStudioCalendar = (from, to) => {
+  const params = new URLSearchParams()
+  if (from) params.set("from", from)
+  if (to) params.set("to", to)
+  const qs = params.toString()
+  return request(`/studio/calendar${qs ? `?${qs}` : ""}`)
+}
+
+export const listPackages = () => request("/studio/packages")
+
+export const createPackage = (payload) =>
+  request("/studio/packages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const updatePackage = (packageId, patch) =>
+  request(`/studio/packages/${packageId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const deletePackage = (packageId) =>
+  request(`/studio/packages/${packageId}`, { method: "DELETE" })
+
+export const listContractTemplates = () => request("/studio/contract-templates")
+
+export const uploadContractTemplate = (name, file) => {
+  const form = new FormData()
+  form.append("name", name)
+  form.append("contract", file, file.name || "contract.pdf")
+  return request("/studio/contract-templates", { method: "POST", body: form })
+}
+
+export const deleteContractTemplate = (templateId) =>
+  request(`/studio/contract-templates/${templateId}`, { method: "DELETE" })
+
+export const listContracts = (status) =>
+  request(`/studio/contracts${status ? `?status=${status}` : ""}`)
+
+export const assignContract = (payload) =>
+  request("/studio/contracts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const deleteContract = (contractId) =>
+  request(`/studio/contracts/${contractId}`, { method: "DELETE" })
+
+export const listQuestionnaires = () => request("/studio/questionnaires")
+
+export const createQuestionnaire = (payload) =>
+  request("/studio/questionnaires", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const updateQuestionnaire = (questionnaireId, patch) =>
+  request(`/studio/questionnaires/${questionnaireId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const deleteQuestionnaire = (questionnaireId) =>
+  request(`/studio/questionnaires/${questionnaireId}`, { method: "DELETE" })
+
+export const assignQuestionnaire = (questionnaireId, payload) =>
+  request(`/studio/questionnaires/${questionnaireId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const listQuestionnaireAssignments = (questionnaireId) =>
+  request(`/studio/questionnaires/${questionnaireId}/assignments`)
+
+export const listBookings = (status) =>
+  request(`/studio/bookings${status ? `?status=${status}` : ""}`)
+
+export const createBooking = (payload) =>
+  request("/studio/bookings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const updateBooking = (bookingId, patch) =>
+  request(`/studio/bookings/${bookingId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const getBooking = (bookingId) => request(`/studio/bookings/${bookingId}`)
+
+export const createBookingPaymentIntent = (bookingId, { provider, amount, currency }) =>
+  request(`/studio/bookings/${bookingId}/payment-intent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, amount, currency }),
+  })
+
+export const listExpenses = ({ eventId, category } = {}) => {
+  const params = new URLSearchParams()
+  if (eventId) params.set("event_id", eventId)
+  if (category) params.set("category", category)
+  const qs = params.toString()
+  return request(`/studio/expenses${qs ? `?${qs}` : ""}`)
+}
+
+export const createExpense = (payload) =>
+  request("/studio/expenses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+export const updateExpense = (expenseId, patch) =>
+  request(`/studio/expenses/${expenseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+
+export const deleteExpense = (expenseId) =>
+  request(`/studio/expenses/${expenseId}`, { method: "DELETE" })
+
+export const getExpenseReport = (eventId) =>
+  request(`/studio/expenses/report${eventId ? `?event_id=${eventId}` : ""}`)
+
+// Client-side studio suite: my contracts + questionnaires.
+export const listClientContracts = () => request("/client/contracts")
+
+export const getClientContract = (contractId) => request(`/client/contracts/${contractId}`)
+
+export const acceptClientContract = (contractId, name) =>
+  request(`/client/contracts/${contractId}/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  })
+
+export const listClientQuestionnaires = () => request("/client/questionnaires")
+
+export const respondClientQuestionnaire = (assignmentId, answers) =>
+  request(`/client/questionnaires/${assignmentId}/respond`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  })
