@@ -7,6 +7,7 @@ import {
   fileUrl,
   getGalleryKey,
   getGuestDataRequestStatus,
+  getLeadStatus,
   getPublicEvent,
   reactToPhoto,
   searchBySelfies,
@@ -19,6 +20,7 @@ import {
 } from '../api.js'
 import { getGuestClientId } from '../guestId.js'
 import { createWatermarkedShareImage, shareOrDownload } from '../shareImage.js'
+import LeadCaptureForm from '../components/LeadCaptureForm.jsx'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
 import CameraShutter from '../components/CameraShutter.jsx'
@@ -60,6 +62,11 @@ export default function GuestEvent() {
   const [drMessage, setDrMessage] = useState('')
   const [drRequests, setDrRequests] = useState([])
   const [drBusy, setDrBusy] = useState(false)
+  // Phase 10 (lead capture): capture state drives the search/download
+  // gates below; optional mode shows a dismissible form instead.
+  const [leadCaptured, setLeadCaptured] = useState(null)
+  const [leadDismissed, setLeadDismissed] = useState(false)
+  const [showLeadForDownload, setShowLeadForDownload] = useState(false)
   // Phase 3 (gallery access upgrade): private-key prompt state. Unlock
   // tokens persist per slug, so a reload stays unlocked.
   const [accessKey, setAccessKey] = useState('')
@@ -89,6 +96,9 @@ export default function GuestEvent() {
     getGuestDataRequestStatus(slug, getGuestClientId())
       .then(setDrRequests)
       .catch(() => setDrRequests([]))
+    getLeadStatus(slug, getGuestClientId())
+      .then((res) => setLeadCaptured(!!res.captured))
+      .catch(() => setLeadCaptured(false))
   }, [slug])
 
   useEffect(() => {
@@ -153,10 +163,11 @@ export default function GuestEvent() {
 
     // Already have enough selfies to run a real search — start it now in
     // the background rather than waiting for the button tap. Never
-    // prefetches past the consent gate: with consent required, nothing
-    // uploads until the box is ticked.
+    // prefetches past the consent gate — or the lead gate in
+    // required_search mode: with either required, nothing uploads until
+    // the guest completes that step.
     const ready = capped.length > 0 && (!groupMode || capped.length >= 2)
-    if (ready && (!event?.require_face_search_consent || consented)) {
+    if (ready && (!event?.require_face_search_consent || consented) && !(event?.lead_capture_mode === 'required_search' && !leadCaptured)) {
       const key = selfiesKey(capped, groupMode)
       const promise = startSearch(capped, groupMode, consented)
       promise.catch(() => {}) // Surfaced by handleSearch instead, not here.
@@ -177,6 +188,9 @@ export default function GuestEvent() {
     prefetchRef.current = null
   }
 
+  const needsLeadForSearch = event?.lead_capture_mode === 'required_search' && !leadCaptured
+  const needsLeadForDownload = event?.lead_capture_mode === 'required_download' && !leadCaptured
+
   const handleSearch = async (e) => {
     e.preventDefault()
     if (groupMode && selfies.length < 2) {
@@ -184,6 +198,10 @@ export default function GuestEvent() {
       return
     }
     if (!groupMode && selfies.length === 0) return
+    if (needsLeadForSearch) {
+      setError('Please introduce yourself first — this event needs your details before a face search can run.')
+      return
+    }
     if (event?.require_face_search_consent && !consented) {
       setError('Please tick the consent box first — this event needs your permission before a face search can run.')
       return
@@ -242,10 +260,27 @@ export default function GuestEvent() {
 
   const handleDownloadAll = async () => {
     if (!result?.matches?.length) return
+    // Phase 10: required_download mode re-checks capture live (the guest
+    // may have completed it in another tab) and prompts inline if needed.
+    if (event?.lead_capture_mode === 'required_download') {
+      try {
+        const status = await getLeadStatus(slug, getGuestClientId())
+        setLeadCaptured(!!status.captured)
+        if (!status.captured) {
+          setShowLeadForDownload(true)
+          setError('Please introduce yourself first — this event needs your details before downloads.')
+          return
+        }
+      } catch {
+        setShowLeadForDownload(true)
+        setError('Please introduce yourself first — this event needs your details before downloads.')
+        return
+      }
+    }
     setDownloading(true)
     setError('')
     try {
-      await downloadMatches(slug, result.matches.map((m) => m.photo_id))
+      await downloadMatches(slug, result.matches.map((m) => m.photo_id), getGuestClientId())
     } catch (e) {
       setError(e.message)
     } finally {
@@ -334,7 +369,7 @@ export default function GuestEvent() {
     setSendingLink(true)
     setAlertMessage('')
     try {
-      await sendGalleryLinkViaWhatsApp(slug, alertContact.trim())
+      await sendGalleryLinkViaWhatsApp(slug, alertContact.trim(), getGuestClientId())
       setAlertMessage('Sent! Check WhatsApp for your gallery link.')
     } catch (e) {
       setAlertMessage(e.message)
@@ -428,6 +463,14 @@ export default function GuestEvent() {
           </form>
           {unlockError && <p className="error" style={{ marginTop: 8 }}>{unlockError}</p>}
         </div>
+      ) : event?.lead_capture_mode === 'optional' && !leadCaptured && !leadDismissed ? (
+        <LeadCaptureForm
+          slug={slug}
+          source="gallery"
+          blocking={false}
+          onCaptured={() => setLeadCaptured(true)}
+          onDismiss={() => setLeadDismissed(true)}
+        />
       ) : event && !event.face_search_enabled ? (
         <div className="card">
           <p className="subtle">
@@ -436,6 +479,13 @@ export default function GuestEvent() {
               : 'Selfie search isn’t turned on for this event yet. Check back soon or contact your photographer.'}
           </p>
         </div>
+      ) : needsLeadForSearch ? (
+        <LeadCaptureForm
+          slug={slug}
+          source="search"
+          blocking
+          onCaptured={() => { setLeadCaptured(true); setError('') }}
+        />
       ) : (
         <form className="card" onSubmit={handleSearch}>
           <p className="subtle">
@@ -561,6 +611,21 @@ export default function GuestEvent() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {showLeadForDownload && !leadCaptured && (
+        <div style={{ marginTop: 12 }}>
+          <LeadCaptureForm
+            slug={slug}
+            source="download"
+            blocking
+            onCaptured={() => {
+              setLeadCaptured(true)
+              setShowLeadForDownload(false)
+              setError('')
+            }}
+          />
         </div>
       )}
 

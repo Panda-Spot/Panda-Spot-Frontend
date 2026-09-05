@@ -51,6 +51,7 @@ import ClientGallery from './pages/ClientGallery.jsx'
 import ClientFavourites from './pages/ClientFavourites.jsx'
 import ClientAlbum from './pages/ClientAlbum.jsx'
 import StudioAlbum from './pages/StudioAlbum.jsx'
+import EventAttendees from './pages/EventAttendees.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -280,6 +281,17 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <StudioAlbum />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      {/* Lead capture: studio attendee dashboard (Phase 10) */}
+      <Route
+        path="/events/:eventId/attendees"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <EventAttendees />
             </ProtectedRoute>
           </AppShell>
         }

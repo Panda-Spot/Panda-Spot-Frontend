@@ -713,11 +713,11 @@ export const unsubscribeFromMatchAlerts = (slug, guestClientId) =>
   })
 
 // One-off "text me this gallery link" — sends once, no ongoing subscription.
-export const sendGalleryLinkViaWhatsApp = (slug, phone) =>
+export const sendGalleryLinkViaWhatsApp = (slug, phone, guestClientId) =>
   request(`/e/${slug}/whatsapp/send-link`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, guest_client_id: guestClientId || undefined }),
   })
 
 // Guest-contributed photo upload — lands as pending until the owner
@@ -730,7 +730,8 @@ export const uploadGuestPhotos = (slug, files, guestClientId) => {
 }
 
 // Public gallery of approved photos — powers the live slideshow view.
-export const getPublicGallery = (slug) => request(`/e/${slug}/gallery`)
+export const getPublicGallery = (slug, guestClientId) =>
+  request(`/e/${slug}/gallery${guestClientId ? `?guest_client_id=${encodeURIComponent(guestClientId)}` : ""}`)
 
 // Phase 8 (live TV wall): public on-air feed — branding, settings, QR
 // target, and the current (moderated, mode-filtered) photo set.
@@ -873,6 +874,38 @@ export const submitGuestDataRequest = (slug, { guestClientId, contact, type }) =
 
 export const getGuestDataRequestStatus = (slug, guestClientId) =>
   request(`/e/${slug}/data-request/status?guest_client_id=${encodeURIComponent(guestClientId)}`)
+
+// Phase 10 (lead capture): share details + consent, check capture state.
+export const submitGuestLead = (slug, { guestClientId, name, phone, email, guestType, consent, source }) =>
+  request(`/e/${slug}/lead`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      guest_client_id: guestClientId,
+      name: name || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+      guest_type: guestType || undefined,
+      consent,
+      source: source || undefined,
+    }),
+  })
+
+export const getLeadStatus = (slug, guestClientId) =>
+  request(`/e/${slug}/lead/status?guest_client_id=${encodeURIComponent(guestClientId)}`)
+
+// Studio attendee dashboard: filterable leads + spreadsheet export.
+export const listEventLeads = (eventId, { from, to, action, search } = {}) => {
+  const params = new URLSearchParams()
+  if (from) params.set("from", from)
+  if (to) params.set("to", to)
+  if (action) params.set("action", action)
+  if (search) params.set("search", search)
+  const qs = params.toString()
+  return request(`/events/${eventId}/leads${qs ? `?${qs}` : ""}`)
+}
+
+export const exportLeadsCsv = (eventId) => downloadFile(`/events/${eventId}/leads/export.csv`)
 
 // Platform support: review queue + resolution for guest data requests.
 export const listAdminDataRequests = (eventId, status) =>
@@ -1180,12 +1213,12 @@ export const acceptInvite = (token) =>
 
 // Downloads a zip of the given matched photos and triggers a browser save —
 // a blob response, so it can't go through the JSON request() helper above.
-export const downloadMatches = async (slug, photoIds) => {
+export const downloadMatches = async (slug, photoIds, guestClientId) => {
   const res = await fetch(`${BASE_URL}/e/${slug}/download`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ photo_ids: photoIds }),
+    body: JSON.stringify({ photo_ids: photoIds, guest_client_id: guestClientId || undefined }),
   })
   if (!res.ok) {
     let message = `Download failed (${res.status})`

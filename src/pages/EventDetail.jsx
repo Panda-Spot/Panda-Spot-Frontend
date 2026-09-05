@@ -250,6 +250,8 @@ export default function EventDetail() {
   // Phase 2 — Face Search privacy settings draft + save.
   const [privacyDraft, setPrivacyDraft] = useState(null)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
+  // Phase 10 — lead capture mode saving flag.
+  const [savingLeadMode, setSavingLeadMode] = useState(false)
   // Phase 3 — Gallery access settings draft + save.
   const [accessDraft, setAccessDraft] = useState(null)
   const [savingAccess, setSavingAccess] = useState(false)
@@ -1754,6 +1756,38 @@ export default function EventDetail() {
             />
             Photo Selection — clients log in to browse, favourite, and submit picks
           </label>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', marginTop: 8 }}>
+            <div>
+              <label className="field-label" htmlFor="lead-mode">Guest lead capture</label>
+              <select
+                id="lead-mode"
+                className="text-input"
+                value={event.lead_capture_mode || 'disabled'}
+                disabled={savingLeadMode}
+                onChange={async (e) => {
+                  setSavingLeadMode(true)
+                  try {
+                    await updateEvent(eventId, { lead_capture_mode: e.target.value })
+                    showToast('Lead capture updated')
+                    load()
+                  } catch (err) {
+                    showToast(err.message, { type: 'error' })
+                  } finally {
+                    setSavingLeadMode(false)
+                  }
+                }}
+                style={{ maxWidth: 240 }}
+              >
+                <option value="disabled">Disabled</option>
+                <option value="optional">Optional form</option>
+                <option value="required_search">Required before search</option>
+                <option value="required_download">Required before download</option>
+              </select>
+            </div>
+            <Link className="btn secondary" to={`/events/${eventId}/attendees`}>
+              Attendee dashboard
+            </Link>
+          </div>
         </div>
       )}
 
