@@ -197,10 +197,13 @@ export default function AppShell({ children }) {
   })
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Slide-in on mount — x only, opacity never touched
+  // Slide-in on mount — x only, opacity never touched. Transform is
+  // cleared on complete so the mobile CSS drawer state
+  // (.sv-sidebar[data-mobile] translateX) isn't overridden by an inline
+  // GSAP transform, which would pin the drawer open on small screens.
   useEffect(() => {
     gsap.set(sidebarRef.current, { width: collapsed ? 64 : 240 })
-    gsap.fromTo(sidebarRef.current, { x: -16 }, { x: 0, duration: 0.45, ease: 'power3.out' })
+    gsap.fromTo(sidebarRef.current, { x: -16 }, { x: 0, duration: 0.45, ease: 'power3.out', clearProps: 'transform' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -257,8 +260,9 @@ export default function AppShell({ children }) {
   const roleBadge = user?.role === 'SUPER_ADMIN' ? 'ADMIN' : isClient ? 'CLIENT' : 'STUDIO'
 
   return (
-    <div className="app-shell">
+    <div className="sv-shell">
       <style>{`
+        .sv-shell { display: block; min-height: 100vh; }
         .sv-sidebar { transition: transform 0.3s ease; }
         .sv-spacer { transition: width 0.3s ease; }
         @media (max-width: 767px) {

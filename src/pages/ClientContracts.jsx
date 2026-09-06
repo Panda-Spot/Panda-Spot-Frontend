@@ -117,7 +117,7 @@ export function ClientContractDetail() {
           {pdfUrl ? (
             <iframe title="Contract preview" src={pdfUrl} style={{ width: '100%', height: '50vh', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', marginTop: 8 }} />
           ) : (
-            <p className="hint">{pdfError || 'Loading preview…'}</p>
+            <p className="hint">{pdfError || (contract.file_url ? 'Loading preview…' : 'No preview file attached — the terms below still count.')}</p>
           )}
           <form style={{ display: 'grid', gap: 8, marginTop: 10 }} onSubmit={accept}>
             <label className="row" style={{ gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>

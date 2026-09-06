@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Camera, CheckCircle2, Clock, Heart, Lock, Send } from 'lucide-react'
+import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock, Heart, Lock, Send, X } from 'lucide-react'
 import {
   fileUrl,
   getClientEvent,
@@ -21,6 +21,7 @@ import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 import GalleryMedia from '../components/GalleryMedia.jsx'
 import FavouritesDrawer from '../components/gallery/FavouritesDrawer.jsx'
 import { formatDate } from '../utils/formatters.js'
+import { isVideoFile } from '../utils/media.js'
 
 // A client's gallery for one event — browse, favourite (up to the
 // studio's cap), and submit the final pick (one-way lock). Sticky brand
@@ -43,6 +44,9 @@ export default function ClientGallery() {
   const [albums, setAlbums] = useState([])
   const [eventCount, setEventCount] = useState(1)
   const [logoOk, setLogoOk] = useState(true)
+  // Lightbox index into `photos` (null = closed). Grid heart and lightbox
+  // heart share handleToggleFavourite so counter stays in sync.
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const load = (silent) => {
     if (!silent) {
@@ -68,6 +72,7 @@ export default function ClientGallery() {
     setPhotos(null)
     setError(null)
     setLogoOk(true)
+    setLightboxIndex(null)
     load(false)
     listClientEvents().then((evs) => setEventCount(evs.length)).catch(() => {})
   }, [eventId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,6 +94,26 @@ export default function ClientGallery() {
     document.addEventListener('contextmenu', handler)
     return () => document.removeEventListener('contextmenu', handler)
   }, [])
+
+  // Lightbox keyboard: Escape closes, arrows move. Clamp when photos change.
+  useEffect(() => {
+    if (lightboxIndex == null) return
+    if (!photos || lightboxIndex >= photos.length) {
+      setLightboxIndex(null)
+      return
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightboxIndex(null)
+      else if (e.key === 'ArrowLeft') setLightboxIndex((i) => (i > 0 ? i - 1 : i))
+      else if (e.key === 'ArrowRight') setLightboxIndex((i) => (photos && i < photos.length - 1 ? i + 1 : i))
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [lightboxIndex, photos])
 
   useBrandColours(containerRef, event?.brand_color || null, null)
   // Phase 11: database theme wins over the legacy single brand color.
@@ -336,13 +361,14 @@ export default function ClientGallery() {
         {typeof error === 'string' && error && <p className="error">{error}</p>}
 
         <div className="photo-grid">
-          {photos.map((p) => (
-            <div className="photo-card no-select" key={p.photo_id}>
+          {photos.map((p, idx) => (
+            <div className="photo-card no-select" key={p.photo_id} data-photo-id={p.photo_id}>
               <div className="protected-photo-frame" data-watermark={showWatermarkText ? watermarkText : ''} style={{ position: 'relative' }}>
                 <GalleryMedia
                   src={fileUrl(p.protected_thumbnail_url || p.protected_url)}
                   filename={p.filename}
-                  style={{ width: '100%', display: 'block' }}
+                  style={{ width: '100%', display: 'block', cursor: isVideoFile(p.filename) ? undefined : 'pointer' }}
+                  onClick={isVideoFile(p.filename) ? undefined : () => setLightboxIndex(idx)}
                 />
                 {showWatermarkImage && (
                   <img
@@ -389,6 +415,69 @@ export default function ClientGallery() {
         eventName={event.event_name}
         allowDownload={event.allow_download !== false}
       />
+
+      {/* Client lightbox — same favourite action as grid so counter syncs */}
+      {lightboxIndex != null && photos[lightboxIndex] && (() => {
+        const current = photos[lightboxIndex]
+        const isFav = !!current.is_favourite
+        return (
+          <div
+            className="fixed inset-0 lightbox-backdrop"
+            role="dialog"
+            aria-label={`Photo viewer — ${current.filename}`}
+            data-testid="client-lightbox"
+            onClick={() => setLightboxIndex(null)}
+          >
+            <button className="lightbox-close" type="button" onClick={() => setLightboxIndex(null)} aria-label="Close">
+              <X size={22} />
+            </button>
+            <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
+              {lightboxIndex > 0 && (
+                <button className="lightbox-nav lightbox-nav-prev" type="button" onClick={() => setLightboxIndex((i) => i - 1)} aria-label="Previous photo">
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+              <img
+                key={current.photo_id}
+                src={fileUrl(current.protected_url || current.protected_thumbnail_url)}
+                alt={current.filename}
+                className="lightbox-image"
+                draggable={false}
+              />
+              {lightboxIndex < photos.length - 1 && (
+                <button className="lightbox-nav lightbox-nav-next" type="button" onClick={() => setLightboxIndex((i) => i + 1)} aria-label="Next photo">
+                  <ChevronRight size={28} />
+                </button>
+              )}
+            </div>
+            <div className="lightbox-footer" onClick={(e) => e.stopPropagation()}>
+              <p className="lightbox-caption">{current.filename} — {lightboxIndex + 1} of {photos.length}</p>
+              <div className="row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  type="button"
+                  title={isFav ? 'Remove favourite' : 'Favourite'}
+                  aria-label={isFav ? 'Remove favourite' : 'Add favourite'}
+                  aria-pressed={isFav}
+                  data-testid="lightbox-fav"
+                  onClick={() => handleToggleFavourite(current.photo_id, isFav)}
+                  disabled={locked || togglingId === current.photo_id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 16px', borderRadius: 999,
+                    border: isFav ? '1px solid #e0245e' : '1px solid rgba(255,255,255,0.25)',
+                    background: isFav ? 'rgba(224,36,94,0.15)' : 'rgba(255,255,255,0.08)',
+                    color: isFav ? '#ff6b9d' : '#fff', cursor: 'pointer',
+                  }}
+                >
+                  <Heart fill={isFav ? 'currentColor' : 'none'} size={18} />
+                  {togglingId === current.photo_id ? 'Saving…' : isFav ? 'Favourited' : 'Favourite'}
+                </button>
+                <span className="hint">{favouriteCount}{event.favourite_cap != null ? ` / ${event.favourite_cap} selected` : ' selected'}</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

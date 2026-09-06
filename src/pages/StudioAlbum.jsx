@@ -58,6 +58,8 @@ export default function StudioAlbum() {
   const fileRef = useRef(null)
   const pdfRef = useRef(null)
   const rootRef = useRef(null)
+  const replaceTargetRef = useRef(null)
+  const [replaceTarget, setReplaceTarget] = useState(null)
   // Phase 11: review workspace follows the event's gallery theme.
   useGalleryTheme(rootRef, album?.theme?.is_default === false ? album.theme : null)
 
@@ -157,8 +159,6 @@ export default function StudioAlbum() {
   }
 
   // In-place file swap: order, pins, and revision untouched — only pixels change.
-  const replaceTargetRef = useRef(null)
-  const [replaceTarget, setReplaceTarget] = useState(null)
   const handleReplaceFile = async (file) => {
     if (!file || !version || !replaceTarget || locked) return
     setBusy(true)

@@ -297,6 +297,27 @@
   margin-top: 16px;
 }
 
+/* Guest selfie picker: native file input is visually hidden behind a
+   styled button so the dropzone matches the rest of the design system. */
+.selfie-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.selfie-picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.selfie-picker .hint {
+  margin: 0;
+}
+
 /* --- Modal --- */
 
 .modal-backdrop {
@@ -2065,16 +2086,19 @@
 
 body {
   min-width: 320px;
+  min-height: 100vh;
   background:
     linear-gradient(180deg, rgba(14, 138, 138, 0.055), transparent 280px),
     radial-gradient(circle at 14% 0%, rgba(240, 160, 32, 0.12), transparent 260px),
     var(--surface-muted);
+  background-attachment: fixed;
 }
 
 :root[data-theme='dark'] body {
   background:
     linear-gradient(180deg, rgba(45, 212, 200, 0.07), transparent 300px),
     var(--surface-muted);
+  background-attachment: fixed;
 }
 
 .shell {

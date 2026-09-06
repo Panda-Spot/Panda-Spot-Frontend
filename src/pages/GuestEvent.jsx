@@ -502,7 +502,11 @@ export default function GuestEvent() {
             {groupMode ? '← Search for just me instead' : 'Searching with friends? Search as a group →'}
           </button>
           <div className="file-drop">
-            <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleSelfies} />
+            <label className="selfie-picker">
+              <input className="selfie-picker-input" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={handleSelfies} />
+              <span className="btn secondary" aria-hidden="true">Choose selfies</span>
+              <span className="hint">{selfies.length > 0 ? `${selfies.length} selected` : 'PNG, JPG or WebP'}</span>
+            </label>
             {selfieHint && <p className="hint">{selfieHint}</p>}
             {previews.length > 0 && (
               <div className="selfie-preview-row">
