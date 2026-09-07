@@ -11,6 +11,7 @@ import {
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { celebrate } from '../lib/confetti.js'
 import { useAuth } from '../auth.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import AlbumFlipbook from '../components/AlbumFlipbook.jsx'
@@ -109,6 +110,7 @@ export default function ClientAlbum() {
       await approveAlbum(eventId, albumId)
       await load()
       showToast('Album approved!')
+      celebrate()
     } catch (e) { showToast(e.message, { type: 'error' }) } finally { setBusy(false) }
   }
 

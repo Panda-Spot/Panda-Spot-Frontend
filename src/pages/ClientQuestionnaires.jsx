@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, ClipboardList } from 'lucide-react'
 import { listClientQuestionnaires, respondClientQuestionnaire } from '../api.js'
 import { useToast } from '../toast.jsx'
+import { pop } from '../lib/confetti.js'
 
 // Client-side questionnaires (Phase 12): answer what the studio assigned.
 export default function ClientQuestionnaires() {
@@ -36,6 +37,7 @@ export default function ClientQuestionnaires() {
     try {
       await respondClientQuestionnaire(a.assignment_id, answers);
       showToast('Answers submitted — thank you!');
+      pop()
       setDrafts((d) => {
         const next = { ...d };
         delete next[a.assignment_id];

@@ -81,6 +81,7 @@ import PhotoFaceViewer from '../components/PhotoFaceViewer.jsx'
 import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
+import { pop } from '../lib/confetti.js'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
 import Dropzone from '../components/Dropzone.jsx'
@@ -492,6 +493,7 @@ export default function EventDetail() {
         setSkippedFiles(data.skipped || [])
         clearActiveJob(eventId)
         showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        pop()
         load()
       },
       onError: (data) => {
@@ -1187,6 +1189,7 @@ export default function EventDetail() {
           setSkippedFiles(data.skipped || [])
           clearActiveJob(eventId)
           showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+          pop()
           cleanup()
           resolve()
         },

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react'
 import { acceptClientContract, getClientContract, listClientContracts, previewClientContractFile } from '../api.js'
 import { useToast } from '../toast.jsx'
+import { celebrate } from '../lib/confetti.js'
 
 // Client-side contracts (Phase 12): review assigned agreements and
 // accept with a typed name (checkbox foundation for e-signature later).
@@ -89,6 +90,7 @@ export function ClientContractDetail() {
       const res = await acceptClientContract(id, name.trim())
       setContract((c) => ({ ...c, status: res.status, accepted_at: res.accepted_at, signature_name: name.trim() }))
       showToast('Contract signed — thank you!')
+      celebrate()
     } catch (err) {
       setError(err.message)
     } finally {

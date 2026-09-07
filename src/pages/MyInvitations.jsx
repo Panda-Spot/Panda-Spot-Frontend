@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { acceptInvite, declineInvite, listMyInvites } from '../api.js'
 import { useToast } from '../toast.jsx'
+import { pop } from '../lib/confetti.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -40,6 +41,7 @@ export default function MyInvitations() {
     try {
       const res = await acceptInvite(token)
       showToast(`Accepted — welcome to "${eventName}"`)
+      pop()
       navigate(`/events/${res.event_id}`)
     } catch (e) {
       showToast(e.message, { type: 'error' })

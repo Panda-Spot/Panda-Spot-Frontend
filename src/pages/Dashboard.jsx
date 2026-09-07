@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts'
 import { createEvent, fileUrl, getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api.js'
+import { celebrate, pop } from '../lib/confetti.js'
 import { useAuth } from '../auth.jsx'
 import { greetingTime } from '../utils/formatters.js'
 import StatCard from '../components/ui/StatCard.jsx'
@@ -55,6 +56,8 @@ function TrialWelcomeModal({ subscription }) {
       return
     }
     setDismissed(false)
+    // Big welcome moment — confetti blast as the trial popup appears.
+    setTimeout(() => celebrate(), 350)
   }, [subscription])
 
   if (!subscription || subscription.status !== 'TRIAL') return null
@@ -221,6 +224,7 @@ export default function Dashboard() {
     try {
       await createEvent(name.trim())
       setName('')
+      pop()
       load(statusFilter)
     } catch (e) {
       setError(e.message)

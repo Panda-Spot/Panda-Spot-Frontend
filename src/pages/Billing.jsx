@@ -15,6 +15,7 @@ import {
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { celebrate } from '../lib/confetti.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -56,11 +57,12 @@ export default function Billing() {
 
   useEffect(load, [])
 
-  const withBusy = async (fn) => {
+  const withBusy = async (fn, { cheer = false } = {}) => {
     setBusy(true)
     setError('')
     try {
       await fn()
+      if (cheer) celebrate()
       load()
     } catch (e) {
       setError(e.message)
@@ -172,7 +174,7 @@ export default function Billing() {
         )}
 
         {!subscription && (
-          <GoldButton type="button" loading={busy} onClick={() => withBusy(activateTrial)}>
+                  <GoldButton type="button" loading={busy} onClick={() => withBusy(activateTrial, { cheer: true })}>
             Start free trial
           </GoldButton>
         )}
@@ -197,7 +199,7 @@ export default function Billing() {
                     <Badge variant="gold">Current plan</Badge>
                   ) : subscription && subscription.status !== 'GRACE' && subscription.status !== 'EXPIRED' && subscription.plan_name ? (
                     isHigher ? (
-                      <GoldButton size="sm" type="button" disabled={busy} onClick={() => withBusy(() => upgradeSubscription(p.id))}>
+                      <GoldButton size="sm" type="button" disabled={busy} onClick={() => withBusy(() => upgradeSubscription(p.id), { cheer: true })}>
                         Upgrade (+₹{priceDiff})
                       </GoldButton>
                     ) : (
@@ -206,7 +208,7 @@ export default function Billing() {
                       </GoldButton>
                     )
                   ) : (
-                    <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => withBusy(() => subscribeToPlan(p.id))}>
+                      <GoldButton size="sm" variant="outline" type="button" disabled={busy} onClick={() => withBusy(() => subscribeToPlan(p.id), { cheer: true })}>
                       Subscribe
                     </GoldButton>
                   )}
@@ -239,7 +241,7 @@ export default function Billing() {
                   variant="outline"
                   type="button"
                   disabled={busy || (p.walletTier === 'INITIAL' && hasWallet) || (p.walletTier === 'TOPUP' && !hasWallet)}
-                  onClick={() => withBusy(() => rechargeWallet(p.id))}
+                  onClick={() => withBusy(() => rechargeWallet(p.id), { cheer: true })}
                 >
                   {p.walletTier === 'INITIAL' ? 'Activate wallet' : 'Top up'}
                 </GoldButton>

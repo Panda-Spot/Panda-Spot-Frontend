@@ -24,6 +24,7 @@ import {
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { celebrate } from '../lib/confetti.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -176,7 +177,10 @@ export default function BillingDocuments() {
       { title: 'Confirm & generate bill?', confirmLabel: 'Confirm → Bill', danger: false }
     )
     if (!ok) return
-    withBusy(() => confirmQuotation(id))
+    withBusy(async () => {
+      await confirmQuotation(id)
+      celebrate()
+    })
   }
 
   const handleDelete = async (id, number) => {
@@ -212,6 +216,7 @@ export default function BillingDocuments() {
       setSelectedBill(refreshed)
       setPaymentAmount('')
       setPaymentRemark('')
+      if (refreshed.status === 'PAID') celebrate()
     })
   }
 

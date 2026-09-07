@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { acceptInvite, declineInvite, getInvite } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useToast } from '../toast.jsx'
+import { pop } from '../lib/confetti.js'
 
 export default function InviteAccept() {
   const { token } = useParams()
@@ -24,6 +25,7 @@ export default function InviteAccept() {
       const res = await acceptInvite(token)
       setDone(`Accepted — you now have access to "${invite.event_name}".`)
       showToast('Invitation accepted')
+      pop()
       setTimeout(() => navigate(`/events/${res.event_id}`), 900)
     } catch (e) {
       setError(e.message)

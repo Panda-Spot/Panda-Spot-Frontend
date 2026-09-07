@@ -13,6 +13,7 @@ import {
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { celebrate } from '../lib/confetti.js'
 import useBrandColours from '../hooks/useBrandColours.js'
 import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
@@ -149,6 +150,7 @@ export default function ClientGallery() {
       const res = await submitClientSelection(eventId)
       setEvent((prev) => ({ ...prev, submitted_at: res.submitted_at }))
       showToast('Favourites submitted!')
+      celebrate()
     } catch (e) {
       setError(e.message)
       showToast(e.message, { type: 'error' })
