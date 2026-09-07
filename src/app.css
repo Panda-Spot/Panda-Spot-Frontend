@@ -519,9 +519,10 @@
   transform: translateX(-50%);
   width: 640px;
   height: 480px;
-  background: var(--gradient-brand);
+  /* Radial wash instead of a blurred layer — filter: blur() forces a full
+     repaint of everything underneath on scroll/animation, this paints once. */
+  background: radial-gradient(closest-side, var(--gradient-brand), transparent);
   opacity: 0.16;
-  filter: blur(80px);
   border-radius: 50%;
   z-index: -1;
   pointer-events: none;
@@ -2557,9 +2558,10 @@ h2.section-title {
 .app-topbar {
   min-height: 68px;
   padding: 0 28px;
-  background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
+  /* Solid surface — the old translucent + backdrop-blur combo repainted the
+     whole bar on every scroll frame. */
+  background: var(--surface-raised);
   border-bottom-color: rgba(101, 119, 127, 0.18);
-  backdrop-filter: blur(16px);
 }
 
 .app-topbar-title {
@@ -2828,8 +2830,8 @@ h2.section-title {
 }
 
 .modal-backdrop {
-  background: rgba(2, 6, 10, 0.58);
-  backdrop-filter: blur(8px);
+  /* Flat dim — backdrop-blur() repaints the entire page behind every modal. */
+  background: rgba(2, 6, 10, 0.62);
 }
 
 .modal-panel {

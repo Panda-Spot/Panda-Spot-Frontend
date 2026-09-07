@@ -84,9 +84,8 @@
   max-width: 1120px;
   margin: 0 auto;
   height: 56px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Solid — the old translucent + backdrop-blur repainted on every scroll. */
+  background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: var(--radius-pill);
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 4px 8px -2px rgba(15, 23, 42, 0.02);
@@ -94,11 +93,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 12px 0 18px;
-  transition: all var(--transition-smooth);
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth);
 }
 
 .nav-island-scrolled .nav-island-container {
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   border-color: rgba(203, 213, 225, 0.95);
   box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.1), 0 6px 12px -3px rgba(15, 23, 42, 0.04);
   transform: translateY(-2px);

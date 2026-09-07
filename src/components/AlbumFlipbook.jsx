@@ -77,7 +77,7 @@ function SpreadImage({ page, zoomed, onLoaded, onFailed }) {
           draggable={false}
           loading="lazy"
           decoding="async"
-          style={{ width: `${100 * zoomed}%`, maxWidth: 'none', display: 'block', margin: '0 auto', borderRadius: 4, filter: 'blur(2px)', userSelect: 'none', pointerEvents: 'none' }}
+          style={{ width: `${100 * zoomed}%`, maxWidth: 'none', display: 'block', margin: '0 auto', borderRadius: 4, opacity: 0.55, userSelect: 'none', pointerEvents: 'none' }}
         />
       )}
     </>
