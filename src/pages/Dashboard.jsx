@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { gsap } from 'gsap'
 import { CalendarDays, Heart, ImageIcon, Users, ScanFace, Zap, BookOpen, Receipt, QrCode, Tv, Gift, ChevronDown } from 'lucide-react'
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts'
-import { getMySubscription, getStudioAnalyticsSummary } from '../api.js'
+import { getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api.js'
 import { celebrate } from '../lib/confetti.js'
 import { IMPROVE_OPTIONS, WAY_OPTIONS, loadSignupGoals, saveSignupGoals } from '../lib/signupGoals.js'
+import { ChartTooltip, TopEventsBar, axisProps, eventsByMonth, GOLD } from '../components/EventCharts.jsx'
 import { useAuth } from '../auth.jsx'
 import { greetingTime } from '../utils/formatters.js'
 import StatCard from '../components/ui/StatCard.jsx'
@@ -171,36 +172,6 @@ function TrialWelcomeModal({ subscription }) {
   )
 }
 
-/* ── Shared chart theme (gold) ────────────────────────────── */
-const GOLD = '#F59E0B'
-const axisProps = {
-  tick: { fill: '#6B6B76', fontSize: 11 },
-  axisLine: false,
-  tickLine: false,
-}
-
-function ChartTooltip({ active, payload, label, suffix = '' }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{
-      background: '#18181B',
-      border: '1px solid rgba(245,158,11,0.25)',
-      borderRadius: 10,
-      color: '#F5F5F7',
-      fontSize: 12,
-      padding: '8px 12px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-    }}>
-      <p style={{ color: '#A0A0AB', marginBottom: 4 }}>{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color || GOLD, fontWeight: 600 }}>
-          {p.value}{suffix} <span style={{ color: '#A0A0AB', fontWeight: 400 }}>{p.name}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
 function SectionHeader({ title, subtitle }) {
   return (
     <div className="mb-5">
@@ -215,6 +186,7 @@ export default function Dashboard() {
   const containerRef = useRef(null)
   const [subscription, setSubscription] = useState(null)
   const [summary, setSummary] = useState(null)
+  const [events, setEvents] = useState([])
 
   useEffect(() => {
     getMySubscription()
@@ -223,6 +195,10 @@ export default function Dashboard() {
     getStudioAnalyticsSummary()
       .then(setSummary)
       .catch(() => setSummary(null))
+    // Event metrics live here on the Dashboard (not on the Events page).
+    listEvents('all')
+      .then((rows) => setEvents(rows || []))
+      .catch(() => setEvents([]))
   }, [])
 
   useLayoutEffect(() => {
@@ -248,6 +224,10 @@ export default function Dashboard() {
     { name: 'Archived', value: summary?.event_status?.archived ?? 0 },
   ]
   const DONUT_COLORS = [GOLD, '#3F3F46']
+
+  // Event metrics for the Dashboard cards below.
+  const monthly = eventsByMonth(events)
+  const topEvents = [...events].sort((a, b) => (b.photo_count || 0) - (a.photo_count || 0)).slice(0, 5)
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -397,6 +377,34 @@ export default function Dashboard() {
               No subscription yet — start a free trial from the <Link to="/billing">Billing</Link> page to unlock quota-tracked uploads.
             </p>
           )}
+        </GlassCard>
+      </div>
+
+      {/* ── Event metrics ─── */}
+      <div className="chart-section grid xl:grid-cols-3 gap-5 mb-8">
+        <GlassCard hover={false}>
+          <SectionHeader title="Events Created" subtitle="Last 6 months" />
+          <ResponsiveContainer width="100%" height={170}>
+            <BarChart data={monthly} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="label" {...axisProps} />
+              <YAxis {...axisProps} allowDecimals={false} />
+              <Tooltip content={<ChartTooltip suffix=" events" />} />
+              <Bar dataKey="count" name="events" radius={[4, 4, 0, 0]}>
+                {monthly.map((_, i) => (
+                  <Cell
+                    key={i}
+                    fill={i === monthly.length - 1 ? GOLD : `rgba(245,158,11,${0.28 + (i / (monthly.length - 1)) * 0.4})`}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+
+        <GlassCard hover={false} className="xl:col-span-2">
+          <SectionHeader title="Top Events by Photos" subtitle="Events with the most uploaded photos" />
+          <TopEventsBar data={topEvents} />
         </GlassCard>
       </div>
 

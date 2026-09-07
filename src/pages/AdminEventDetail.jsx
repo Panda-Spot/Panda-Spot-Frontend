@@ -262,6 +262,26 @@ export default function AdminEventDetail() {
         {event.collaborators.length > 0 && (
           <p className="hint">Collaborators: {event.collaborators.map((c) => c.email).join(', ')}</p>
         )}
+        {event.invites && event.invites.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <p className="hint">Invite audit log ({event.invites.length}):</p>
+            <ul className="team-list">
+              {event.invites.map((inv) => (
+                <li key={inv.invite_id} className="team-list-item">
+                  <span>
+                    {inv.email}{' '}
+                    <span className="hint">
+                      · {inv.status}
+                      {' '}· invited {new Date(inv.invited_at).toLocaleString()}
+                      {inv.accepted_at && <> · accepted {new Date(inv.accepted_at).toLocaleString()}</>}
+                      {inv.declined_at && <> · declined {new Date(inv.declined_at).toLocaleString()}</>}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <h2 className="section-title">Albums ({albums ? albums.length : '…'})</h2>

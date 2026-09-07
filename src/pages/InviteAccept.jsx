@@ -81,7 +81,12 @@ export default function InviteAccept() {
     <div className="card invite-card">
       <h1 className="section-title">You&apos;re invited</h1>
       <p className="subtle">You&apos;ve been invited to help with &quot;{invite.event_name}&quot; as a collaborator.</p>
-      <p className="hint">Sent to {invite.email} — only that account can accept.</p>
+      <p className="hint">
+        Sent to {invite.email} — only that account can accept.
+        {invite.invited_at && (
+          <> · Invited on {new Date(invite.invited_at).toLocaleString()}.</>
+        )}
+      </p>
       <div className="row">
         <button type="button" className="btn" disabled={busy} onClick={handleAccept}>
           {busy ? 'Working…' : 'Accept invitation'}

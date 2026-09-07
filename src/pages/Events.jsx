@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock } from 'lucide-react'
+import { AlertTriangle, Lock } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
+import Modal from '../components/ui/Modal.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 
@@ -55,6 +56,7 @@ export default function Events() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [limitAlert, setLimitAlert] = useState(false)
   const [statusFilter, setStatusFilter] = useState('active')
   const [subscription, setSubscription] = useState(null)
 
@@ -98,6 +100,11 @@ export default function Events() {
       pop()
       load()
     } catch (e) {
+      // Plan cap is a wall, not a footnote — explain it in an alert popup
+      // with the way forward instead of a plain inline error.
+      if (/plan.*limit|limit.*events/i.test(e.message || '')) {
+        setLimitAlert(true)
+      }
       setError(e.message)
     } finally {
       setCreating(false)
@@ -224,6 +231,33 @@ export default function Events() {
           </div>
         </GlassCard>
       )}
+
+      <Modal open={limitAlert} onClose={() => setLimitAlert(false)} title="Event limit reached" size="sm">
+        <div className="flex flex-col items-center text-center">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)' }}
+          >
+            <AlertTriangle size={26} style={{ color: '#FBBF24' }} />
+          </div>
+          <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            You&apos;ve reached your plan&apos;s limit of 15 events.
+          </p>
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            New events are blocked until you free up room or move to a bigger plan — your existing
+            events, photos and guest links keep working untouched.
+          </p>
+          <p className="hint mb-4">Archive an old event, or upgrade to raise the ceiling.</p>
+          <div className="row w-full">
+            <Link to="/billing" className="flex-1">
+              <GoldButton className="w-full justify-center">Upgrade plan</GoldButton>
+            </Link>
+            <button type="button" className="btn secondary" onClick={() => setLimitAlert(false)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

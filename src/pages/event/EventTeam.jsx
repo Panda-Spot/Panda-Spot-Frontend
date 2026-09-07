@@ -3,7 +3,7 @@ import { useEvent } from './EventContext.jsx'
 
 export default function EventTeam() {
   const {
-    event, collaborators, pendingInvites,
+    event, collaborators, pendingInvites, acceptedInvites, declinedInvites,
     inviteEmail, setInviteEmail, inviting, inviteMessage, teamError,
     handleInvite, handleRemoveCollaborator, handleCancelInvite,
     setActiveTab,
@@ -71,6 +71,44 @@ export default function EventTeam() {
               )}
             </ul>
           </div>
+
+          {acceptedInvites.length > 0 && (
+            <div className="card">
+              <div className="guest-link-label">Accepted ({acceptedInvites.length})</div>
+              <p className="hint">Invite audit — who accepted and when.</p>
+              <ul className="team-list">
+                {acceptedInvites.map((inv) => (
+                  <li key={inv.invite_id} className="team-list-item">
+                    <span>
+                      {inv.email}{' '}
+                      <span className="hint">
+                        · invited {new Date(inv.invited_at).toLocaleString()} · accepted {new Date(inv.accepted_at).toLocaleString()}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {declinedInvites.length > 0 && (
+            <div className="card">
+              <div className="guest-link-label">Declined ({declinedInvites.length})</div>
+              <p className="hint">Invite audit — who declined and when. Re-inviting re-opens the invite.</p>
+              <ul className="team-list">
+                {declinedInvites.map((inv) => (
+                  <li key={inv.invite_id} className="team-list-item team-list-item-pending">
+                    <span>
+                      {inv.email}{' '}
+                      <span className="hint">
+                        · invited {new Date(inv.invited_at).toLocaleString()} · declined {new Date(inv.declined_at).toLocaleString()}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

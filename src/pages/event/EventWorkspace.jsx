@@ -164,6 +164,8 @@ export default function EventWorkspace() {
   const [showGuestCard, setShowGuestCard] = useState(false)
   const [collaborators, setCollaborators] = useState([])
   const [pendingInvites, setPendingInvites] = useState([])
+  const [acceptedInvites, setAcceptedInvites] = useState([])
+  const [declinedInvites, setDeclinedInvites] = useState([])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
@@ -348,10 +350,14 @@ export default function EventWorkspace() {
       .then((data) => {
         setCollaborators(data.collaborators)
         setPendingInvites(data.pending_invites)
+        setAcceptedInvites(data.accepted_invites || [])
+        setDeclinedInvites(data.declined_invites || [])
       })
       .catch(() => {
         setCollaborators([])
         setPendingInvites([])
+        setAcceptedInvites([])
+        setDeclinedInvites([])
       })
   }, [eventId])
 
@@ -1622,7 +1628,7 @@ export default function EventWorkspace() {
   const value = {
     eventId, user, event, photos, analytics,
     uploading, progress, error, copied, showGuestCard, setShowGuestCard,
-    collaborators, pendingInvites, inviteEmail, setInviteEmail, inviting,
+    collaborators, pendingInvites, acceptedInvites, declinedInvites, inviteEmail, setInviteEmail, inviting,
     inviteMessage, teamError, clients, pendingClientInvites,
     clientInviteEmail, setClientInviteEmail, clientInviteCap, setClientInviteCap,
     invitingClient, clientInviteMessage, clientError,
