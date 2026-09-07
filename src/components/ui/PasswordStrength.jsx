@@ -20,8 +20,11 @@ const levels = [
 const getScore = (value) => {
   if (!value) return 0
   const passed = rules.filter(rule => rule.test(value)).length
-  const lengthBonus = value.length >= 12 ? 1 : 0
-  return Math.min(4, Math.max(1, passed - 1 + lengthBonus))
+  if (passed <= 1) return 0 // Too weak — red
+  if (passed === 2) return 1 // Weak — orange
+  if (passed === 3) return 2 // Fair — amber
+  if (passed === 4) return 3 // Strong — emerald
+  return value.length >= 12 ? 4 : 3 // all 5 rules: Excellent green at 12+ chars, else Strong
 }
 
 export default function PasswordStrength({ value = '', className = '', showRules = true }) {
@@ -33,13 +36,13 @@ export default function PasswordStrength({ value = '', className = '', showRules
   return (
     <div className={`mb-4 ${className}`}>
       <div className="flex items-center gap-1.5 mb-2" aria-hidden="true">
-        {[0, 1, 2, 3].map(index => (
+        {[0, 1, 2, 3, 4].map(index => (
           <div
             key={index}
             className="h-1.5 flex-1 rounded-full transition-all duration-300"
             style={{
-              background: index < score ? level.color : 'var(--border-subtle)',
-              boxShadow: index < score ? `0 0 12px ${level.color}33` : 'none',
+              background: index <= score ? level.color : 'var(--border-subtle)',
+              boxShadow: index <= score ? `0 0 12px ${level.color}33` : 'none',
             }}
           />
         ))}
