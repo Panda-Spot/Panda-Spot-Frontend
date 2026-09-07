@@ -81,6 +81,13 @@ export default function InviteAccept() {
     <div className="card invite-card">
       <h1 className="section-title">You&apos;re invited</h1>
       <p className="subtle">You&apos;ve been invited to help with &quot;{invite.event_name}&quot; as a collaborator.</p>
+      {(invite.studio_name || invite.inviter_name || invite.inviter_email) && (
+        <p className="subtle">
+          {invite.studio_name && <><strong>{invite.studio_name}</strong> · </>}
+          {invite.inviter_name || invite.inviter_email}
+          {invite.inviter_name && invite.inviter_email && <> ({invite.inviter_email})</>}
+        </p>
+      )}
       <p className="hint">
         Sent to {invite.email} — only that account can accept.
         {invite.invited_at && (

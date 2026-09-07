@@ -35,6 +35,8 @@ import EventAlbums from './pages/event/EventAlbums.jsx'
 import Guests from './pages/event/Guests.jsx'
 import Exports from './pages/event/Exports.jsx'
 import Tools from './pages/event/Tools.jsx'
+import Theme from './pages/event/Theme.jsx'
+import Danger from './pages/event/Danger.jsx'
 import EventTeam from './pages/event/EventTeam.jsx'
 import Clients from './pages/Clients.jsx'
 import Team from './pages/Team.jsx'
@@ -330,7 +332,9 @@ function App() {
         <Route path="guests" element={<Guests />} />
         <Route path="exports" element={<Exports />} />
         <Route path="tools" element={<Tools />} />
+        <Route path="theme" element={<Theme />} />
         <Route path="team" element={<EventTeam />} />
+        <Route path="danger" element={<Danger />} />
       </Route>
       {/* Business studio suite (Phase 12) */}
       <Route

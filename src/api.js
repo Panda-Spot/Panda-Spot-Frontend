@@ -207,11 +207,11 @@ export const adminResetAccountPassword = (email, newPassword) =>
 
 // --- Events (photographer, authenticated) ---
 
-export const createEvent = (name) =>
+export const createEvent = (name, { faceSearch = true, photoSelection = false } = {}) =>
   request("/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, face_search_enabled: faceSearch, photo_selection_enabled: photoSelection }),
   })
 
 export const listEvents = (status) => {

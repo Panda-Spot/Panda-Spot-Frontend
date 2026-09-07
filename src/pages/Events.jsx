@@ -57,6 +57,9 @@ export default function Events() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [limitAlert, setLimitAlert] = useState(false)
+  // Feature choice is mandatory at creation — at least one must stay on.
+  const [newFaceSearch, setNewFaceSearch] = useState(true)
+  const [newPhotoSelection, setNewPhotoSelection] = useState(false)
   const [statusFilter, setStatusFilter] = useState('active')
   const [subscription, setSubscription] = useState(null)
 
@@ -91,11 +94,11 @@ export default function Events() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || (!newFaceSearch && !newPhotoSelection)) return
     setCreating(true)
     setError('')
     try {
-      await createEvent(name.trim())
+      await createEvent(name.trim(), { faceSearch: newFaceSearch, photoSelection: newPhotoSelection })
       setName('')
       pop()
       load()
@@ -127,21 +130,48 @@ export default function Events() {
         </p>
       </div>
 
-      <form className="card row" onSubmit={handleCreate}>
-        <input
-          className="text-input"
-          placeholder="Event name (e.g. Smith Wedding 2026)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        {trialExhausted ? (
-          <Link to="/billing">
-            <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
-          </Link>
-        ) : (
-          <button className="btn" type="submit" disabled={creating}>
-            {creating ? 'Creating…' : 'Create Event'}
-          </button>
+      <form className="card" onSubmit={handleCreate}>
+        <div className="guest-link-label">New event</div>
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <input
+            className="text-input"
+            placeholder="Event name (e.g. Smith Wedding 2026)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          {trialExhausted ? (
+            <Link to="/billing">
+              <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
+            </Link>
+          ) : (
+            <button className="btn" type="submit" disabled={creating || !name.trim() || (!newFaceSearch && !newPhotoSelection)}>
+              {creating ? 'Creating…' : 'Create Event'}
+            </button>
+          )}
+        </div>
+        <p className="hint" style={{ marginTop: 8 }}>
+          Pick what this event does — required, at least one. Changing features later lives in the event&apos;s Danger section.
+        </p>
+        <div className="row" style={{ flexWrap: 'wrap', marginTop: 4 }}>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={newFaceSearch}
+              onChange={(e) => setNewFaceSearch(e.target.checked)}
+            />
+            Face Search — guests find their own photos with a selfie
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={newPhotoSelection}
+              onChange={(e) => setNewPhotoSelection(e.target.checked)}
+            />
+            Photo Selection — clients log in to browse, favourite, and submit picks
+          </label>
+        </div>
+        {!newFaceSearch && !newPhotoSelection && (
+          <p className="error" style={{ marginTop: 8 }}>Pick at least one feature to create the event.</p>
         )}
       </form>
 

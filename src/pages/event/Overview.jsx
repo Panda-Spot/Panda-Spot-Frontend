@@ -1,89 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Cropper from 'react-easy-crop'
-import { Archive, ArchiveRestore, CalendarDays, MapPin, Pencil } from 'lucide-react'
-import { updateEvent } from '../../api.js'
-import { useToast } from '../../toast.jsx'
+import { Archive, ArchiveRestore, CalendarDays, CheckCircle2, Circle, MapPin, Pencil } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
-import AccessSettingsCard from '../../components/AccessSettingsCard.jsx'
-import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
-import EventThemePicker from '../../components/EventThemePicker.jsx'
 import Modal from '../../components/Modal.jsx'
 
 export default function Overview() {
-  const { showToast } = useToast()
   const {
-    eventId, event, load,
-    archiving, handleArchive, handleRestore, handleDeleteEvent, deletingEvent,
+    eventId, event, photos, analytics, clients, collaborators,
     openEditDetails, showEditDetails, setShowEditDetails,
     editName, setEditName, editDate, setEditDate, editVenue, setEditVenue,
     editDesc, setEditDesc, savingDetails, handleSaveDetails,
     handleCoverFile, handleSaveCover, handleRemoveCover,
     showCoverModal, setShowCoverModal, coverSrc, setCoverSrc,
     coverCrop, setCoverCrop, coverZoom, setCoverZoom, coverPixels, setCoverPixels, uploadingCover,
-    handleToggleFeature, togglingFeature,
-    accessDraft, setAccessDraft,
-    privacyDraft, setPrivacyDraft,
-    subGalleryName, setSubGalleryName, creatingSubGallery, handleCreateSubGallery,
     setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
 
-  const [savingLeadMode, setSavingLeadMode] = useState(false)
-  const [savingAccess, setSavingAccess] = useState(false)
-  const [savingPrivacy, setSavingPrivacy] = useState(false)
+  const photoCount = photos.length
+  const indexedCount = photos.filter((p) => p.face_indexed_at).length
+  const searchableCount = photos.filter((p) => p.approval_status !== 'pending' && p.face_search_visible && !p.archived_at).length
+  const pendingCount = photos.filter((p) => p.approval_status === 'pending').length
 
-  const handleLeadMode = async (mode) => {
-    setSavingLeadMode(true)
-    try {
-      await updateEvent(eventId, { lead_capture_mode: mode })
-      showToast('Lead capture updated')
-      load()
-    } catch (err) {
-      showToast(err.message, { type: 'error' })
-    } finally {
-      setSavingLeadMode(false)
-    }
+  const suggestions = []
+  if (event && !event.started) {
+    suggestions.push({ done: false, label: 'Start the event to unlock uploads', to: `/events/${eventId}/photos` })
   }
-
-  const handleAccessSave = async (patch) => {
-    const body = { access_mode: patch.access_mode, expiry_preset: patch.expiry_preset }
-    if (patch.access_key !== undefined) body.access_key = patch.access_key
-    if (patch.expires_at) body.expires_at = patch.expires_at
-    setSavingAccess(true)
-    try {
-      await updateEvent(eventId, body)
-      setAccessDraft(null)
-      showToast('Access settings saved')
-      load()
-    } catch (err) {
-      showToast(err.message, { type: 'error' })
-    } finally {
-      setSavingAccess(false)
-    }
+  if (photoCount === 0) {
+    suggestions.push({ done: false, label: 'Upload your first photos', to: `/events/${eventId}/photos` })
   }
-
-  const handlePrivacySave = async () => {
-    if (!privacyDraft) return
-    setSavingPrivacy(true)
-    try {
-      const days = privacyDraft.guest_data_retention_days
-      await updateEvent(eventId, {
-        require_face_search_consent: !!privacyDraft.require_face_search_consent,
-        privacy_notice_text: privacyDraft.privacy_notice_text?.trim() ? privacyDraft.privacy_notice_text.trim() : null,
-        selfie_retention_mode: privacyDraft.selfie_retention_mode,
-        guest_data_retention_days: days === '' || days == null ? null : Number(days),
-        allow_guest_data_delete_request: !!privacyDraft.allow_guest_data_delete_request,
-      })
-      setPrivacyDraft(null)
-      showToast('Privacy settings saved')
-      load()
-    } catch (err) {
-      showToast(err.message, { type: 'error' })
-    } finally {
-      setSavingPrivacy(false)
-    }
+  if (event?.face_search_enabled && photoCount > 0 && searchableCount === 0) {
+    suggestions.push({ done: false, label: 'Add photos to AI Search', to: `/events/${eventId}/photos` })
+  }
+  if (photoCount > 0) {
+    suggestions.push({ done: true, label: 'Photos are in — share the guest link', to: `/events/${eventId}/guests` })
+  } else {
+    suggestions.push({ done: false, label: 'Share the guest link with guests', to: `/events/${eventId}/guests` })
+  }
+  if (event?.photo_selection_enabled && !event?.published_at) {
+    suggestions.push({ done: false, label: 'Publish the gallery for clients', to: `/events/${eventId}/selection` })
+  }
+  if ((collaborators?.length || 0) === 0) {
+    suggestions.push({ done: false, label: 'Invite a second shooter', to: `/events/${eventId}/team` })
   }
 
   return (
@@ -93,7 +53,7 @@ export default function Overview() {
           {event?.name || 'Event'}
         </h1>
         <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Settings, access, features and danger zone for this event.
+          Top overview — details, numbers, enabled features and next steps.
         </p>
       </div>
 
@@ -104,17 +64,25 @@ export default function Overview() {
               <Archive size={14} /> Archived — hidden from guests and clients
             </div>
             <p className="hint">
-              Archived {new Date(event.archived_at).toLocaleDateString()}. Nothing is deleted; restore to bring guests and clients back.
+              Archived {new Date(event.archived_at).toLocaleDateString()}. Nothing is deleted; restore from the Danger section to bring guests and clients back.
             </p>
-            <button className="btn secondary" type="button" onClick={handleRestore} disabled={archiving}>
-              <ArchiveRestore size={14} /> {archiving ? 'Restoring…' : 'Restore event'}
-            </button>
+            <Link className="btn secondary" to={`/events/${eventId}/danger`}>
+              <ArchiveRestore size={14} /> Open Danger section
+            </Link>
           </div>
         )}
 
         {event && (
           <div className="card">
-            <div className="guest-link-label">Event settings</div>
+            <div className="guest-link-label">Event details</div>
+            {event.cover_url && (
+              <img
+                src={event.cover_url}
+                alt=""
+                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
+                draggable={false}
+              />
+            )}
             {(event.event_date || event.event_venue || event.description) && (
               <p className="hint" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 {event.event_date && (
@@ -130,18 +98,10 @@ export default function Overview() {
                 {event.description && <span>{event.description}</span>}
               </p>
             )}
-            {event.archived_at && (
-              <p className="hint">Archived — hidden from guests and clients until restored.</p>
-            )}
             <div className="row" style={{ flexWrap: 'wrap' }}>
               <button className="btn secondary" type="button" onClick={openEditDetails}>
                 <Pencil size={14} /> Edit details
               </button>
-              {!event.archived_at && (
-                <button className="btn secondary" type="button" onClick={handleArchive} disabled={archiving}>
-                  <Archive size={14} /> {archiving ? 'Archiving…' : 'Archive'}
-                </button>
-              )}
             </div>
             <div className="row" style={{ flexWrap: 'wrap', marginTop: 8 }}>
               <label className="btn secondary" style={{ cursor: 'pointer' }}>
@@ -157,125 +117,59 @@ export default function Overview() {
           </div>
         )}
 
-        {event && (
-          <AccessSettingsCard
-            event={event}
-            draft={accessDraft}
-            setDraft={setAccessDraft}
-            saving={savingAccess}
-            guestLinkUrl={`${window.location.origin}/e/${event.guestSlug}`}
-            copied={false}
-            onCopyLink={() => {}}
-            onSave={handleAccessSave}
-          />
-        )}
+        <div className="card">
+          <div className="guest-link-label">Numbers</div>
+          <div className="stat-grid">
+            <div><div className="hint">Photos</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{photoCount}</div></div>
+            <div><div className="hint">Face-indexed</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{indexedCount}</div></div>
+            <div><div className="hint">Searchable</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{searchableCount}</div></div>
+            <div><div className="hint">Pending uploads</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{pendingCount}</div></div>
+            <div><div className="hint">Clients</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{clients?.length || 0}</div></div>
+            <div><div className="hint">Guest searches</div><div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{analytics?.total_searches ?? '—'}</div></div>
+          </div>
+        </div>
 
         {event && (
           <div className="card">
-            <div className="guest-link-label">Features</div>
-            <p className="hint">
-              Turn on either or both — they run independently on this same event and gallery.
-            </p>
-            <p className="hint">
-              AI indexed photos: {event.ai_indexed_photo_count ?? 0}. Currently searchable: {event.face_search_searchable_photo_count ?? 0}.
-            </p>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={!!event.face_search_enabled}
-                disabled={togglingFeature === 'faceSearch'}
-                onChange={(e) => handleToggleFeature('faceSearch', e.target.checked)}
-              />
-              Face Search — guests find their own photos with a selfie
-            </label>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={!!event.photo_selection_enabled}
-                disabled={togglingFeature === 'photoSelection'}
-                onChange={(e) => handleToggleFeature('photoSelection', e.target.checked)}
-              />
-              Photo Selection — clients log in to browse, favourite, and submit picks
-            </label>
-            <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', marginTop: 8 }}>
-              <div>
-                <label className="field-label" htmlFor="lead-mode">Guest lead capture</label>
-                <select
-                  id="lead-mode"
-                  className="text-input"
-                  value={event.lead_capture_mode || 'disabled'}
-                  disabled={savingLeadMode}
-                  onChange={(e) => handleLeadMode(e.target.value)}
-                  style={{ maxWidth: 240 }}
-                >
-                  <option value="disabled">Disabled</option>
-                  <option value="optional">Optional form</option>
-                  <option value="required_search">Required before search</option>
-                  <option value="required_download">Required before download</option>
-                </select>
-              </div>
-              <Link className="btn secondary" to={`/events/${eventId}/attendees`}>
-                Attendee dashboard
-              </Link>
+            <div className="guest-link-label">Features enabled</div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <span className={`status-pill ${event.face_search_enabled ? 'active' : 'off'}`}>
+                Face Search {event.face_search_enabled ? 'on' : 'off'}
+              </span>
+              <span className={`status-pill ${event.photo_selection_enabled ? 'active' : 'off'}`}>
+                Photo Selection {event.photo_selection_enabled ? 'on' : 'off'}
+              </span>
+              <span className={`status-pill ${event.guest_upload_enabled ? 'active' : 'off'}`}>
+                Guest uploads {event.guest_upload_enabled ? 'on' : 'off'}
+              </span>
             </div>
-          </div>
-        )}
-
-        {event && (event.role === 'owner' || event.role === 'collaborator') && (
-          <PrivacySettingsCard
-            event={event}
-            draft={privacyDraft}
-            setDraft={setPrivacyDraft}
-            saving={savingPrivacy}
-            onSave={handlePrivacySave}
-          />
-        )}
-
-        {event && (event.role === 'owner' || event.role === 'collaborator') && (
-          <EventThemePicker eventId={eventId} currentThemeId={event.gallery_theme_id} onSaved={load} />
-        )}
-
-        {event && !event.is_sub_gallery && (
-          <div className="card">
-            <div className="guest-link-label">Sub-galleries</div>
-            <p className="hint">
-              Split this event into separate galleries (e.g. "Ceremony" / "Reception") — guests scan the one shared
-              link, then pick a sub-gallery before searching or uploading.
+            <p className="hint" style={{ marginTop: 8 }}>
+              Chosen at creation. Changing features, archiving or deleting lives in the Danger section.
             </p>
-            {event.sub_galleries?.length > 0 && (
-              <ul className="team-list">
-                {event.sub_galleries.map((g) => (
-                  <li key={g.id} className="team-list-item">
-                    <span>{g.name} <span className="hint">({g.photo_count} photos)</span></span>
-                    <Link className="btn secondary" to={`/events/${g.id}`}>Open</Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <form className="row" onSubmit={handleCreateSubGallery} style={{ marginTop: 10 }}>
-              <input
-                className="text-input"
-                type="text"
-                placeholder="e.g. Ceremony"
-                value={subGalleryName}
-                onChange={(e) => setSubGalleryName(e.target.value)}
-              />
-              <button className="btn" type="submit" disabled={creatingSubGallery || !subGalleryName.trim()}>
-                {creatingSubGallery ? 'Adding…' : 'Add sub-gallery'}
-              </button>
-            </form>
+            <Link className="btn secondary" to={`/events/${eventId}/danger`}>
+              Open Danger section
+            </Link>
           </div>
         )}
 
-        {event?.role === 'owner' && (
-          <div className="card danger-zone">
-            <div className="guest-link-label">Danger zone</div>
-            <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event.</p>
-            <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
-              {deletingEvent ? 'Deleting.' : 'Delete event'}
-            </button>
-          </div>
-        )}
+        <div className="card">
+          <div className="guest-link-label">Suggested next steps</div>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {suggestions.map((s) => (
+              <li key={s.label}>
+                <Link
+                  to={s.to}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)', fontSize: 13 }}
+                >
+                  {s.done
+                    ? <CheckCircle2 size={16} style={{ color: '#22C55E', flexShrink: 0 }} />
+                    : <Circle size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
+                  {s.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {event && (

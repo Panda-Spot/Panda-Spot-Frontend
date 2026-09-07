@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
+import { CalendarDays, CheckCircle2, Clock, UserCheck, UserX } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
+import Avatar from '../../components/ui/Avatar.jsx'
+import Badge from '../../components/ui/Badge.jsx'
+
+const fmtDT = (v) => (v ? new Date(v).toLocaleString() : '—')
 
 export default function EventTeam() {
   const {
@@ -52,7 +57,17 @@ export default function EventTeam() {
             <ul className="team-list">
               {collaborators.map((c) => (
                 <li key={c.user_id} className="team-list-item">
-                  <span>{c.name} <span className="hint">({c.email})</span></span>
+                  <Avatar name={c.name || c.email} size="sm" ring />
+                  <span style={{ flex: 1 }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {c.name || c.email}
+                    </span>{' '}
+                    <span className="hint">({c.email})</span>
+                    <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <UserCheck size={11} /> Joined {fmtDT(c.joined_at)}
+                    </span>
+                  </span>
+                  <Badge variant="success">Active</Badge>
                   <button className="btn secondary" type="button" onClick={() => handleRemoveCollaborator(c.user_id)}>
                     Remove
                   </button>
@@ -60,7 +75,16 @@ export default function EventTeam() {
               ))}
               {pendingInvites.map((inv) => (
                 <li key={inv.invite_id} className="team-list-item team-list-item-pending">
-                  <span>{inv.email} <span className="hint">(pending)</span></span>
+                  <Avatar name={inv.email} size="sm" />
+                  <span style={{ flex: 1 }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {inv.email}
+                    </span>
+                    <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Clock size={11} /> Invited {fmtDT(inv.invited_at)} · awaiting Accept
+                    </span>
+                  </span>
+                  <Badge variant="gold">Pending</Badge>
                   <button className="btn secondary" type="button" onClick={() => handleCancelInvite(inv.invite_id)}>
                     Cancel
                   </button>
@@ -75,16 +99,23 @@ export default function EventTeam() {
           {acceptedInvites.length > 0 && (
             <div className="card">
               <div className="guest-link-label">Accepted ({acceptedInvites.length})</div>
-              <p className="hint">Invite audit — who accepted and when.</p>
+              <p className="hint">Invite audit — who accepted and exactly when.</p>
               <ul className="team-list">
                 {acceptedInvites.map((inv) => (
                   <li key={inv.invite_id} className="team-list-item">
-                    <span>
-                      {inv.email}{' '}
-                      <span className="hint">
-                        · invited {new Date(inv.invited_at).toLocaleString()} · accepted {new Date(inv.accepted_at).toLocaleString()}
+                    <Avatar name={inv.email} size="sm" />
+                    <span style={{ flex: 1 }}>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {inv.email}
+                      </span>
+                      <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <CalendarDays size={11} /> Invited {fmtDT(inv.invited_at)}
+                      </span>
+                      <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <CheckCircle2 size={11} style={{ color: '#22C55E' }} /> Accepted {fmtDT(inv.accepted_at)}
                       </span>
                     </span>
+                    <Badge variant="success">Accepted</Badge>
                   </li>
                 ))}
               </ul>
@@ -94,16 +125,23 @@ export default function EventTeam() {
           {declinedInvites.length > 0 && (
             <div className="card">
               <div className="guest-link-label">Declined ({declinedInvites.length})</div>
-              <p className="hint">Invite audit — who declined and when. Re-inviting re-opens the invite.</p>
+              <p className="hint">Invite audit — who declined and exactly when. Re-inviting re-opens the invite.</p>
               <ul className="team-list">
                 {declinedInvites.map((inv) => (
                   <li key={inv.invite_id} className="team-list-item team-list-item-pending">
-                    <span>
-                      {inv.email}{' '}
-                      <span className="hint">
-                        · invited {new Date(inv.invited_at).toLocaleString()} · declined {new Date(inv.declined_at).toLocaleString()}
+                    <Avatar name={inv.email} size="sm" />
+                    <span style={{ flex: 1 }}>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {inv.email}
+                      </span>
+                      <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <CalendarDays size={11} /> Invited {fmtDT(inv.invited_at)}
+                      </span>
+                      <span className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <UserX size={11} style={{ color: '#F87171' }} /> Declined {fmtDT(inv.declined_at)}
                       </span>
                     </span>
+                    <Badge variant="error">Declined</Badge>
                   </li>
                 ))}
               </ul>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { CheckCircle2, Star, XCircle } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -26,12 +27,13 @@ export default function Photos() {
     handleToggleDriveBackup, togglingDriveBackup, handleBackupExisting, backingUpExisting,
     handleReclaimDriveBackupNow, reclaimingDriveBackup, driveBackupMessage,
     photoStatusFilter, setPhotoStatusFilter, sourceFilter, setSourceFilter,
-    toolsFilter, setToolsFilter, visibleManageablePhotos, selectedCount,
+    toolsFilter, setToolsFilter, dupIds, visibleManageablePhotos, selectedCount,
     managerSelected, setManagerSelected, toggleManagerSelect, toggleManagerSelectAllVisible,
     bulking, handleBulkMembership, handleBulkAddAllVisible,
     visiblePhotos, handleArchivePhoto, handleRestorePhoto,
     handleToggleHighlight, togglingHighlightId, handleDeletePhoto, deletingPhotoId,
-    setMetaPhotoId, setActiveTab,
+    setMetaPhotoId, subGalleryName, setSubGalleryName, creatingSubGallery,
+    handleCreateSubGallery, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
@@ -237,6 +239,38 @@ export default function Photos() {
         {error && <p className="error">{error}</p>}
 
         {liveNotice && <p className="live-notice">{liveNotice}</p>}
+
+        {event && !event.is_sub_gallery && (
+          <div className="card">
+            <div className="guest-link-label">Sub-galleries</div>
+            <p className="hint">
+              Split this event into separate galleries (e.g. &quot;Ceremony&quot; / &quot;Reception&quot;) — guests scan the one shared
+              link, then pick a sub-gallery before searching or uploading.
+            </p>
+            {event.sub_galleries?.length > 0 && (
+              <ul className="team-list">
+                {event.sub_galleries.map((g) => (
+                  <li key={g.id} className="team-list-item">
+                    <span>{g.name} <span className="hint">({g.photo_count} photos)</span></span>
+                    <Link className="btn secondary" to={`/events/${g.id}`}>Open</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form className="row" onSubmit={handleCreateSubGallery} style={{ marginTop: 10 }}>
+              <input
+                className="text-input"
+                type="text"
+                placeholder="e.g. Ceremony"
+                value={subGalleryName}
+                onChange={(e) => setSubGalleryName(e.target.value)}
+              />
+              <button className="btn" type="submit" disabled={creatingSubGallery || !subGalleryName.trim()}>
+                {creatingSubGallery ? 'Adding…' : 'Add sub-gallery'}
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="row source-filter-row">
           {[

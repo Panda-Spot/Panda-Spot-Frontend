@@ -1,22 +1,51 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Flag, Search, Target, Users } from 'lucide-react'
+import { updateEvent } from '../../api.js'
+import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import FaceGroupsView from '../../components/FaceGroupsView.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
 import StatTile from '../../components/StatTile.jsx'
 import TrendChart from '../../components/TrendChart.jsx'
 
 export default function AISearch() {
+  const { showToast } = useToast()
   const {
-    eventId, event, analytics,
+    eventId, event, analytics, load,
     aiMembers, aiView, setAiView,
     faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer,
     handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
+    privacyDraft, setPrivacyDraft,
     setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('ai') }, [setActiveTab])
+
+  const [savingPrivacy, setSavingPrivacy] = useState(false)
+
+  const handlePrivacySave = async () => {
+    if (!privacyDraft) return
+    setSavingPrivacy(true)
+    try {
+      const days = privacyDraft.guest_data_retention_days
+      await updateEvent(eventId, {
+        require_face_search_consent: !!privacyDraft.require_face_search_consent,
+        privacy_notice_text: privacyDraft.privacy_notice_text?.trim() ? privacyDraft.privacy_notice_text.trim() : null,
+        selfie_retention_mode: privacyDraft.selfie_retention_mode,
+        guest_data_retention_days: days === '' || days == null ? null : Number(days),
+        allow_guest_data_delete_request: !!privacyDraft.allow_guest_data_delete_request,
+      })
+      setPrivacyDraft(null)
+      showToast('Privacy settings saved')
+      load()
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    } finally {
+      setSavingPrivacy(false)
+    }
+  }
 
   const faceGroups = faceGroupsState.data
 
@@ -131,8 +160,18 @@ export default function AISearch() {
         {!event?.face_search_enabled && (
           <div className="card">
             <div className="guest-link-label">Face Search is off</div>
-            <p className="hint">Turn it on from Overview → Features to start building the searchable set.</p>
+            <p className="hint">Face Search is picked at event creation — switches live in the Danger section.</p>
           </div>
+        )}
+
+        {event && (event.role === 'owner' || event.role === 'collaborator') && (
+          <PrivacySettingsCard
+            event={event}
+            draft={privacyDraft}
+            setDraft={setPrivacyDraft}
+            saving={savingPrivacy}
+            onSave={handlePrivacySave}
+          />
         )}
       </div>
     </div>

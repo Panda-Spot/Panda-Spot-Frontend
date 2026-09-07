@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useEvent } from './EventContext.jsx'
-import { fileUrl } from '../../api.js'
+import { fileUrl, updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
+import AccessSettingsCard from '../../components/AccessSettingsCard.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import GuestCard from '../../GuestCard.jsx'
 import TVSettingsForm from '../../components/TVSettingsForm.jsx'
@@ -16,10 +17,40 @@ export default function Guests() {
     togglingGuestUploads, handleToggleGuestUploads,
     windowDaysInput, setWindowDaysInput, savingWindow, handleSaveWindowDays,
     approvingId, handleApprovePhoto, handleRejectPhoto,
+    accessDraft, setAccessDraft, savingAccess,
     setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
+
+  const [savingLeadMode, setSavingLeadMode] = useState(false)
+
+  const handleLeadMode = async (mode) => {
+    setSavingLeadMode(true)
+    try {
+      await updateEvent(eventId, { lead_capture_mode: mode })
+      showToast('Lead capture updated')
+      load()
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    } finally {
+      setSavingLeadMode(false)
+    }
+  }
+
+  const handleAccessSave = async (patch) => {
+    const body = { access_mode: patch.access_mode, expiry_preset: patch.expiry_preset }
+    if (patch.access_key !== undefined) body.access_key = patch.access_key
+    if (patch.expires_at) body.expires_at = patch.expires_at
+    try {
+      await updateEvent(eventId, body)
+      setAccessDraft(null)
+      showToast('Access settings saved')
+      load()
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    }
+  }
 
   return (
     <div>
@@ -65,6 +96,19 @@ export default function Guests() {
               <GuestCard eventName={event.name} guestSlug={event.guestSlug} />
             )}
           </div>
+        )}
+
+        {event && (event.role === 'owner' || event.role === 'collaborator') && (
+          <AccessSettingsCard
+            event={event}
+            draft={accessDraft}
+            setDraft={setAccessDraft}
+            saving={savingAccess}
+            guestLinkUrl={guestLink(event.guestSlug)}
+            copied={copied}
+            onCopyLink={handleCopy}
+            onSave={handleAccessSave}
+          />
         )}
 
         {event?.started && (
@@ -205,6 +249,21 @@ export default function Guests() {
           <div className="card">
             <div className="guest-link-label">Attendees</div>
             <p className="hint">Who opened the gallery, searched, downloaded and shared — plus the lead-capture list and CSV export.</p>
+            <div style={{ marginBottom: 10, maxWidth: 260 }}>
+              <label className="field-label" htmlFor="lead-mode">Guest lead capture</label>
+              <select
+                id="lead-mode"
+                className="text-input"
+                value={event.lead_capture_mode || 'disabled'}
+                disabled={savingLeadMode}
+                onChange={(e) => handleLeadMode(e.target.value)}
+              >
+                <option value="disabled">Disabled</option>
+                <option value="optional">Optional form</option>
+                <option value="required_search">Required before search</option>
+                <option value="required_download">Required before download</option>
+              </select>
+            </div>
             <Link className="btn secondary" to={`/events/${eventId}/attendees`}>
               Open attendee dashboard
             </Link>

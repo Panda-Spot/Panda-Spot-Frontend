@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
 import {
+  AlertTriangle,
   BookOpen,
   ChevronLeft,
   Download,
   Heart,
   LayoutDashboard,
   Menu,
+  Palette,
   ScanFace,
   Upload,
   UserPlus,
@@ -55,7 +57,9 @@ const GROUPS = [
     label: 'Setup',
     items: [
       { to: 'tools', icon: Wrench, label: 'Tools' },
+      { to: 'theme', icon: Palette, label: 'Theme' },
       { to: 'team', icon: UserPlus, label: 'Team', ownerOnly: true },
+      { to: 'danger', icon: AlertTriangle, label: 'Danger' },
     ],
   },
 ]
@@ -69,7 +73,9 @@ const TITLES = {
   guests: 'Guests',
   exports: 'Exports',
   tools: 'Tools',
+  theme: 'Theme',
   team: 'Team',
+  danger: 'Danger',
   attendees: 'Attendees',
 }
 
