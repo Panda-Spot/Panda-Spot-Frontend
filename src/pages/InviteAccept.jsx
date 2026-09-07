@@ -55,7 +55,7 @@ export default function InviteAccept() {
         <h1 className="section-title">Done</h1>
         <p className="subtle">{done}</p>
         <div className="row">
-          <Link className="btn secondary" to="/events">Go to Dashboard</Link>
+          <Link className="btn secondary" to="/dashboard">Go to Dashboard</Link>
           <Link className="btn secondary" to="/invitations">My Invitations</Link>
         </div>
       </div>

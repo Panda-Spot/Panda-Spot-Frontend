@@ -7,6 +7,7 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  CalendarDays,
   Camera,
   ChevronLeft,
   ChevronRight,
@@ -42,7 +43,8 @@ const SIDEBAR_COLLAPSED_KEY = 'pandaspot_sidebar_collapsed'
    own platform entry; Studio Profile reuses the /branding route so no
    bookmark breaks — Branding.jsx itself is extended in Phase 18C). */
 const STUDIO_NAV = [
-  { to: '/events', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/events', icon: CalendarDays, label: 'Events' },
   { to: '/clients', icon: Users, label: 'Clients' },
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/invitations', icon: Inbox, label: 'My Invitations' },
@@ -70,7 +72,8 @@ const CLIENT_NAV = [
 ]
 
 const PAGE_TITLES = [
-  { test: (p) => p === '/events', title: 'Dashboard' },
+  { test: (p) => p === '/dashboard', title: 'Dashboard' },
+  { test: (p) => p === '/events', title: 'Events' },
   { test: (p) => p.startsWith('/events/'), title: 'Event' },
   { test: (p) => p === '/clients', title: 'Clients' },
   { test: (p) => p.startsWith('/clients'), title: 'Clients' },
@@ -297,7 +300,7 @@ export default function AppShell({ children }) {
 
   // Active check — exact match for root paths, prefix match for nested
   const isActive = (to) => {
-    if (to === '/events' || to === '/admin' || to === '/client' || to === '/billing') {
+    if (to === '/dashboard' || to === '/events' || to === '/admin' || to === '/client' || to === '/billing') {
       return location.pathname === to
     }
     return location.pathname === to || location.pathname.startsWith(to + '/')
@@ -355,7 +358,7 @@ export default function AppShell({ children }) {
           {/* ── Logo ── */}
           <div className="flex items-center gap-3 px-4 py-5 flex-shrink-0" style={{ borderBottom: `1px solid ${SB.border}` }}>
             <Link
-              to={isClient ? '/client' : '/events'}
+              to={isClient ? '/client' : '/dashboard'}
               className="flex items-center gap-3 min-w-0"
               style={{ textDecoration: 'none' }}
               onClick={() => setMobileOpen(false)}

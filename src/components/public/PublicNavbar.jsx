@@ -187,7 +187,7 @@ export default function PublicNavbar({ onOpenEarlyAccess }) {
         {/* Right CTA Actions */}
         <div className="nav-actions-right">
           {user ? (
-            <Link to="/events" className="nav-btn-signin">
+            <Link to="/dashboard" className="nav-btn-signin">
               <span>Dashboard</span>
             </Link>
           ) : (
@@ -259,7 +259,7 @@ export default function PublicNavbar({ onOpenEarlyAccess }) {
 
           <div className="mobile-nav-actions">
             {user ? (
-              <Link to="/events" className="nav-btn-signin" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center' }}>
+              <Link to="/dashboard" className="nav-btn-signin" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center' }}>
                 Open Studio Dashboard
               </Link>
             ) : (

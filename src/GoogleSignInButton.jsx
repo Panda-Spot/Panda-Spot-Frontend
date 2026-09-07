@@ -22,7 +22,7 @@ export default function GoogleSignInButton() {
           try {
             const user = await loginWithGoogle(response.credential)
             setUserDirectly(user)
-            navigate(searchParams.get('redirect') || '/')
+            navigate(searchParams.get('redirect') || '/dashboard')
           } catch {
             // Swallow — a real error surface isn't critical for this button;
             // the user can retry, and password/email login remains available.

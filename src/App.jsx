@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, NavLink, Navigate, Link, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, Link, useLocation } from 'react-router-dom'
 import { Camera } from 'lucide-react'
 
 function ScrollToTop() {
@@ -25,6 +25,7 @@ import NotFound from './pages/public/NotFound.jsx'
 
 // Authenticated Photographer Studio Pages
 import Dashboard from './pages/Dashboard.jsx'
+import Events from './pages/Events.jsx'
 import Clients from './pages/Clients.jsx'
 import Team from './pages/Team.jsx'
 import MyInvitations from './pages/MyInvitations.jsx'
@@ -230,7 +231,7 @@ function App() {
 
       {/* 4. Authenticated Photographer Studio Dashboard Routes */}
       <Route
-        path="/events"
+        path="/dashboard"
         element={
           <AppShell>
             <ProtectedRoute>
@@ -240,8 +241,14 @@ function App() {
         }
       />
       <Route
-        path="/dashboard"
-        element={<Navigate to="/events" replace />}
+        path="/events"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Events />
+            </ProtectedRoute>
+          </AppShell>
+        }
       />
       <Route
         path="/clients"

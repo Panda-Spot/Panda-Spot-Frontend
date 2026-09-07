@@ -20,7 +20,7 @@ export default function VerifyEmail() {
     <div className="card">
       <h1 className="section-title">Email verified</h1>
       <p className="subtle">Thanks — your email address is confirmed.</p>
-      <Link className="btn" to="/">Go to dashboard</Link>
+      <Link className="btn" to="/dashboard">Go to dashboard</Link>
     </div>
   )
 }

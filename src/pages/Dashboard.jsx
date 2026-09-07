@@ -1,47 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { gsap } from 'gsap'
-import { CalendarDays, Heart, ImageIcon, Lock, Users, ScanFace, Zap, BookOpen, Receipt, QrCode, Tv, Gift, ChevronDown } from 'lucide-react'
+import { CalendarDays, Heart, ImageIcon, Users, ScanFace, Zap, BookOpen, Receipt, QrCode, Tv, Gift, ChevronDown } from 'lucide-react'
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts'
-import { createEvent, fileUrl, getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api.js'
-import { celebrate, pop } from '../lib/confetti.js'
+import { getMySubscription, getStudioAnalyticsSummary } from '../api.js'
+import { celebrate } from '../lib/confetti.js'
+import { IMPROVE_OPTIONS, WAY_OPTIONS, loadSignupGoals, saveSignupGoals } from '../lib/signupGoals.js'
 import { useAuth } from '../auth.jsx'
 import { greetingTime } from '../utils/formatters.js'
 import StatCard from '../components/ui/StatCard.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Modal from '../components/ui/Modal.jsx'
-import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
-import { MiniLoader } from '../components/ui/StudioLoader.jsx'
-
-function guestLink(slug) {
-  return `${window.location.origin}/e/${slug}`
-}
-
-function CopyLinkButton({ slug }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(guestLink(slug))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard API unavailable — ignore
-    }
-  }
-
-  return (
-    <button className="btn secondary copy-btn" type="button" onClick={handleCopy}>
-      {copied ? 'Copied!' : 'Copy guest link'}
-    </button>
-  )
-}
 
 /* ── One-time welcome popup for a brand-new free trial ─────── */
 const TRIAL_PERKS = [
@@ -56,6 +29,11 @@ const TRIAL_PERKS = [
 function TrialWelcomeModal({ subscription }) {
   const [dismissed, setDismissed] = useState(true)
   const [expanded, setExpanded] = useState(false)
+  // Google signups skip the Register form, so they never answer the goal
+  // questions — ask here instead, with a Skip that jumps to the perks.
+  const [goalsStep, setGoalsStep] = useState(false)
+  const [improve, setImprove] = useState('')
+  const [ways, setWays] = useState([])
 
   useEffect(() => {
     if (subscription?.status !== 'TRIAL') return
@@ -65,6 +43,7 @@ function TrialWelcomeModal({ subscription }) {
     } catch {
       return
     }
+    setGoalsStep(!loadSignupGoals())
     setDismissed(false)
     // Big welcome moment — confetti blast as the trial popup appears.
     setTimeout(() => celebrate(), 350)
@@ -86,7 +65,58 @@ function TrialWelcomeModal({ subscription }) {
     : null
 
   return (
-    <Modal open={!dismissed} onClose={close} title="Welcome to PandaSpot!" size="lg">
+    <Modal open={!dismissed} onClose={close} title={goalsStep ? 'What matters to you?' : 'Welcome to PandaSpot!'} size="lg">
+      {goalsStep ? (
+        <>
+          <p className="signup-pitch">
+            Studios on PandaSpot <strong>cut post-shoot busywork</strong> — tell us what to set up first:
+          </p>
+          <p className="goal-question">What do you want to improve most?</p>
+          <div className="goal-grid" role="radiogroup" aria-label="What do you want to improve most?">
+            {IMPROVE_OPTIONS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={improve === id}
+                data-selected={improve === id}
+                className="goal-card"
+                onClick={() => setImprove((prev) => (prev === id ? '' : id))}
+              >
+                <span className="goal-card-icon"><Icon size={20} /></span>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="goal-question">How should it work for you?</p>
+          <div className="goal-grid" role="group" aria-label="How should it work for you?">
+            {WAY_OPTIONS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="checkbox"
+                aria-checked={ways.includes(id)}
+                data-selected={ways.includes(id)}
+                className="goal-card"
+                onClick={() => setWays((prev) => (prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]))}
+              >
+                <span className="goal-card-icon"><Icon size={20} /></span>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="row mt-4">
+            <GoldButton
+              className="flex-1 justify-center"
+              onClick={() => { saveSignupGoals({ improve, ways }); setGoalsStep(false) }}
+            >
+              Save &amp; continue
+            </GoldButton>
+            <button type="button" className="btn secondary" onClick={() => setGoalsStep(false)}>Skip</button>
+          </div>
+        </>
+      ) : (
+        <>
       <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
         You&apos;re on a <strong style={{ color: 'var(--text-primary)' }}>free trial</strong> — upload up to{' '}
         <strong style={{ color: 'var(--text-primary)' }}>{subscription.photo_quota_total} photos</strong>
@@ -135,6 +165,8 @@ function TrialWelcomeModal({ subscription }) {
         <p className="hint" style={{ margin: 0 }}>Tip: create your first event to get your guest link and QR card.</p>
       </div>
       <GoldButton onClick={close} className="w-full justify-center mt-4">Let&apos;s go</GoldButton>
+        </>
+      )}
     </Modal>
   )
 }
@@ -169,41 +201,6 @@ function ChartTooltip({ active, payload, label, suffix = '' }) {
   )
 }
 
-/* ── Horizontal bars for top events ───────────────────────── */
-function TopEventsBar({ data }) {
-  if (!data?.length) return (
-    <div className="flex items-center justify-center h-24">
-      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No photos uploaded yet</p>
-    </div>
-  )
-  const max = Math.max(...data.map((d) => d.photo_count), 1)
-  return (
-    <div className="space-y-3 mt-2">
-      {data.map((ev, i) => (
-        <Link key={ev.id} to={`/events/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs truncate max-w-[60%]" style={{ color: 'var(--text-primary)' }}>
-              {ev.name}
-            </span>
-            <span className="text-xs font-mono" style={{ color: GOLD }}>{ev.photo_count}</span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${(ev.photo_count / max) * 100}%`,
-                background: i === 0
-                  ? `linear-gradient(90deg, ${GOLD}, #FDE68A)`
-                  : `linear-gradient(90deg, ${GOLD}88, ${GOLD}44)`,
-              }}
-            />
-          </div>
-        </Link>
-      ))}
-    </div>
-  )
-}
-
 function SectionHeader({ title, subtitle }) {
   return (
     <div className="mb-5">
@@ -213,49 +210,11 @@ function SectionHeader({ title, subtitle }) {
   )
 }
 
-// Last-6-months buckets (oldest → newest) from event createdAt timestamps.
-function eventsByMonth(events) {
-  const buckets = []
-  const now = new Date()
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    buckets.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      label: d.toLocaleString('default', { month: 'short' }),
-      count: 0,
-    })
-  }
-  for (const ev of events) {
-    const d = new Date(ev.createdAt)
-    if (Number.isNaN(d.getTime())) continue
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const bucket = buckets.find((b) => b.key === key)
-    if (bucket) bucket.count += 1
-  }
-  return buckets
-}
-
 export default function Dashboard() {
   const { user } = useAuth()
   const containerRef = useRef(null)
-  const [events, setEvents] = useState([])
-  const [name, setName] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [error, setError] = useState('')
-  const [statusFilter, setStatusFilter] = useState('active')
   const [subscription, setSubscription] = useState(null)
   const [summary, setSummary] = useState(null)
-
-  const load = (status) => {
-    setLoading(true)
-    listEvents(status || 'active')
-      .then(setEvents)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load(statusFilter) }, [statusFilter])
 
   useEffect(() => {
     getMySubscription()
@@ -266,23 +225,6 @@ export default function Dashboard() {
       .catch(() => setSummary(null))
   }, [])
 
-  const handleCreate = async (e) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    setCreating(true)
-    setError('')
-    try {
-      await createEvent(name.trim())
-      setName('')
-      pop()
-      load(statusFilter)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setCreating(false)
-    }
-  }
-
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo('.stat-row > *', { y: 22, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.09, duration: 0.5, delay: 0.1, ease: 'power3.out' })
@@ -291,12 +233,10 @@ export default function Dashboard() {
     return () => ctx.revert()
   }, [])
 
-  const totalPhotos = events.reduce((sum, ev) => sum + (ev.photo_count || 0), 0)
-  const monthly = eventsByMonth(events)
-  const topEvents = [...events].sort((a, b) => (b.photo_count || 0) - (a.photo_count || 0)).slice(0, 5)
+  const quotaUsed = Number(subscription?.photo_quota_used || 0)
+  const quotaTotal = Number(subscription?.photo_quota_total || 0)
 
-  // Studio-wide aggregates (all owned + collaborated events, not just the
-  // current status filter) — drive the uploads chart, the status donut,
+  // Studio-wide aggregates — drive the uploads chart, the status donut,
   // and the client/favourite stat cards.
   const shortMonth = (key) => {
     const [y, m] = key.split('-')
@@ -308,11 +248,6 @@ export default function Dashboard() {
     { name: 'Archived', value: summary?.event_status?.archived ?? 0 },
   ]
   const DONUT_COLORS = [GOLD, '#3F3F46']
-
-  const quotaUsed = Number(subscription?.photo_quota_used || 0)
-  const quotaTotal = Number(subscription?.photo_quota_total || 0)
-  const quotaFull = quotaTotal > 0 && quotaUsed >= quotaTotal
-  const trialExhausted = subscription?.status === 'TRIAL' && quotaFull
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -329,8 +264,8 @@ export default function Dashboard() {
 
       {/* ── Stat Cards ─── */}
       <div className="stat-row grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Events" value={summary?.totals?.events ?? events.length} icon={CalendarDays} />
-        <StatCard label="Photos" value={summary?.totals?.photos ?? totalPhotos} icon={ImageIcon} />
+        <StatCard label="Events" value={summary?.totals?.events ?? 0} icon={CalendarDays} />
+        <StatCard label="Photos" value={summary?.totals?.photos ?? 0} icon={ImageIcon} />
         <StatCard label="Clients" value={summary?.totals?.clients ?? 0} icon={Users} />
         <StatCard label="Favourites" value={summary?.totals?.favourites ?? 0} icon={Heart} />
       </div>
@@ -465,148 +400,10 @@ export default function Dashboard() {
         </GlassCard>
       </div>
 
-      {/* ── Charts row ─── */}
-      <div className="chart-section grid xl:grid-cols-3 gap-5 mb-8">
-        <GlassCard hover={false}>
-          <SectionHeader title="Events Created" subtitle="Last 6 months" />
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={monthly} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="label" {...axisProps} />
-              <YAxis {...axisProps} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip suffix=" events" />} />
-              <Bar dataKey="count" name="events" radius={[4, 4, 0, 0]}>
-                {monthly.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={i === monthly.length - 1 ? GOLD : `rgba(245,158,11,${0.28 + (i / (monthly.length - 1)) * 0.4})`}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </GlassCard>
-
-        <GlassCard hover={false} className="xl:col-span-2">
-          <SectionHeader title="Top Events by Photos" subtitle="Events with the most uploaded photos" />
-          <TopEventsBar data={topEvents} />
-        </GlassCard>
-      </div>
-
-      {/* ── Events ─── */}
-      <div className="chart-section">
-        <div className="hero-banner">
-          <h1>Your events</h1>
-          <p>Create an event, then bulk-upload the photos so guests can find themselves by selfie.</p>
-        </div>
-
-        <form className="card row" onSubmit={handleCreate}>
-          <input
-            className="text-input"
-            placeholder="Event name (e.g. Smith Wedding 2026)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {trialExhausted ? (
-            <Link to="/billing">
-              <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
-            </Link>
-          ) : (
-            <button className="btn" type="submit" disabled={creating}>
-              {creating ? 'Creating…' : 'Create Event'}
-            </button>
-          )}
-        </form>
-
-        {error && <p className="error">{error}</p>}
-
-        {loading ? (
-          <div>
-            <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <MiniLoader size={22} /> Loading events…
-            </p>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-              {[...Array(4)].map((_, i) => <SkeletonLoader key={i} type="event-card" />)}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-1 p-1 rounded-xl w-fit mb-4" style={{ background: 'var(--bg-elevated)' }}>
-              {[
-                { key: 'active', label: 'Active' },
-                { key: 'archived', label: 'Archived' },
-                { key: 'all', label: 'All' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setStatusFilter(key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{
-                    background: statusFilter === key ? 'var(--bg-surface)' : 'transparent',
-                    color: statusFilter === key ? '#F59E0B' : 'var(--text-secondary)',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {events.length === 0 ? (
-              <p className="hint">
-                {statusFilter === 'archived'
-                  ? 'No archived events — archiving hides an event from guests and clients without deleting anything.'
-                  : 'No events yet — create one above.'}
-              </p>
-            ) : (
-          <ul className="event-list">
-            {events.map((ev) => (
-              <li key={ev.id} className="event-list-item">
-                <Link to={`/events/${ev.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  {ev.cover_url ? (
-                    <img
-                      src={fileUrl(ev.cover_url)}
-                      alt=""
-                      style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
-                      draggable={false}
-                      onError={(e) => { e.currentTarget.style.display = 'none' }}
-                    />
-                  ) : null}
-                  <span style={{ flex: 1 }}>
-                    {ev.name}
-                    <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
-                  </span>
-                  <span className="count">{ev.photo_count} photo{ev.photo_count === 1 ? '' : 's'}</span>
-                </Link>
-                <div className="event-list-footer">
-                  <span className="hint guest-link-text">{guestLink(ev.guestSlug)}</span>
-                  <CopyLinkButton slug={ev.guestSlug} />
-                </div>
-              </li>
-            ))}
-          </ul>
-            )}
-          </>
-        )}
-      </div>
-
-      {trialExhausted && (
-        <GlassCard hover={false} className="mt-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-muted)' }}>
-              <Lock size={22} style={{ color: 'var(--accent-primary)' }} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Upload quota used up</p>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Your trial uploads are finished. Upgrade your plan to keep creating events.</p>
-            </div>
-            <Link to="/billing">
-              <GoldButton size="sm">Upgrade Plan</GoldButton>
-            </Link>
-          </div>
-        </GlassCard>
-      )}
-
       <div className="mt-6 flex gap-3 flex-wrap">
+        <Link to="/events">
+          <GoldButton>Open Events</GoldButton>
+        </Link>
         <Link to="/clients">
           <GoldButton variant="outline">Manage clients</GoldButton>
         </Link>
