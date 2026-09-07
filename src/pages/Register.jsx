@@ -40,6 +40,13 @@ export default function Register() {
         <h1 className="section-title">Create your account</h1>
         <p className="subtle">Set up PandaSpot for your photography business — create events, upload galleries, and let guests spot themselves.</p>
 
+        {GOOGLE_ENABLED && (
+          <>
+            <GoogleSignInButton />
+            <div className="auth-divider"><span>or</span></div>
+          </>
+        )}
+
         <label className="field-label" htmlFor="name">Name</label>
         <input
           id="name"
@@ -74,13 +81,6 @@ export default function Register() {
         <button className="btn auth-submit" type="submit" disabled={submitting || !name.trim() || !email.trim() || !password}>
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
-
-        {GOOGLE_ENABLED && (
-          <>
-            <div className="auth-divider"><span>or</span></div>
-            <GoogleSignInButton />
-          </>
-        )}
 
         <p className="hint auth-switch">
           Already have an account?{' '}

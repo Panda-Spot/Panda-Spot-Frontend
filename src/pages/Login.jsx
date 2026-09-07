@@ -38,6 +38,13 @@ export default function Login() {
         <h1 className="section-title">Log in</h1>
         <p className="subtle">Welcome back — manage your events and shared galleries.</p>
 
+        {GOOGLE_ENABLED && (
+          <>
+            <GoogleSignInButton />
+            <div className="auth-divider"><span>or</span></div>
+          </>
+        )}
+
         <label className="field-label" htmlFor="email">Email</label>
         <input
           id="email"
@@ -66,13 +73,6 @@ export default function Login() {
         <p className="hint auth-switch">
           <Link to="/forgot-password">Forgot password?</Link>
         </p>
-
-        {GOOGLE_ENABLED && (
-          <>
-            <div className="auth-divider"><span>or</span></div>
-            <GoogleSignInButton />
-          </>
-        )}
 
         <p className="hint auth-switch">
           Don't have an account?{' '}
