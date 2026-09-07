@@ -113,31 +113,85 @@ const SB = {
   gold: '#F59E0B',
 }
 
+const VERIFY_RESEND_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes between resends
+
 function VerifyEmailBanner() {
   const { user } = useAuth()
-  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sentAt, setSentAt] = useState(null) // epoch ms of last successful send
   const [error, setError] = useState('')
+  const [now, setNow] = useState(Date.now())
+
+  const storeKey = user ? `pandaspot_verify_sent_at_${user.id}` : null
+
+  // Restore last-sent time so the cooldown + sent status survive a refresh.
+  useEffect(() => {
+    if (!storeKey) return
+    try {
+      const raw = localStorage.getItem(storeKey)
+      setSentAt(raw && Number(raw) > 0 ? Number(raw) : null)
+    } catch {
+      setSentAt(null)
+    }
+  }, [storeKey])
+
+  const remainingMs = sentAt ? VERIFY_RESEND_COOLDOWN_MS - (now - sentAt) : 0
+  const cooling = remainingMs > 0
+
+  // Tick the countdown once a second while cooling down.
+  useEffect(() => {
+    if (!cooling) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [cooling])
 
   if (!user || user.email_verified) return null
 
+  const fmtCooldown = (ms) => {
+    const s = Math.ceil(ms / 1000)
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  }
+
   const handleResend = async () => {
+    if (sending || cooling) return
+    setSending(true) // instant feedback — button flips to Sending… on the same click
     setError('')
     try {
       await requestEmailVerification()
-      setSent(true)
+      const at = Date.now()
+      setSentAt(at)
+      setNow(at)
+      try {
+        if (storeKey) localStorage.setItem(storeKey, String(at))
+      } catch {
+        // storage unavailable — cooldown just won't survive refresh
+      }
     } catch (e) {
-      setError(e.message)
+      setError(e.message || 'Could not send — try again.')
+    } finally {
+      setSending(false)
     }
   }
 
   return (
     <div className="verify-banner">
-      {sent ? (
-        <span>Verification email sent — check your inbox.</span>
+      {sentAt ? (
+        <>
+          <span>Verification email sent — check your inbox and verify from there.</span>
+          {cooling ? (
+            <span className="hint">Resend available in {fmtCooldown(remainingMs)}</span>
+          ) : (
+            <button className="btn secondary" type="button" onClick={handleResend} disabled={sending}>
+              {sending ? 'Sending…' : 'Resend email'}
+            </button>
+          )}
+        </>
       ) : (
         <>
           <span>Please verify your email address.</span>
-          <button className="btn secondary" type="button" onClick={handleResend}>Resend email</button>
+          <button className="btn secondary" type="button" onClick={handleResend} disabled={sending}>
+            {sending ? 'Sending…' : 'Resend email'}
+          </button>
         </>
       )}
       {error && <span className="error">{error}</span>}
