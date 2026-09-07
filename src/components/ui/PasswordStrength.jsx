@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check, Dot } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 
 const rules = [
   { id: 'length', label: '8+ chars', test: value => value.length >= 8 },
@@ -49,25 +49,21 @@ export default function PasswordStrength({ value = '', className = '', showRules
       </div>
 
       {showRules && (
-        <div className="flex flex-wrap gap-1.5">
+        <ul className="flex flex-col gap-1 mt-1" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {rules.map(rule => {
             const passed = rule.test(value)
             return (
-              <span
+              <li
                 key={rule.id}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium"
-                style={{
-                  color: passed ? '#34D399' : 'var(--text-tertiary)',
-                  background: passed ? 'rgba(52,211,153,0.1)' : 'var(--bg-elevated)',
-                  border: `1px solid ${passed ? 'rgba(52,211,153,0.22)' : 'var(--border-subtle)'}`,
-                }}
+                className="flex items-center gap-2 text-xs font-medium"
+                style={{ color: passed ? '#22C55E' : '#F87171' }}
               >
-                {passed ? <Check size={10} /> : <Dot size={10} />}
+                {passed ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={3} />}
                 {rule.label}
-              </span>
+              </li>
             )
           })}
-        </div>
+        </ul>
       )}
     </div>
   )
