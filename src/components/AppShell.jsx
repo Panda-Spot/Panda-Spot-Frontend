@@ -271,6 +271,15 @@ export default function AppShell({ children }) {
         .sv-shell { display: block; min-height: 100vh; }
         .sv-sidebar { transition: transform 0.3s ease; }
         .sv-spacer { transition: width 0.3s ease; }
+        /* Thin stylish sidebar scrollbar in theme teal */
+        .sv-sidebar nav { scrollbar-width: thin; scrollbar-color: #0e8a8a transparent; }
+        .sv-sidebar nav::-webkit-scrollbar { width: 6px; }
+        .sv-sidebar nav::-webkit-scrollbar-track { background: transparent; }
+        .sv-sidebar nav::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #0e8a8a, #0b6e6e);
+          border-radius: 999px;
+        }
+        .sv-sidebar nav::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
         @media (max-width: 767px) {
           .sv-sidebar[data-mobile="closed"] { transform: translateX(-100%); }
           .sv-sidebar[data-mobile="open"] { transform: translateX(0); }
