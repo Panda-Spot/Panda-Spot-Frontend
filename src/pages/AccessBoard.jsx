@@ -64,8 +64,7 @@ export default function AccessBoard() {
     }
   }
 
-  useEffect(() => { load() }, [])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const allClients = useMemo(() => {
     const map = new Map()

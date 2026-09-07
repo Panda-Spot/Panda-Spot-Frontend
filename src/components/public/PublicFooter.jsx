@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Camera, ShieldCheck, Lock, ExternalLink } from 'lucide-react'
+import { Camera, ShieldCheck } from 'lucide-react'
 
 export default function PublicFooter({ onOpenEarlyAccess }) {
   return (

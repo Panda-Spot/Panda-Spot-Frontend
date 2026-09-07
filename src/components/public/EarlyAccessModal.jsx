@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, CheckCircle, Sparkles, Send, Building, User, Mail, Calendar, MessageSquare } from 'lucide-react'
+import { X, CheckCircle, Sparkles, Send } from 'lucide-react'
 
 export default function EarlyAccessModal({ open, onClose }) {
   const [formData, setFormData] = useState({

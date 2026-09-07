@@ -3,12 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Mail,
   Send,
-  CheckCircle2,
-  Sparkles,
-  Building,
-  Calendar,
-  MessageSquare,
-  ShieldCheck
+  CheckCircle2
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

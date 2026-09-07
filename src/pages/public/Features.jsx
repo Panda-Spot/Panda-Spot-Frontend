@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Sparkles,
   Search,
@@ -8,14 +7,7 @@ import {
   Camera,
   Shield,
   TrendingUp,
-  Smartphone,
-  CheckCircle2,
-  Cpu,
-  Share2,
-  Users,
-  HardDrive,
-  QrCode,
-  ArrowRight
+  Smartphone
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

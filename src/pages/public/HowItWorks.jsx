@@ -1,18 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
-  Calendar,
-  UploadCloud,
-  Cpu,
   QrCode,
   Camera,
   Download,
   CheckCircle2,
-  ArrowRight,
   Sparkles,
-  Zap,
-  Share2,
-  ShieldCheck
+  Share2
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

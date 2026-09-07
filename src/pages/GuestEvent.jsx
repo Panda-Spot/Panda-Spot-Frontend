@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Share2, Download, X, Lock, KeyRound } from 'lucide-react'
 import {
   downloadMatches,
@@ -186,7 +185,6 @@ export default function GuestEvent() {
   }
 
   const needsLeadForSearch = event?.lead_capture_mode === 'required_search' && !leadCaptured
-  const needsLeadForDownload = event?.lead_capture_mode === 'required_download' && !leadCaptured
 
   const handleSearch = async (e) => {
     e.preventDefault()

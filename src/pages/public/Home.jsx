@@ -6,16 +6,11 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Send,
   Camera,
   Users,
   ShieldCheck,
   Building,
-  Layers,
-  Search,
-  Download,
-  Share2,
-  FileText
+  Search
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

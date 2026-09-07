@@ -2,17 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Layers,
-  ArrowRight,
-  Sparkles,
   Calendar,
   UploadCloud,
   Cpu,
   Search,
   Download,
-  Share2,
-  CheckCircle2,
   ShieldCheck,
-  Server,
   Zap,
   HardDrive
 } from 'lucide-react'

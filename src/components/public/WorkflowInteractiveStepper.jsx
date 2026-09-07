@@ -1,15 +1,9 @@
 import { useState } from 'react'
 import {
-  CalendarPlus,
-  UploadCloud,
   Cpu,
   QrCode,
-  Sparkles,
   DownloadCloud,
   CheckCircle2,
-  ArrowRight,
-  Shield,
-  Layers,
   Camera,
   Share2
 } from 'lucide-react'

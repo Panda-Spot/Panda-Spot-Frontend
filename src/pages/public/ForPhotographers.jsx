@@ -2,17 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Camera,
-  ArrowRight,
-  Sparkles,
   CheckCircle2,
   XCircle,
-  QrCode,
   Users,
-  Share2,
-  Clock,
-  ShieldCheck,
-  TrendingUp,
-  Image as ImageIcon
+  Share2
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

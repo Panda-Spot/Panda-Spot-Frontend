@@ -3,13 +3,8 @@ import {
   Camera,
   CheckCircle2,
   QrCode,
-  Search,
   Download,
   Share2,
-  Users,
-  HardDrive,
-  Sparkles,
-  ArrowRight,
   ImageIcon
 } from 'lucide-react'
 

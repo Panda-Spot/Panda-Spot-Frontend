@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Camera, ArrowLeft, Home, Search } from 'lucide-react'
+import { Camera, Home, Search } from 'lucide-react'
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'
 import PublicFooter from '../../components/public/PublicFooter.jsx'
 

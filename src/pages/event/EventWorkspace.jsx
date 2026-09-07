@@ -795,7 +795,7 @@ export default function EventWorkspace() {
   }
 
   const zipFilename = (suffix) =>
-    `${(event?.name || 'event').replace(/[^\w\-]+/g, '-').slice(0, 60)}${suffix}.zip`
+    `${(event?.name || 'event').replace(/[^\w-]+/g, '-').slice(0, 60)}${suffix}.zip`
 
   const handleStudioZip = async () => {
     if (zipping) return

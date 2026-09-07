@@ -5,11 +5,7 @@ import {
   Lock,
   Database,
   Clock,
-  Trash2,
-  HelpCircle,
-  Mail,
-  ArrowRight,
-  Sparkles
+  Mail
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

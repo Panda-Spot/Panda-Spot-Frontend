@@ -17,27 +17,6 @@ import { useToast } from '../toast.jsx'
 import { useConfirm } from '../confirm.jsx'
 import { themeVars, themeFont } from '../hooks/useGalleryTheme.js'
 
-const FONTS = [
-  { value: 'serif', label: 'Elegant serif' },
-  { value: 'sans', label: 'Clean sans' },
-  { value: 'script-accent', label: 'Script accents' },
-]
-const BUTTONS = [
-  { value: 'rounded', label: 'Rounded' },
-  { value: 'pill', label: 'Pill' },
-  { value: 'square', label: 'Square' },
-]
-const LAYOUTS = [
-  { value: 'grid', label: 'Grid' },
-  { value: 'masonry', label: 'Masonry' },
-  { value: 'cinematic', label: 'Cinematic' },
-]
-const WATERMARKS = [
-  { value: 'text', label: 'Studio name' },
-  { value: 'logo', label: 'Logo' },
-  { value: 'none', label: 'None' },
-]
-
 function ColorField({ label, value, onChange }) {
   return (
     <div>

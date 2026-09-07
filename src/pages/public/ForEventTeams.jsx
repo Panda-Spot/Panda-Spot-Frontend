@@ -2,11 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Building,
-  ArrowRight,
-  Sparkles,
   Users,
-  CheckCircle2,
-  Calendar,
   Layers,
   Award,
   Globe,

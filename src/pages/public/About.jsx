@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Sparkles,
-  Camera,
-  Target,
-  ShieldCheck,
-  ArrowRight,
-  Heart,
-  Award
+  ShieldCheck
 } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'

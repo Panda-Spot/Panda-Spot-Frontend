@@ -8,7 +8,6 @@ import { celebrate } from '../lib/confetti.js'
 // Client-side contracts (Phase 12): review assigned agreements and
 // accept with a typed name (checkbox foundation for e-signature later).
 export function ClientContracts() {
-  const { showToast } = useToast()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
 

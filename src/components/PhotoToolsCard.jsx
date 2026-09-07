@@ -20,7 +20,7 @@ import GalleryMedia from './GalleryMedia.jsx';
 // unavailable: the face engine exposes no landmarks to compute it from.
 export const BLURRY_BELOW = 80;
 
-export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds, setDupIds, onOpenMeta }) {
+export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds: _dupIds, setDupIds, onOpenMeta }) {
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [job, setJob] = useState(null); // { id, completed, total }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HelpCircle, ArrowRight, Sparkles, Search } from 'lucide-react'
+import { HelpCircle, ArrowRight } from 'lucide-react'
 
 import PublicNavbar from '../../components/public/PublicNavbar.jsx'
 import PublicFooter from '../../components/public/PublicFooter.jsx'

@@ -26,7 +26,6 @@ import {
   getStudioCalendar,
   setInquiryStatus,
   updateBooking,
-  updateExpense,
   updatePackage,
   uploadContractTemplate,
 } from '../api.js'
@@ -80,7 +79,6 @@ export default function Studio() {
   const [qTitle, setQTitle] = useState('')
   const [qQuestions, setQQuestions] = useState([{ id: 'q1', label: '', type: 'text', options: '' }])
   const [assignForm, setAssignForm] = useState({ questionnaire_id: '', event_id: '', client_email: '' })
-  const [assignments, setAssignments] = useState([])
   const [viewQ, setViewQ] = useState(null)
   const [bookings, setBookings] = useState([])
   const [bookingFilter, setBookingFilter] = useState('')

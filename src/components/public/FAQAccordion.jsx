@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, HelpCircle } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 const FAQ_ITEMS = [
   {

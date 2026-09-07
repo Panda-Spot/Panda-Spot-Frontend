@@ -10,8 +10,6 @@ import { getMySubscription, getStudioAnalyticsSummary, listEvents } from '../api
 import { celebrate } from '../lib/confetti.js'
 import { IMPROVE_OPTIONS, WAY_OPTIONS, loadSignupGoals, saveSignupGoals } from '../lib/signupGoals.js'
 import { ChartTooltip, TopEventsBar, axisProps, eventsByMonth, GOLD } from '../components/EventCharts.jsx'
-import { useAuth } from '../auth.jsx'
-import { greetingTime } from '../utils/formatters.js'
 import StatCard from '../components/ui/StatCard.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
@@ -182,7 +180,6 @@ function SectionHeader({ title, subtitle }) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth()
   const containerRef = useRef(null)
   const [subscription, setSubscription] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -228,8 +225,6 @@ export default function Dashboard() {
   // Event metrics for the Dashboard cards below.
   const monthly = eventsByMonth(events)
   const topEvents = [...events].sort((a, b) => (b.photo_count || 0) - (a.photo_count || 0)).slice(0, 5)
-
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
     <div ref={containerRef}>

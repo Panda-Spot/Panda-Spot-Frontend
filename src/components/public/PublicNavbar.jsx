@@ -3,7 +3,6 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import {
   ChevronDown,
   ArrowRight,
-  Sparkles,
   Camera,
   Layers,
   ShieldCheck,
@@ -14,7 +13,6 @@ import {
   Compass,
   Cpu,
   Zap,
-  Users
 } from 'lucide-react'
 import { useAuth } from '../../auth.jsx'
 

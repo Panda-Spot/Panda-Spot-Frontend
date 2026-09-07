@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Download, MapPin, Undo2 } from 'lucide-react'
 import {
   approveAlbum,
@@ -24,7 +24,6 @@ import useGalleryTheme from '../hooks/useGalleryTheme.js'
 // approval locks the album. Drafts never appear here (API 404s them).
 export default function ClientAlbum() {
   const { eventId, albumId } = useParams()
-  const navigate = useNavigate()
   const confirm = useConfirm()
   const { showToast } = useToast()
   const { user } = useAuth()

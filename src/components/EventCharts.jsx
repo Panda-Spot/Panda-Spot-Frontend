@@ -1,8 +1,4 @@
 import { Link } from 'react-router-dom'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
-} from 'recharts'
 
 /* ── Shared chart theme (gold) ────────────────────────────── */
 export const GOLD = '#F59E0B'
