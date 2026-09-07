@@ -39,6 +39,10 @@ export default function Clients() {
   const [newPassword, setNewPassword] = useState('')
   const [createdCredentials, setCreatedCredentials] = useState(null)
   const [duplicate, setDuplicate] = useState(null)
+  const [inviteEventId, setInviteEventId] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteCap, setInviteCap] = useState('')
+  const [inviting, setInviting] = useState(false)
 
   // Advisory duplicate check while typing an email — warns before sending
   // a double invite, never blocks (same advisory-only contract as
@@ -57,10 +61,6 @@ export default function Clients() {
     }, 400)
     return () => clearTimeout(t)
   }, [inviteOpen, inviteEventId, inviteEmail])
-  const [inviteEventId, setInviteEventId] = useState('')
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteCap, setInviteCap] = useState('')
-  const [inviting, setInviting] = useState(false)
 
   const load = async () => {
     setLoading(true)
