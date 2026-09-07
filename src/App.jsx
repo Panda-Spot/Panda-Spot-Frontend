@@ -25,6 +25,8 @@ import NotFound from './pages/public/NotFound.jsx'
 // Authenticated Photographer Studio Pages
 import Dashboard from './pages/Dashboard.jsx'
 import Clients from './pages/Clients.jsx'
+import Team from './pages/Team.jsx'
+import MyInvitations from './pages/MyInvitations.jsx'
 import AccessBoard from './pages/AccessBoard.jsx'
 import Settings from './pages/Settings.jsx'
 import EventDetail from './pages/EventDetail.jsx'
@@ -247,6 +249,26 @@ function App() {
           <AppShell>
             <ProtectedRoute>
               <Clients />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/team"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <Team />
+            </ProtectedRoute>
+          </AppShell>
+        }
+      />
+      <Route
+        path="/invitations"
+        element={
+          <AppShell>
+            <ProtectedRoute>
+              <MyInvitations />
             </ProtectedRoute>
           </AppShell>
         }

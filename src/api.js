@@ -1211,6 +1211,13 @@ export const getInvite = (token) => request(`/invites/${token}`)
 export const acceptInvite = (token) =>
   request(`/invites/${token}/accept`, { method: "POST" })
 
+export const declineInvite = (token) =>
+  request(`/invites/${token}/decline`, { method: "POST" })
+
+export const listMyInvites = () => request(`/invites/mine`)
+
+export const listSentInvites = () => request(`/invites/sent`)
+
 // Downloads a zip of the given matched photos and triggers a browser save —
 // a blob response, so it can't go through the JSON request() helper above.
 export const downloadMatches = async (slug, photoIds, guestClientId) => {

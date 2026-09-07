@@ -13,6 +13,7 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
+  Inbox,
   LayoutDashboard,
   LayoutGrid,
   LifeBuoy,
@@ -43,6 +44,8 @@ const SIDEBAR_COLLAPSED_KEY = 'pandaspot_sidebar_collapsed'
 const STUDIO_NAV = [
   { to: '/events', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clients', icon: Users, label: 'Clients' },
+  { to: '/team', icon: Users, label: 'Team' },
+  { to: '/invitations', icon: Inbox, label: 'My Invitations' },
   { to: '/access', icon: LayoutGrid, label: 'Access Board' },
   { to: '/billing', icon: Wallet, label: 'Billing' },
   { to: '/billing/documents', icon: Receipt, label: 'Invoicing' },
@@ -61,6 +64,7 @@ const PLATFORM_NAV = [
 
 const CLIENT_NAV = [
   { to: '/client', icon: Camera, label: 'My Gallery' },
+  { to: '/invitations', icon: Inbox, label: 'My Invitations' },
   { to: '/client/contracts', icon: FileText, label: 'Contracts' },
   { to: '/client/questionnaires', icon: ClipboardList, label: 'Questionnaires' },
 ]
@@ -70,6 +74,8 @@ const PAGE_TITLES = [
   { test: (p) => p.startsWith('/events/'), title: 'Event' },
   { test: (p) => p === '/clients', title: 'Clients' },
   { test: (p) => p.startsWith('/clients'), title: 'Clients' },
+  { test: (p) => p === '/team', title: 'Team' },
+  { test: (p) => p === '/invitations', title: 'My Invitations' },
   { test: (p) => p === '/access', title: 'Access Board' },
   { test: (p) => p === '/branding', title: 'Studio Profile' },
   { test: (p) => p === '/themes', title: 'Gallery Themes' },
