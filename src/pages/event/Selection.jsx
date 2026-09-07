@@ -7,7 +7,7 @@ import GalleryMedia from '../../components/GalleryMedia.jsx'
 
 export default function Selection() {
   const {
-    event, publishing, handlePublish, togglingDownload, handleAllowDownload,
+    eventId, event, publishing, handlePublish, togglingDownload, handleAllowDownload,
     selectionMembers, handleBulkRemoveVisible, bulking,
     handleTogglePick, studioPicks, togglingPickId,
     handlePhotoFeatureMembership, savingPhotoFeatures,
@@ -21,6 +21,7 @@ export default function Selection() {
     handlePicksZip, zippingPicks, picksZipProgress,
     exportClient, setExportClient, exportFormat, setExportFormat,
     handleSelectionExport, exporting,
+    handleStartEvent, startingEvent,
     formatBytes, setActiveTab,
   } = useEvent()
 
@@ -30,7 +31,29 @@ export default function Selection() {
 
   return (
     <div>
-      {!event?.photo_selection_enabled ? (
+      {event && !event.started ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <Heart size={28} style={{ color: '#F59E0B' }} />
+          </div>
+          <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>Event not started</h3>
+          <p className="hint" style={{ maxWidth: 380, margin: '0 auto 16px', lineHeight: 1.5 }}>
+            Start the event to unlock Photo Selection and all other features.
+          </p>
+          {event.role === 'owner' ? (
+            <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
+              {startingEvent ? 'Starting…' : 'Start event'}
+            </button>
+          ) : (
+            <p className="hint">Only the event owner can start the event.</p>
+          )}
+        </div>
+      ) : !event?.photo_selection_enabled ? (
         <div className="card" style={{ textAlign: 'center', padding: '40px 24px' }}>
           <div style={{
             width: 56, height: 56, borderRadius: 14,

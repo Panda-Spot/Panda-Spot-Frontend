@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Share2, Download, X, Lock, KeyRound } from 'lucide-react'
+import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2 } from 'lucide-react'
 import {
   downloadMatches,
   fileUrl,
@@ -552,15 +552,42 @@ export default function GuestEvent() {
       {showNotice && event && (
         <div className="modal-backdrop" onClick={() => setShowNotice(false)}>
           <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <h3>Privacy notice</h3>
-            <p className="subtle" style={{ whiteSpace: 'pre-wrap' }}>{event.privacy_notice_text}</p>
-            <p className="hint">
-              Your selfie is processed in memory only to find your photos — the file itself is never saved.
-              What stays behind is a search record (not your photo), which is deleted automatically after the
-              studio’s retention period, or sooner if you ask below.
-            </p>
-            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" className="btn" onClick={() => setShowNotice(false)}>Close</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <Shield size={20} style={{ color: '#22C55E' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Privacy notice</h3>
+            </div>
+            {event.privacy_notice_text ? (
+              <p style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                {event.privacy_notice_text}
+              </p>
+            ) : (
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                To find your photos at this event, the studio scans your selfie for faces and compares it with
+                faces in the event gallery. Your selfie is used only for this search — it is never saved or shared,
+                and the search record can be deleted on request.
+              </p>
+            )}
+            <div style={{
+              padding: '12px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.15)', fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 600, color: '#22C55E' }}>
+                <CheckCircle2 size={14} /> What happens to your selfie
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                <li>Processed in memory only — the file is never saved</li>
+                <li>A search record (not your photo) stays behind</li>
+                <li>Deleted automatically after the retention period, or sooner if you ask</li>
+              </ul>
+            </div>
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+              <button type="button" className="btn" onClick={() => setShowNotice(false)}>Got it</button>
             </div>
           </div>
         </div>
@@ -568,19 +595,22 @@ export default function GuestEvent() {
 
       {event && !event.expired && !event.login_required && (!event.locked || unlocked) && (
         <div className="card" style={{ marginTop: 12 }}>
-          <div className="guest-link-label">Your data</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />
+            <div className="guest-link-label" style={{ margin: 0 }}>Your data</div>
+          </div>
           <p className="hint">Ask for a copy of your Face Search data, or ask the studio to delete it.</p>
           <form className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }} onSubmit={handleDataRequest}>
-            <div>
-              <label className="field-label" htmlFor="dr-contact">Contact (optional)</label>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <label className="field-label" htmlFor="dr-contact">Contact (email or phone)</label>
               <input
                 id="dr-contact"
                 className="text-input"
-                placeholder="email or phone"
+                placeholder="you@example.com"
                 value={drContact}
                 onChange={(e) => setDrContact(e.target.value)}
                 maxLength={200}
-                style={{ maxWidth: 220 }}
+                style={{ width: '100%' }}
               />
             </div>
             <div>
@@ -590,11 +620,27 @@ export default function GuestEvent() {
                 {event.allow_guest_data_delete_request && <option value="delete">Delete my data</option>}
               </select>
             </div>
-            <button className="btn secondary" type="submit" disabled={drBusy}>
+            <button className="btn secondary" type="submit" disabled={drBusy || !drContact.trim()}>
               {drBusy ? 'Sending…' : 'Send request'}
             </button>
           </form>
-          {drMessage && <p className="hint" style={{ marginTop: 6 }}>{drMessage}</p>}
+          {!drContact.trim() && (
+            <p className="hint" style={{ marginTop: 4, fontSize: 12 }}>
+              <AlertCircle size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
+              Please provide a contact so the studio can follow up.
+            </p>
+          )}
+          {drMessage && (
+            <div style={{
+              marginTop: 8, padding: '10px 14px', borderRadius: 8,
+              background: drMessage.includes('received') ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${drMessage.includes('received') ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              fontSize: 13, lineHeight: 1.4,
+            }}>
+              {drMessage.includes('received') ? <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#22C55E' }} /> : <AlertCircle size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#EF4444' }} />}
+              {drMessage}
+            </div>
+          )}
           {drRequests.length > 0 && (
             <ul className="team-list" style={{ marginTop: 8 }}>
               {drRequests.map((r) => (
@@ -631,14 +677,26 @@ export default function GuestEvent() {
 
       {result && (
         <>
-          <div className="row match-summary">
-            <p className="hint">
-              {result.people_detected != null
-                ? `Detected ${result.people_detected} people in your selfies — found ${result.matches.length} matching photo(s).`
-                : `Detected ${result.faces_detected_in_selfie} face(s) in your selfie(s) — found ${result.matches.length} matching photo(s).`}
-            </p>
+          <div style={{
+            padding: '14px 16px', borderRadius: 10,
+            background: result.matches.length > 0 ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
+            border: `1px solid ${result.matches.length > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {result.matches.length > 0 ? (
+                <CheckCircle2 size={18} style={{ color: '#22C55E', flexShrink: 0 }} />
+              ) : (
+                <AlertCircle size={18} style={{ color: '#F59E0B', flexShrink: 0 }} />
+              )}
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.4 }}>
+                {result.people_detected != null
+                  ? `Detected ${result.people_detected} people in your selfies — found ${result.matches.length} matching photo(s).`
+                  : `Detected ${result.faces_detected_in_selfie} face(s) in your selfie(s) — found ${result.matches.length} matching photo(s).`}
+              </p>
+            </div>
             {result.matches.length > 0 && (
-              <button className="btn secondary" type="button" onClick={handleDownloadAll} disabled={downloading}>
+              <button className="btn secondary" type="button" onClick={handleDownloadAll} disabled={downloading} style={{ fontSize: 13, padding: '6px 14px' }}>
                 <Download size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
                 {downloading ? 'Preparing zip…' : 'Download all'}
               </button>
@@ -687,12 +745,17 @@ export default function GuestEvent() {
             ))}
           </div>
 
-          <div className="card guest-alert-card">
+          <div className="card guest-alert-card" style={{ border: '1px solid rgba(245,158,11,0.15)', background: 'rgba(245,158,11,0.03)' }}>
             {alertSubscribed ? (
-              <p className="hint">You're set — we'll let you know if more photos of you show up at this event.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 size={16} style={{ color: '#22C55E' }} />
+                <p className="hint" style={{ margin: 0 }}>You&apos;re set — we&apos;ll let you know if more photos of you show up.</p>
+              </div>
             ) : (
               <>
-                <p className="subtle">More photos might still come in during the event — want us to let you know?</p>
+                <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 500 }}>
+                  More photos might still come in — want us to let you know?
+                </p>
                 <form onSubmit={handleSubscribeAlert}>
                   <div className="guest-alert-tabs">
                     <button

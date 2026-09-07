@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Cropper from 'react-easy-crop'
 import {
-  Archive, ArchiveRestore, CalendarDays, Camera, CheckCircle2, ChevronRight,
-  Circle, Clock, Image, MapPin, Pencil, Rocket, Search, Send, Share2,
+  Archive, ArchiveRestore, AlertTriangle, CalendarDays, Camera, CheckCircle2, ChevronRight,
+  Circle, Clock, Image, Lock, MapPin, Pencil, Rocket, Search, Send, Share2,
   Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
@@ -24,6 +24,8 @@ export default function Overview() {
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
+
+  const [showStartConfirm, setShowStartConfirm] = useState(false)
 
   const photoCount = photos.length
   const indexedCount = photos.filter((p) => p.face_indexed_at).length
@@ -88,7 +90,7 @@ export default function Overview() {
               Uploading, Google Drive import, and PandaShoots camera upload all unlock once you start the event.
               Everything else — the guest link, analytics, and team — is ready already.
             </p>
-            <button className="btn" onClick={handleStartEvent} style={{ fontSize: 15, padding: '10px 28px' }}>
+            <button className="btn" onClick={() => setShowStartConfirm(true)} style={{ fontSize: 15, padding: '10px 28px' }}>
               <Zap size={16} /> Start event
             </button>
           </div>
@@ -216,7 +218,7 @@ export default function Overview() {
                   return (
                     <button
                       key={s.label}
-                      onClick={handleStartEvent}
+                      onClick={() => setShowStartConfirm(true)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                         border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)',
@@ -305,6 +307,45 @@ export default function Overview() {
           )}
         </Modal>
       )}
+
+      {/* ── Start event confirmation modal ── */}
+      <Modal open={showStartConfirm} onClose={() => setShowStartConfirm(false)} title="Start event">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            padding: '14px', borderRadius: 10,
+            background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <AlertTriangle size={16} style={{ color: '#F59E0B' }} />
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Once started, the event cannot be stopped</span>
+            </div>
+            <p className="hint" style={{ margin: 0, lineHeight: 1.5 }}>
+              Starting unlocks uploads, imports, and live features. There is no way to pause or reverse this.
+            </p>
+          </div>
+          <div style={{
+            padding: '14px', borderRadius: 10,
+            background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Clock size={16} style={{ color: '#EF4444' }} />
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Retention period begins now</span>
+            </div>
+            <p className="hint" style={{ margin: 0, lineHeight: 1.5 }}>
+              The event&apos;s 90-day guest access window and photo retention countdown start from this moment.
+              After expiry, guest search and downloads are automatically closed.
+            </p>
+          </div>
+          <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+            <button className="btn secondary" type="button" onClick={() => setShowStartConfirm(false)}>
+              Cancel
+            </button>
+            <button className="btn" type="button" onClick={() => { setShowStartConfirm(false); handleStartEvent() }}>
+              <Lock size={14} /> Start event
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

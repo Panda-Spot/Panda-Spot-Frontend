@@ -44,15 +44,26 @@ export default function Photos() {
     <div>
       <div className="event-stack">
         {event && !event.started ? (
-          <div className="card upload-section">
-            <div className="guest-link-label">Start this event</div>
-            <p className="hint">
-              Uploading, Google Drive import, and PandaShoots camera upload all unlock once you start the event.
-              Everything else — the guest link, analytics, and team — is ready already.
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}>
+              <Upload size={28} style={{ color: '#F59E0B' }} />
+            </div>
+            <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>Event not started</h3>
+            <p className="hint" style={{ maxWidth: 380, margin: '0 auto 16px', lineHeight: 1.5 }}>
+              Start the event to unlock uploads, Google Drive import, and PandaShoots.
             </p>
-            <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-              {startingEvent ? 'Starting…' : 'Start event'}
-            </button>
+            {event.role === 'owner' ? (
+              <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
+                {startingEvent ? 'Starting…' : 'Start event'}
+              </button>
+            ) : (
+              <p className="hint">Only the event owner can start the event.</p>
+            )}
           </div>
         ) : (
           <>

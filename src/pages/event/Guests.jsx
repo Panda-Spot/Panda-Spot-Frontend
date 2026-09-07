@@ -89,7 +89,7 @@ export default function Guests() {
           </div>
         )}
 
-        {event && (event.role === 'owner' || event.role === 'collaborator') && (
+        {event?.started && (event.role === 'owner' || event.role === 'collaborator') && (
           <AccessSettingsCard
             event={event}
             draft={accessDraft}
@@ -236,7 +236,7 @@ export default function Guests() {
           </div>
         )}
 
-        {event && (
+        {event?.started && (
           <div className="card">
             <div className="guest-link-label">Attendees</div>
             <p className="hint">Who opened the gallery, searched, downloaded and shared — plus the lead-capture list and CSV export.</p>

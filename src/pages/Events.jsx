@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Camera, Lock, ScanFace, Heart, Search, Plus, CalendarDays, Building2, Gift, Sparkles, Crown, FileImage } from 'lucide-react'
+import { AlertTriangle, Camera, CalendarDays, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -146,14 +146,10 @@ export default function Events() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div />
-        {trialExhausted ? (
+        {trialExhausted && (
           <Link to="/billing">
             <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
           </Link>
-        ) : (
-          <button className="btn" type="button" onClick={() => setCreateOpen(true)}>
-            <Plus size={15} /> New Event
-          </button>
         )}
       </div>
 
@@ -254,18 +250,38 @@ export default function Events() {
             </div>
           </GlassCard>
 
-          <p className="text-xs mt-4 mb-3" style={{ color: 'var(--text-tertiary)' }}>
-            {visibleEvents.length === 0
-              ? `No events found · ${allEvents.length} total`
-              : `Showing ${((safePage - 1) * pageSize) + 1}–${Math.min(safePage * pageSize, visibleEvents.length)} of ${visibleEvents.length} found · ${allEvents.length} total`}
-          </p>
+          <div className="flex items-center justify-between mt-4 mb-3">
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              {visibleEvents.length === 0
+                ? `No events found · ${allEvents.length} total`
+                : `Showing ${((safePage - 1) * pageSize) + 1}–${Math.min(safePage * pageSize, visibleEvents.length)} of ${visibleEvents.length} found · ${allEvents.length} total`}
+            </p>
+            {!trialExhausted && (
+              <button className="btn secondary" type="button" onClick={() => setCreateOpen(true)} style={{ fontSize: 13, padding: '6px 14px' }}>
+                <Plus size={14} /> New Event
+              </button>
+            )}
+          </div>
 
           {visibleEvents.length === 0 ? (
-            <p className="hint">
-              {allEvents.length === 0
-                ? 'No events yet — create one above.'
-                : 'No events match these filters.'}
-            </p>
+            <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: 16,
+                background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <CalendarOff size={28} style={{ color: '#F59E0B' }} />
+              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>
+                {allEvents.length === 0 ? 'No events yet' : 'No events match'}
+              </h3>
+              <p className="hint" style={{ maxWidth: 340, margin: '0 auto', lineHeight: 1.5 }}>
+                {allEvents.length === 0
+                  ? 'Create your first event to start managing photos, guests and deliveries.'
+                  : 'Try adjusting your filters or search to find what you\'re looking for.'}
+              </p>
+            </div>
           ) : (
             <>
               <div className="event-grid">
