@@ -11,6 +11,7 @@ import {
   unlockGallery,
 } from '../api.js'
 import useGalleryTheme from '../hooks/useGalleryTheme.js'
+import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 // Live TV wall (Phase 8): the venue projector screen. Runs off the public
 // on-air feed (branding + settings + moderated photos), advances on the
@@ -175,14 +176,12 @@ export default function GuestSlideshow() {
           <h1>Locked gallery</h1>
           <p>Enter the venue access key to start the wall.</p>
           <form className="row" style={{ justifyContent: 'center', marginTop: 12, gap: 8 }} onSubmit={handleUnlock}>
-            <input
-              className="text-input"
-              type="password"
+            <PasswordInput
+              wrapStyle={{ maxWidth: 220 }}
               autoComplete="off"
               placeholder="Access key"
               value={accessKey}
               onChange={(e) => setAccessKey(e.target.value)}
-              style={{ maxWidth: 220 }}
             />
             <button className="btn" type="submit" disabled={unlocking || !accessKey.trim()}>
               {unlocking ? 'Unlocking…' : 'Unlock'}

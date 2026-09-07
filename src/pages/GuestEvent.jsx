@@ -25,6 +25,7 @@ import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
 import CameraShutter from '../components/CameraShutter.jsx'
+import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 const MAX_SELFIES = 3
 const MAX_GROUP_SELFIES = 8
@@ -453,14 +454,12 @@ export default function GuestEvent() {
           </p>
           <p className="subtle">Enter the access key from your photographer to open {event?.name || 'this gallery'}.</p>
           <form className="row" style={{ justifyContent: 'center', marginTop: 12, gap: 8 }} onSubmit={handleUnlock}>
-            <input
-              className="text-input"
-              type="password"
+            <PasswordInput
+              wrapStyle={{ maxWidth: 220 }}
               autoComplete="off"
               placeholder="Access key"
               value={accessKey}
               onChange={(e) => setAccessKey(e.target.value)}
-              style={{ maxWidth: 220 }}
             />
             <button className="btn" type="submit" disabled={unlocking || !accessKey.trim()}>
               {unlocking ? 'Unlocking…' : 'Unlock'}

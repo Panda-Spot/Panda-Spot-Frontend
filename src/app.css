@@ -553,6 +553,39 @@
   margin: 14px 0 6px;
 }
 
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrap .text-input {
+  width: 100%;
+  padding-right: 42px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--text-tertiary, #9A9AA5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.16s ease;
+  border-radius: 6px;
+}
+
+.password-toggle-btn:hover {
+  color: var(--accent-primary, #D97706);
+}
+
 .auth-submit {
   margin-top: 20px;
   width: 100%;

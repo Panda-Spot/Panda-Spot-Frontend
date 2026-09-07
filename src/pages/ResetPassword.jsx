@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { confirmPasswordReset } from '../api.js'
 import PasswordStrength from '../components/ui/PasswordStrength.jsx'
+import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 export default function ResetPassword() {
   const { token } = useParams()
@@ -39,10 +40,10 @@ export default function ResetPassword() {
         ) : (
           <>
             <label className="field-label" htmlFor="password">New password</label>
-            <input id="password" className="text-input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput id="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             <PasswordStrength value={password} />
             <label className="field-label" htmlFor="confirm">Confirm password</label>
-            <input id="confirm" className="text-input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+            <PasswordInput id="confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
             {error && <p className="error">{error}</p>}
             <button className="btn auth-submit" type="submit" disabled={submitting}>
               {submitting ? 'Saving…' : 'Set new password'}

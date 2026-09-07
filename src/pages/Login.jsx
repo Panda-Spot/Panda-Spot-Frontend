@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../GoogleSignInButton.jsx'
+import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID || "603420654467-57ucc08fq5rujcmcc5cbljfc7jt6qre3.apps.googleusercontent.com")
 
@@ -48,13 +49,12 @@ export default function Login() {
         />
 
         <label className="field-label" htmlFor="password">Password</label>
-        <input
+        <PasswordInput
           id="password"
-          className="text-input"
-          type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
         {error && <p className="error">{error}</p>}
