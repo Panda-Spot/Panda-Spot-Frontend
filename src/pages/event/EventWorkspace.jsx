@@ -1,0 +1,1713 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Outlet, useNavigate, useParams } from 'react-router-dom'
+import EventContext from './EventContext.jsx'
+import EventShell from './EventShell.jsx'
+import {
+  addStudioPick,
+  approvePhoto,
+  archiveEvent,
+  archivePhoto,
+  backupExistingPhotosToDrive,
+  bulkSetMembership,
+  downloadSelectionCsv,
+  downloadSelectionPdf,
+  downloadSelectionTxt,
+  downloadSelectionZip,
+  getEventFaceGroups,
+  getPhotoFaces,
+  cancelInvite,
+  connectDriveFolder,
+  createSubGallery,
+  deleteEvent,
+  deleteEventCover,
+  deletePhoto,
+  disconnectShoots,
+  fileUrl,
+  generateShootsCredentials,
+  getEvent,
+  getEventAnalytics,
+  getShootsCredentials,
+  inviteClient,
+  inviteCollaborator,
+  listAlbums,
+  listClients,
+  listCollaborators,
+  listEventFavourites,
+  listPhotos,
+  listStudioPicks,
+  publishEvent,
+  reclaimDriveBackupNow,
+  removeClient,
+  removeCollaborator,
+  removeStudioPick,
+  restoreClient,
+  restoreEvent,
+  restorePhoto,
+  revokeClient,
+  setDriveAutoSync,
+  setEventAllowDownload,
+  setEventDriveBackup,
+  setGuestUploadWindow,
+  setPhotoHighlight,
+  startEvent,
+  startPhotoUpload,
+  submitClientOnBehalf,
+  subscribeToLiveEvents,
+  subscribeToUploadProgress,
+  syncDriveFolder,
+  testDriveFolderConnection,
+  toggleEventFeature,
+  toggleGuestUploads,
+  unsubmitClientOnBehalf,
+  updateClientGrant,
+  updateEvent,
+  updatePhotoFeatureMembership,
+  uploadEventCover,
+} from '../../api.js'
+import { getToken } from '../../authToken.js'
+import { useAuth } from '../../auth.jsx'
+import { useConfirm } from '../../confirm.jsx'
+import { useToast } from '../../toast.jsx'
+import { uploadLargeFile } from '../../lib/largeUpload.js'
+import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
+import PhotoMetaModal from '../../components/PhotoMetaModal.jsx'
+import PhotoFaceViewer from '../../components/PhotoFaceViewer.jsx'
+import { saveActiveJob, getActiveJob, clearActiveJob } from '../../jobPersistence.js'
+import { pop } from '../../lib/confetti.js'
+import { runInline, runInWorker } from '../../lib/workerTask.js'
+
+function guestLink(slug) {
+  return `${window.location.origin}/e/${slug}`
+}
+
+function progressLine(data) {
+  let line = `Processed ${data.completed} of ${data.total}`
+  if (data.current_file) line += ` — ${data.current_file}`
+  const eta = formatEta(data.eta_seconds)
+  if (eta) line += ` (${eta})`
+  return line
+}
+
+function formatEta(seconds) {
+  if (seconds == null || Number.isNaN(seconds)) return null
+  const rounded = Math.round(seconds)
+  if (rounded < 60) return `~${rounded}s remaining`
+  const minutes = Math.round(rounded / 60)
+  return `~${minutes}m remaining`
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+// Renders the react-easy-crop pixel area to a JPEG blob for the cover upload.
+function getCroppedImg(imageSrc, pixelCrop) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(pixelCrop.width)
+      canvas.height = Math.round(pixelCrop.height)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(
+        image,
+        pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
+        0, 0, canvas.width, canvas.height
+      )
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Could not crop the cover image'))
+      }, 'image/jpeg', 0.9)
+    }
+    image.onerror = () => reject(new Error('Could not read the cover image'))
+    image.src = imageSrc
+  })
+}
+
+// Manager gallery filter — pure + self-contained so it can run in a Web
+// Worker (see workerTask.js). Mirrors the gallery's approval/source/tool
+// rules exactly. NOTE: keep closure-free — the worker serializes this
+// function's source.
+function filterManagerPhotos({ photos, sourceFilter, toolsFilter, dupIdList, blurryBelow }) {
+  const dup = dupIdList ? new Set(dupIdList) : null
+  const f = toolsFilter || {}
+  return (Array.isArray(photos) ? photos : []).filter((p) => {
+    if (!p || p.approval_status === 'pending') return false
+    if (sourceFilter !== 'all' && (p.source || 'upload') !== sourceFilter) return false
+    if (f.faces === '0' && (p.face_count || 0) !== 0) return false
+    if (f.faces === '1' && (p.face_count || 0) !== 1) return false
+    if (f.faces === '2+' && (p.face_count || 0) < 2) return false
+    if (f.blur === 'sharp' && !(p.sharpness != null && p.sharpness >= blurryBelow)) return false
+    if (f.blur === 'blurry' && !(p.sharpness != null && p.sharpness < blurryBelow)) return false
+    if (f.blur === 'unmeasured' && p.sharpness != null) return false
+    if (f.dupOnly && !(dup && dup.has(p.photo_id))) return false
+    if ((p.rating || 0) < (f.minRating || 0)) return false
+    if (f.tag && f.tag !== 'all' && (p.color_tag || '') !== f.tag) return false
+    return true
+  })
+}
+
+export default function EventWorkspace() {
+  const { eventId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [event, setEvent] = useState(null)
+  const [photos, setPhotos] = useState([])
+  const [analytics, setAnalytics] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [showGuestCard, setShowGuestCard] = useState(false)
+  const [collaborators, setCollaborators] = useState([])
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteMessage, setInviteMessage] = useState('')
+  const [teamError, setTeamError] = useState('')
+  const [clients, setClients] = useState([])
+  const [pendingClientInvites, setPendingClientInvites] = useState([])
+  const [clientInviteEmail, setClientInviteEmail] = useState('')
+  const [clientInviteCap, setClientInviteCap] = useState('')
+  const [invitingClient, setInvitingClient] = useState(false)
+  const [clientInviteMessage, setClientInviteMessage] = useState('')
+  const [clientError, setClientError] = useState('')
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null)
+  const [savingPhotoFeatures, setSavingPhotoFeatures] = useState({})
+  const [deletingEvent, setDeletingEvent] = useState(false)
+  // MERGE (Studio-Verse EventDetail depth, Phase 18E): event settings state
+  // — details edit, publish, archive/restore, allow-download, cover crop.
+  const [showEditDetails, setShowEditDetails] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editVenue, setEditVenue] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [togglingDownload, setTogglingDownload] = useState(false)
+  const [showCoverModal, setShowCoverModal] = useState(false)
+  const [coverSrc, setCoverSrc] = useState('')
+  const [coverCrop, setCoverCrop] = useState({ x: 0, y: 0 })
+  const [coverZoom, setCoverZoom] = useState(1)
+  const [coverPixels, setCoverPixels] = useState(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [zipping, setZipping] = useState(false)
+  const [zipProgress, setZipProgress] = useState(null) // { loaded, total|null, speed }
+  const [zippingPicks, setZippingPicks] = useState(false)
+  const [picksZipProgress, setPicksZipProgress] = useState(null)
+  // Studio read-side of Photo Selection: grouped/merged favourites + picks.
+  const [favView, setFavView] = useState('grouped') // grouped | merged
+  const [eventFavourites, setEventFavourites] = useState(null)
+  const [studioPicks, setStudioPicks] = useState([])
+  const [togglingPickId, setTogglingPickId] = useState(null)
+  // Per-client access panel state (cap/expiry edit, submit/unlock, revoke).
+  const [expandedClient, setExpandedClient] = useState(null)
+  const [grantCap, setGrantCap] = useState('')
+  const [grantExpiry, setGrantExpiry] = useState('')
+  const [savingGrant, setSavingGrant] = useState(false)
+  const [uploadTab, setUploadTab] = useState('files')
+  const [logLines, setLogLines] = useState([])
+  const [skippedFiles, setSkippedFiles] = useState([])
+  const [driveUrl, setDriveUrl] = useState('')
+  const [connectingDrive, setConnectingDrive] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionTest, setConnectionTest] = useState(null)
+  const [testedUrl, setTestedUrl] = useState('')
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportUrl, setExportUrl] = useState('')
+  const [exportTesting, setExportTesting] = useState(false)
+  const [exportConnectionTest, setExportConnectionTest] = useState(null)
+  const [exportTestedUrl, setExportTestedUrl] = useState('')
+  const [exportSource, setExportSource] = useState('')
+  const [togglingGuestUploads, setTogglingGuestUploads] = useState(false)
+  const [togglingFeature, setTogglingFeature] = useState(null) // "faceSearch" | "photoSelection" | null
+  const [showGuestUploadCard, setShowGuestUploadCard] = useState(false)
+  const [showSlideshowCard, setShowSlideshowCard] = useState(false)
+  const [approvingId, setApprovingId] = useState(null)
+  const [windowDaysInput, setWindowDaysInput] = useState('')
+  const [savingWindow, setSavingWindow] = useState(false)
+  const [subGalleryName, setSubGalleryName] = useState('')
+  const [creatingSubGallery, setCreatingSubGallery] = useState(false)
+  const [showSubGalleryCard, setShowSubGalleryCard] = useState(false)
+  const [syncingDrive, setSyncingDrive] = useState(false)
+  const [backingUpExisting, setBackingUpExisting] = useState(false)
+  const [togglingAutoSync, setTogglingAutoSync] = useState(false)
+  const [togglingDriveBackup, setTogglingDriveBackup] = useState(false)
+  const [reclaimingDriveBackup, setReclaimingDriveBackup] = useState(false)
+  const [driveBackupMessage, setDriveBackupMessage] = useState('')
+  const [shoots, setShoots] = useState(null)
+  const [settingUpShoots, setSettingUpShoots] = useState(false)
+  const [regeneratingShoots, setRegeneratingShoots] = useState(false)
+  const [disconnectingShoots, setDisconnectingShoots] = useState(false)
+  const [liveNotice, setLiveNotice] = useState('')
+  const [startingEvent, setStartingEvent] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [photoStatusFilter, setPhotoStatusFilter] = useState('active') // active | archived | all
+  // Phase 21 — three workspace tabs: manager (files in/out), selection
+  // (Photo Selection members + clients), ai (Face Search members + guests).
+  const [activeTab, setActiveTab] = useState('manager') // manager | selection | ai | albums
+  // Phase 23 — Albums tab: album proofing projects for this event.
+  const [albums, setAlbums] = useState(null)
+  const [albumsError, setAlbumsError] = useState('')
+  const [newAlbumName, setNewAlbumName] = useState('')
+  const [creatingAlbum, setCreatingAlbum] = useState(false)
+  // Phase 1 — Selection export: per-client or merged, CSV/TXT/PDF/ZIP.
+  const [exportClient, setExportClient] = useState('merged')
+  const [exportFormat, setExportFormat] = useState('csv')
+  const [exporting, setExporting] = useState(false)
+  // Phase 2 — Face Search privacy settings draft (saved by Overview).
+  const [privacyDraft, setPrivacyDraft] = useState(null)
+  // Phase 3 — Gallery access settings draft (saved by Overview).
+  const [accessDraft, setAccessDraft] = useState(null)
+
+  const handleSelectionExport = async () => {
+    setExporting(true)
+    try {
+      const scope = exportClient === 'merged' ? { merged: true } : { clientId: exportClient }
+      if (exportFormat === 'csv') await downloadSelectionCsv(eventId, scope)
+      else if (exportFormat === 'txt') await downloadSelectionTxt(eventId, scope)
+      else if (exportFormat === 'pdf') await downloadSelectionPdf(eventId, scope)
+      else await downloadSelectionZip(eventId, scope)
+      showToast('Export downloaded')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
+  const [managerSelected, setManagerSelected] = useState({}) // photo_id -> true
+  const [bulking, setBulking] = useState(null)
+  // Phase 9 (photo tools): inspector photo, tool filters, duplicate set.
+  const [metaPhotoId, setMetaPhotoId] = useState(null)
+  const [dupIds, setDupIds] = useState(null)
+  const [toolsFilter, setToolsFilter] = useState({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })
+  // Manager gallery visible list, crunched in a Web Worker so big photo
+  // lists never freeze the UI. Same pure function runs inline as fallback.
+  const [managerVisible, setManagerVisible] = useState(null)
+  useEffect(() => {
+    const input = {
+      photos,
+      sourceFilter,
+      toolsFilter,
+      dupIdList: dupIds ? [...dupIds] : null,
+      blurryBelow: BLURRY_BELOW,
+    }
+    let stale = false
+    runInWorker(filterManagerPhotos, input)
+      .then((rows) => { if (!stale) setManagerVisible(rows) })
+      .catch(() => { if (!stale) setManagerVisible(runInline(filterManagerPhotos, input)) })
+    return () => { stale = true }
+  }, [photos, sourceFilter, toolsFilter, dupIds])
+  // Phase 22 — face viewer modal state for the AI member grid.
+  const [viewingPhoto, setViewingPhoto] = useState(null)
+  const [viewingFaces, setViewingFaces] = useState([])
+  const [facesLoading, setFacesLoading] = useState(false)
+  // Phase 22 — AI Faces sub-tab (auto face groups).
+  const [aiView, setAiView] = useState('members') // members | faces
+  const [faceGroupsState, setFaceGroupsState] = useState({ loading: false, error: '', data: null })
+  const [openGroupId, setOpenGroupId] = useState(null)
+
+  // Phase 23 — load albums when the Albums tab opens (independent of the
+  // Face Search / Photo Selection feature toggles).
+  const loadAlbums = useCallback(() => {
+    setAlbumsError('')
+    listAlbums(eventId)
+      .then(setAlbums)
+      .catch((e) => setAlbumsError(e.message))
+  }, [eventId])
+  useEffect(() => {
+    if (activeTab !== 'albums' || albums !== null) return
+    loadAlbums()
+  }, [activeTab, albums, loadAlbums])
+  // Load face groups on first opening the Faces sub-tab (and refresh
+  // whenever the photo list changes, since new faces alter clusters).
+  useEffect(() => {
+    if (aiView !== 'faces' || activeTab !== 'ai' || !event?.face_search_enabled) return
+    if (faceGroupsState.data || faceGroupsState.loading) return
+    setFaceGroupsState({ loading: true, error: '', data: null })
+    getEventFaceGroups(eventId)
+      .then((data) => setFaceGroupsState({ loading: false, error: '', data }))
+      .catch((e) => setFaceGroupsState({ loading: false, error: e.message, data: null }))
+  }, [aiView, activeTab, event?.face_search_enabled, eventId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const cleanupRef = useRef(null)
+  const liveStreamCleanupRef = useRef(null)
+  const initialTabAppliedRef = useRef(false)
+  const confirm = useConfirm()
+  const { showToast } = useToast()
+
+  const appendLog = useCallback((line) => {
+    setLogLines((prev) => [...prev, line])
+  }, [])
+
+  const loadTeam = useCallback(() => {
+    listCollaborators(eventId)
+      .then((data) => {
+        setCollaborators(data.collaborators)
+        setPendingInvites(data.pending_invites)
+      })
+      .catch(() => {
+        setCollaborators([])
+        setPendingInvites([])
+      })
+  }, [eventId])
+
+  const loadClients = useCallback(() => {
+    listClients(eventId)
+      .then((data) => {
+        setClients(data.clients)
+        setPendingClientInvites(data.pending_invites)
+      })
+      .catch(() => {
+        setClients([])
+        setPendingClientInvites([])
+      })
+  }, [eventId])
+
+  const loadFavourites = useCallback(() => {
+    listEventFavourites(eventId)
+      .then(setEventFavourites)
+      .catch(() => setEventFavourites(null))
+  }, [eventId])
+
+  const loadPicks = useCallback(() => {
+    listStudioPicks(eventId)
+      .then((data) => setStudioPicks(data.photo_ids || []))
+      .catch(() => setStudioPicks([]))
+  }, [eventId])
+
+  const load = useCallback(() => {
+    getEvent(eventId)
+      .then((ev) => {
+        setEvent(ev)
+        if (ev.role === 'owner') loadTeam()
+        if (ev.photo_selection_enabled) {
+          loadClients()
+          loadFavourites()
+          loadPicks()
+        }
+      })
+      .catch((e) => setError(e.message))
+    listPhotos(eventId, photoStatusFilter).then(setPhotos).catch((e) => setError(e.message))
+    getEventAnalytics(eventId).then(setAnalytics).catch(() => setAnalytics(null))
+  }, [eventId, photoStatusFilter, loadTeam, loadClients, loadFavourites, loadPicks])
+
+  useEffect(load, [load])
+
+  // If this event already has a Drive folder connected, open straight to
+  // that tab instead of always defaulting to "Upload files" — otherwise
+  // the Drive-backup checkbox (which only renders on this tab) is easy to
+  // miss on every page load. Only applied once, so manually switching
+  // tabs afterward isn't fought.
+  useEffect(() => {
+    if (!event || initialTabAppliedRef.current) return
+    initialTabAppliedRef.current = true
+    if (event.drive_folder_url) setUploadTab('drive')
+  }, [event])
+
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) cleanupRef.current()
+    }
+  }, [])
+
+  // A job (upload / Drive import / Drive sync) keeps running server-side
+  // regardless of whether anyone's watching — see server's lib/jobQueue.js.
+  // If one was left running when this page was last closed/reloaded,
+  // reconnect to it now instead of showing a blank upload section.
+  useEffect(() => {
+    const jobId = getActiveJob(eventId)
+    if (!jobId) return undefined
+
+    setUploading(true)
+    setLogLines(['Reconnected — checking status…'])
+    cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+      onProgress: (data) => {
+        setProgress(data)
+        appendLog(progressLine(data))
+        addPhotoFromProgress(data)
+      },
+      onDone: (data) => {
+        setUploading(false)
+        setProgress(null)
+        appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        setSkippedFiles(data.skipped || [])
+        clearActiveJob(eventId)
+        load()
+      },
+      onError: (data) => {
+        setUploading(false)
+        setProgress(null)
+        appendLog(`Failed — ${data.message || 'unknown error'}`)
+        clearActiveJob(eventId)
+      },
+    })
+    return undefined
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId])
+
+  // Keeps the gallery updating live while a camera is streaming photos in
+  // via Shoots — independent of whether the upload modal is open.
+  useEffect(() => {
+    if (liveStreamCleanupRef.current) {
+      liveStreamCleanupRef.current()
+      liveStreamCleanupRef.current = null
+    }
+    if (!event?.shoots_connected) return undefined
+
+    liveStreamCleanupRef.current = subscribeToLiveEvents(eventId, {
+      onPhotoAdded: (data) => {
+        setPhotos((prev) => (prev.some((p) => p.photo_id === data.photo_id) ? prev : [data, ...prev]))
+        setLiveNotice(`New photo from your camera: ${data.filename}`)
+        setTimeout(() => setLiveNotice(''), 4000)
+      },
+      onPhotoSkipped: (data) => {
+        setLiveNotice(`Skipped a camera photo (${data.reason})`)
+        setTimeout(() => setLiveNotice(''), 4000)
+      },
+    })
+    return () => {
+      if (liveStreamCleanupRef.current) {
+        liveStreamCleanupRef.current()
+        liveStreamCleanupRef.current = null
+      }
+    }
+  }, [eventId, event?.shoots_connected])
+
+  // Each progress event may carry the photo that was just processed (see
+  // server's emitProgress) — added to the gallery immediately so a laymen
+  // user watching the page can see it's actually working file by file, not
+  // just trust a progress bar.
+  const addPhotoFromProgress = useCallback((data) => {
+    if (!data.photo) return
+    setPhotos((prev) => (prev.some((p) => p.photo_id === data.photo.photo_id) ? prev : [data.photo, ...prev]))
+  }, [])
+
+  function watchJob(jobId, { failedLabel }) {
+    saveActiveJob(eventId, jobId)
+    cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
+      onProgress: (data) => {
+        setProgress(data)
+        appendLog(progressLine(data))
+        addPhotoFromProgress(data)
+      },
+      onDone: (data) => {
+        setUploading(false)
+        setProgress(null)
+        let summary = `Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`
+        if (data.removed_count > 0) summary += ` ${data.removed_count} photo(s) removed (no longer in Drive).`
+        appendLog(summary)
+        setSkippedFiles(data.skipped || [])
+        clearActiveJob(eventId)
+        showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+        pop()
+        load()
+      },
+      onError: (data) => {
+        setUploading(false)
+        setProgress(null)
+        const message = data.message || failedLabel
+        appendLog(`Failed — ${message}`)
+        clearActiveJob(eventId)
+        showToast(message, { type: 'error' })
+      },
+    })
+  }
+
+  const handleStartEvent = async () => {
+    setStartingEvent(true)
+    setError('')
+    try {
+      await startEvent(eventId)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setStartingEvent(false)
+    }
+  }
+
+  const handleToggleGuestUploads = async (enabled) => {
+    setTogglingGuestUploads(true)
+    setError('')
+    try {
+      await toggleGuestUploads(eventId, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingGuestUploads(false)
+    }
+  }
+
+  const handleToggleFeature = async (feature, enabled) => {
+    setTogglingFeature(feature)
+    setError('')
+    try {
+      await toggleEventFeature(eventId, feature, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingFeature(null)
+    }
+  }
+
+  const handleInviteClient = async (e) => {
+    e.preventDefault()
+    if (!clientInviteEmail.trim()) return
+    setInvitingClient(true)
+    setClientError('')
+    setClientInviteMessage('')
+    try {
+      const cap = clientInviteCap.trim() ? parseInt(clientInviteCap, 10) : undefined
+      const res = await inviteClient(eventId, clientInviteEmail.trim(), cap)
+      setClientInviteMessage(
+        res.status === 'added'
+          ? 'Added — they can view this event immediately.'
+          : "Invite sent — they'll get access once they set a password."
+      )
+      setClientInviteEmail('')
+      setClientInviteCap('')
+      loadClients()
+    } catch (e) {
+      setClientError(e.message)
+    } finally {
+      setInvitingClient(false)
+    }
+  }
+
+  const handleRemoveClient = async (userId) => {
+    setClientError('')
+    try {
+      await removeClient(eventId, userId)
+      loadClients()
+    } catch (e) {
+      setClientError(e.message)
+    }
+  }
+
+  // MERGE (Studio-Verse EventDetail depth, Phase 18E) handlers — details
+  // edit, publish (one-way), archive/restore, allow-download, cover crop,
+  // studio zip with live byte/speed progress, picks, and per-client grants.
+
+  const openEditDetails = () => {
+    if (!event) return
+    setEditName(event.name || '')
+    setEditDate(event.event_date ? new Date(event.event_date).toISOString().slice(0, 10) : '')
+    setEditVenue(event.event_venue || '')
+    setEditDesc(event.description || '')
+    setShowEditDetails(true)
+  }
+
+  const handleSaveDetails = async (e) => {
+    e.preventDefault()
+    if (!editName.trim()) {
+      showToast('Event name is required', { type: 'error' })
+      return
+    }
+    setSavingDetails(true)
+    try {
+      await updateEvent(eventId, {
+        name: editName.trim(),
+        event_date: editDate || null,
+        event_venue: editVenue.trim() || null,
+        description: editDesc.trim() || null,
+      })
+      setShowEditDetails(false)
+      load()
+      showToast('Event details saved.')
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    } finally {
+      setSavingDetails(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    const confirmed = await confirm(
+      'Publish this event? This marks uploads as finished for Photo Selection clients. Publishing is one-way.',
+      { title: 'Publish event?', confirmLabel: 'Publish', danger: false }
+    )
+    if (!confirmed) return
+    setPublishing(true)
+    try {
+      await publishEvent(eventId)
+      load()
+      showToast('Event published.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleArchive = async () => {
+    const confirmed = await confirm(
+      `Archive "${event?.name}"? Guests immediately lose access and clients can't open the gallery — nothing is deleted, and you can restore it any time.`,
+      { title: 'Archive event?', confirmLabel: 'Archive', danger: false }
+    )
+    if (!confirmed) return
+    setArchiving(true)
+    try {
+      await archiveEvent(eventId)
+      load()
+      showToast('Event archived.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleRestore = async () => {
+    const confirmed = await confirm(
+      `Restore "${event?.name}"? Guests and clients regain access immediately.`,
+      { title: 'Restore event?', confirmLabel: 'Restore', danger: false }
+    )
+    if (!confirmed) return
+    setArchiving(true)
+    try {
+      await restoreEvent(eventId)
+      load()
+      showToast('Event restored.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleAllowDownload = async (enabled) => {
+    setTogglingDownload(true)
+    try {
+      await setEventAllowDownload(eventId, enabled)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingDownload(false)
+    }
+  }
+
+  const handleCoverFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setCoverSrc(url)
+    setCoverCrop({ x: 0, y: 0 })
+    setCoverZoom(1)
+    setCoverPixels(null)
+    setShowCoverModal(true)
+    e.target.value = ''
+  }
+
+  const handleSaveCover = async () => {
+    if (!coverSrc || !coverPixels) {
+      showToast('Adjust the crop first', { type: 'error' })
+      return
+    }
+    setUploadingCover(true)
+    try {
+      const blob = await getCroppedImg(coverSrc, coverPixels)
+      await uploadEventCover(eventId, blob)
+      setShowCoverModal(false)
+      setCoverSrc('')
+      load()
+      showToast('Cover photo updated.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setUploadingCover(false)
+    }
+  }
+
+  const handleRemoveCover = async () => {
+    const confirmed = await confirm('Remove the cover photo?', { title: 'Remove cover?', confirmLabel: 'Remove' })
+    if (!confirmed) return
+    try {
+      await deleteEventCover(eventId)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  // Shared streaming download: fetches a zip path with auth, reports
+  // byte/speed progress, and saves the finished blob. Used by both the
+  // full-gallery zip and the studio-picks zip below.
+  const streamZipToDisk = async (zipPath, filename, setBusy, setProg) => {
+    if (!event) return
+    setBusy(true)
+    setProg({ loaded: 0, total: null, speed: 0 })
+    try {
+      const token = getToken()
+      const res = await fetch(fileUrl(zipPath), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        let message = `Download failed (${res.status})`
+        try {
+          const body = await res.json()
+          message = body.error || body.message || message
+        } catch {
+          // non-JSON error — keep generic
+        }
+        throw new Error(message)
+      }
+      const total = Number(res.headers.get('content-length')) || null
+      const reader = res.body.getReader()
+      const chunks = []
+      let loaded = 0
+      const startedAt = Date.now()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.length
+        const elapsed = Math.max(0.1, (Date.now() - startedAt) / 1000)
+        setProg({ loaded, total, speed: loaded / elapsed })
+      }
+      const blob = new Blob(chunks, { type: 'application/zip' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBusy(false)
+      setProg(null)
+    }
+  }
+
+  const zipFilename = (suffix) =>
+    `${(event?.name || 'event').replace(/[^\w\-]+/g, '-').slice(0, 60)}${suffix}.zip`
+
+  const handleStudioZip = async () => {
+    if (zipping) return
+    await streamZipToDisk(`/events/${eventId}/download-zip`, zipFilename(''), setZipping, setZipProgress)
+  }
+
+  const handlePicksZip = async () => {
+    if (zippingPicks) return
+    await streamZipToDisk(`/events/${eventId}/studio-picks/download-zip`, zipFilename('-picks'), setZippingPicks, setPicksZipProgress)
+  }
+
+  const handleArchivePhoto = async (photoId, filename) => {
+    try {
+      await archivePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, archived_at: new Date().toISOString() } : p)))
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`"${filename}" archived — hidden from guests and clients.`)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRestorePhoto = async (photoId, filename) => {
+    try {
+      await restorePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, archived_at: null } : p)))
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`"${filename}" restored.`)
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  // Phase 21 — manager multi/all/particular selection into the two
+  // feature memberships (zero-copy: only DB flags change, files stay
+  // put). Visible-grid ids for "select all", explicit ids otherwise.
+  const visibleManageablePhotos = (photos || []).filter(
+    (p) => p.approval_status !== 'pending'
+      && (sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
+  )
+
+  const toggleManagerSelect = (photoId) => {
+    setManagerSelected((prev) => {
+      const next = { ...prev }
+      if (next[photoId]) delete next[photoId]
+      else next[photoId] = true
+      return next
+    })
+  }
+
+  const toggleManagerSelectAllVisible = () => {
+    const ids = visibleManageablePhotos.map((p) => p.photo_id)
+    const allSelected = ids.length > 0 && ids.every((id) => managerSelected[id])
+    if (allSelected) {
+      setManagerSelected({})
+    } else {
+      const next = {}
+      for (const id of ids) next[id] = true
+      setManagerSelected(next)
+    }
+  }
+
+  const selectedCount = Object.keys(managerSelected).length
+
+  // Phase 21 — per-tab member views, derived from the same photo list the
+  // manager shows (so the current status filter applies in every tab).
+  const selectionMembers = () => (photos || []).filter(
+    (p) => p.approval_status !== 'pending' && p.photo_selection_visible !== false
+  )
+  const aiMembers = () => (photos || []).filter(
+    (p) => p.approval_status !== 'pending' && p.face_search_visible !== false
+  )
+
+  const openFaceViewer = async (photo) => {
+    setViewingPhoto(photo)
+    setViewingFaces([])
+    setFacesLoading(true)
+    try {
+      const data = await getPhotoFaces(eventId, photo.photo_id)
+      setViewingFaces(data.faces || [])
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setFacesLoading(false)
+    }
+  }
+
+  const handleBulkRemoveVisible = async (feature) => {    const members = feature === 'selection' ? selectionMembers() : aiMembers()
+    if (members.length === 0) return
+    const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
+    const confirmed = await confirm(
+      `Remove ${members.length} visible photo(s) from ${feature === 'selection' ? 'Photo Selection' : 'AI Search'}? Files stay in the manager — only membership flags change.`,
+      { title: 'Remove from feature?', confirmLabel: 'Remove', danger: false }
+    )
+    if (!confirmed) return
+    setBulking('remove')
+    try {
+      const res = await bulkSetMembership(eventId, {
+        photoIds: members.map((p) => p.photo_id),
+        ...patch,
+      })
+      showToast(`${res.updated} photo(s) removed.`)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  const handleBulkMembership = async (patch, label) => {
+    const ids = Object.keys(managerSelected)
+    if (ids.length === 0) {
+      showToast('Select photos in the manager grid first', { type: 'error' })
+      return
+    }
+    setBulking(label)
+    try {
+      const res = await bulkSetMembership(eventId, { photoIds: ids, ...patch })
+      if (res.job_id) {
+        appendLog(`Indexing ${ids.length} photo(s) for Face Search in the background…`)
+        watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+      } else {
+        load()
+      }
+      // Newly indexed faces alter clusters — drop cached groups so the
+      // Faces sub-tab refetches fresh on next open.
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      if (res.skipped?.length > 0) {
+        showToast(`${res.updated} updated, ${res.skipped.length} skipped`, { type: 'error' })
+      } else {
+        showToast(`${res.updated} photo(s) updated.`)
+      }
+      setManagerSelected({})
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  const handleBulkAddAllVisible = async (patch, label) => {
+    if (visibleManageablePhotos.length === 0) {
+      showToast('No visible photos to update', { type: 'error' })
+      return
+    }
+    const confirmed = await confirm(
+      `Apply to all ${visibleManageablePhotos.length} visible photo(s) (current source/status filters)?`,
+      { title: label, confirmLabel: 'Apply', danger: false }
+    )
+    if (!confirmed) return
+    setBulking(label)
+    try {
+      const res = await bulkSetMembership(eventId, {
+        all: { source: sourceFilter === 'all' ? undefined : sourceFilter, status: photoStatusFilter },
+        ...patch,
+      })
+      if (res.job_id) {
+        appendLog(`Indexing photos for Face Search in the background…`)
+        watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+      } else {
+        load()
+      }
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      showToast(`${res.updated} photo(s) updated.`)
+      setManagerSelected({})
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  const handleTogglePick = async (photoId, isPick) => {
+    setTogglingPickId(photoId)
+    try {
+      if (isPick) {
+        await removeStudioPick(eventId, photoId)
+        setStudioPicks((prev) => prev.filter((id) => id !== photoId))
+      } else {
+        await addStudioPick(eventId, photoId)
+        setStudioPicks((prev) => (prev.includes(photoId) ? prev : [...prev, photoId]))
+      }
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingPickId(null)
+    }
+  }
+
+  const openGrantPanel = (client) => {
+    if (expandedClient === client.user_id) {
+      setExpandedClient(null)
+      return
+    }
+    setExpandedClient(client.user_id)
+    setGrantCap(client.favourite_cap != null ? String(client.favourite_cap) : '')
+    setGrantExpiry(client.access_expires ? new Date(client.access_expires).toISOString().slice(0, 10) : '')
+  }
+
+  const handleSaveGrant = async (userId) => {
+    setSavingGrant(true)
+    setClientError('')
+    try {
+      await updateClientGrant(eventId, userId, {
+        favourite_cap: grantCap.trim() === '' ? null : parseInt(grantCap, 10),
+        access_expires: grantExpiry === '' ? null : grantExpiry,
+      })
+      showToast('Client access updated.')
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      setClientError(e.message)
+    } finally {
+      setSavingGrant(false)
+    }
+  }
+
+  const handleSubmitBehalf = async (userId, name) => {
+    const confirmed = await confirm(
+      `Submit ${name || 'this client'}'s selection on their behalf? Their favourites lock immediately.`,
+      { title: 'Submit on behalf?', confirmLabel: 'Submit', danger: false }
+    )
+    if (!confirmed) return
+    try {
+      await submitClientOnBehalf(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleUnsubmit = async (userId, name) => {
+    const confirmed = await confirm(
+      `Re-open ${name || 'this client'}'s selection? They'll be able to change their favourites again.`,
+      { title: 'Unlock selection?', confirmLabel: 'Unlock', danger: false }
+    )
+    if (!confirmed) return
+    try {
+      await unsubmitClientOnBehalf(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRevoke = async (userId, name) => {
+    const confirmed = await confirm(
+      `Revoke ${name || 'this client'}'s access? They lose the gallery immediately, but you can restore them later without re-inviting.`,
+      { title: 'Revoke access?', confirmLabel: 'Revoke' }
+    )
+    if (!confirmed) return
+    try {
+      await revokeClient(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleRestoreAccess = async (userId) => {
+    try {
+      await restoreClient(eventId, userId)
+      loadClients()
+      loadFavourites()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    }
+  }
+
+  const handleApprovePhoto = async (photoId) => {
+    setApprovingId(photoId)
+    try {
+      await approvePhoto(eventId, photoId)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, approval_status: 'approved' } : p)))
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const [togglingHighlightId, setTogglingHighlightId] = useState(null)
+
+  const handleToggleHighlight = async (photoId, highlighted) => {
+    setTogglingHighlightId(photoId)
+    try {
+      await setPhotoHighlight(eventId, photoId, !highlighted)
+      setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, highlighted: !highlighted } : p)))
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setTogglingHighlightId(null)
+    }
+  }
+
+  const handleRejectPhoto = async (photoId, filename) => {    const confirmed = await confirm(`Reject and delete "${filename}"? This can't be undone.`, { title: 'Reject photo?', confirmLabel: 'Reject' })
+    if (!confirmed) return
+    setApprovingId(photoId)
+    try {
+      await deletePhoto(eventId, photoId)
+      setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleSaveWindowDays = async (e) => {
+    e.preventDefault()
+    setSavingWindow(true)
+    try {
+      await setGuestUploadWindow(eventId, windowDaysInput.trim() === '' ? null : parseInt(windowDaysInput, 10))
+      load()
+      showToast('Guest upload window updated.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setSavingWindow(false)
+    }
+  }
+
+  const handleCreateSubGallery = async (e) => {
+    e.preventDefault()
+    if (!subGalleryName.trim()) return
+    setCreatingSubGallery(true)
+    try {
+      await createSubGallery(eventId, subGalleryName.trim())
+      setSubGalleryName('')
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setCreatingSubGallery(false)
+    }
+  }
+
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([`Starting upload — ${files.length} file(s)`])
+    setSkippedFiles([])
+    try {
+      // Files too big for one multipart POST go through the resumable
+      // chunked uploader first (8MB chunks, retried, resumable); each one
+      // still lands in the regular async processing job afterwards, so
+      // progress/result UI below is identical either way.
+      const LARGE_FILE_BYTES = 20 * 1024 * 1024
+      const small = files.filter((f) => f.size <= LARGE_FILE_BYTES)
+      const large = files.filter((f) => f.size > LARGE_FILE_BYTES)
+      for (const file of large) {
+        appendLog(`Large file — uploading "${file.name}" in chunks…`)
+        try {
+          const { job_id: jobId } = await uploadLargeFile(eventId, file, {
+            onProgress: ({ loaded, total }) =>
+              setProgress({
+                completed: 0,
+                total: 1,
+                current_file: `${file.name} (${Math.round((loaded / total) * 100)}% uploaded)`,
+                eta_seconds: null,
+                faces_found_so_far: 0,
+                skipped_so_far: [],
+              }),
+          })
+          appendLog(`"${file.name}" uploaded — processing…`)
+          await watchJobOnce(jobId)
+        } catch (e) {
+          appendLog(`"${file.name}" failed — ${e.message}`)
+        }
+      }
+      if (small.length > 0) {
+        const { job_id: jobId } = await startPhotoUpload(eventId, small)
+        watchJob(jobId, { failedLabel: 'Upload failed' })
+      } else {
+        setUploading(false)
+        setProgress(null)
+        load()
+      }
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    }
+  }
+
+  // One-shot promise wrapper around the SSE progress subscription, for the
+  // sequential large-file path above (the shared watchJob handles the
+  // single interactive batch instead).
+  function watchJobOnce(jobId) {
+    return new Promise((resolve) => {
+      const cleanup = subscribeToUploadProgress(eventId, jobId, {
+        onProgress: (data) => {
+          setProgress(data)
+          appendLog(progressLine(data))
+          addPhotoFromProgress(data)
+        },
+        onDone: (data) => {
+          setProgress(null)
+          appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+          setSkippedFiles(data.skipped || [])
+          clearActiveJob(eventId)
+          showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
+          pop()
+          cleanup()
+          resolve()
+        },
+        onError: (data) => {
+          setProgress(null)
+          appendLog(`Failed — ${data.message || 'Upload failed'}`)
+          clearActiveJob(eventId)
+          showToast(data.message || 'Upload failed', { type: 'error' })
+          cleanup()
+          resolve()
+        },
+      })
+    })
+  }
+
+  const handleDriveUrlChange = (value) => {
+    setDriveUrl(value)
+    // Any edit invalidates a prior test result — it was only ever a
+    // statement about the exact link that was tested.
+    if (value.trim() !== testedUrl) {
+      setConnectionTest(null)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    const url = driveUrl.trim()
+    if (!url) return
+    setTestingConnection(true)
+    setConnectionTest(null)
+    try {
+      const result = await testDriveFolderConnection(eventId, url)
+      setConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
+      setTestedUrl(url)
+    } catch (e) {
+      setConnectionTest({ ok: false, message: e.message })
+      setTestedUrl(url)
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+
+  const handleDriveConnect = async () => {
+    if (!driveUrl.trim()) return
+    if (!(connectionTest?.ok && testedUrl === driveUrl.trim())) return
+    const confirmed = await confirm(
+      "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
+      "PandaSpot only keeps a thumbnail and face data for each photo; the originals stay in Drive and are fetched " +
+      "live when a guest downloads or shares one.",
+      { title: 'Connect this Drive folder?', confirmLabel: 'Connect', danger: false }
+    )
+    if (!confirmed) return
+
+    setConnectingDrive(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([])
+    setSkippedFiles([])
+    try {
+      const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, driveUrl.trim())
+      setDriveUrl('')
+      setConnectionTest(null)
+      setTestedUrl('')
+      setLogLines([`Connected — found ${filesFound} file(s) in the folder`])
+      watchJob(jobId, { failedLabel: 'Import failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setConnectingDrive(false)
+    }
+  }
+
+  const handleDriveSync = async () => {
+    setSyncingDrive(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines(['Checking the Drive folder for changes…'])
+    setSkippedFiles([])
+    try {
+      const { job_id: jobId } = await syncDriveFolder(eventId)
+      watchJob(jobId, { failedLabel: 'Sync failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setSyncingDrive(false)
+    }
+  }
+
+  const handleBackupExisting = async () => {
+    setBackingUpExisting(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([])
+    setSkippedFiles([])
+    try {
+      const { job_id: jobId, files_found: filesFound } = await backupExistingPhotosToDrive(eventId, exportSource || undefined)
+      setLogLines([`Found ${filesFound} photo(s) not yet backed up`])
+      watchJob(jobId, { failedLabel: 'Backup failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setBackingUpExisting(false)
+    }
+  }
+
+  const handleExportUrlChange = (value) => {
+    setExportUrl(value)
+    if (value.trim() !== exportTestedUrl) {
+      setExportConnectionTest(null)
+    }
+  }
+
+  const handleExportTestConnection = async () => {
+    const url = exportUrl.trim()
+    if (!url) return
+    setExportTesting(true)
+    setExportConnectionTest(null)
+    try {
+      const result = await testDriveFolderConnection(eventId, url)
+      setExportConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
+      setExportTestedUrl(url)
+    } catch (e) {
+      setExportConnectionTest({ ok: false, message: e.message })
+      setExportTestedUrl(url)
+    } finally {
+      setExportTesting(false)
+    }
+  }
+
+  const handleExportConnect = async () => {
+    if (!(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())) return
+    if (exportConnectionTest.permission && exportConnectionTest.permission !== 'writer') {
+      showToast('Export needs the folder shared as Editor, not Viewer or Commenter.', { type: 'error' })
+      return
+    }
+    const confirmed = await confirm(
+      "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
+      "Once connected, you can back up your existing PandaSpot photos into this same folder.",
+      { title: 'Connect this Drive folder?', confirmLabel: 'Connect', danger: false }
+    )
+    if (!confirmed) return
+
+    setConnectingDrive(true)
+    setUploading(true)
+    setError('')
+    setProgress(null)
+    setLogLines([])
+    setSkippedFiles([])
+    try {
+      const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, exportUrl.trim())
+      if (event?.drive_backup_available) {
+        await setEventDriveBackup(eventId, true)
+      }
+      setExportUrl('')
+      setExportConnectionTest(null)
+      setExportTestedUrl('')
+      setLogLines([
+        event?.drive_backup_available
+          ? `Connected and export enabled — found ${filesFound} file(s) in the folder`
+          : `Connected — found ${filesFound} file(s) in the folder. Drive backup is not configured on this PandaSpot instance yet.`,
+      ])
+      watchJob(jobId, { failedLabel: 'Import failed' })
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setUploading(false)
+    } finally {
+      setConnectingDrive(false)
+    }
+  }
+
+  const handleToggleAutoSync = async (enabled) => {
+    setTogglingAutoSync(true)
+    setError('')
+    try {
+      await setDriveAutoSync(eventId, enabled)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setTogglingAutoSync(false)
+    }
+  }
+
+  const handleSetupShoots = async () => {
+    const confirmed = await confirm(
+      "Any photo your camera sends will be scanned for faces and added to the gallery automatically, the same as " +
+      "a regular upload. You'll get a host/username/password to enter into your camera's FTP transfer settings next.",
+      { title: 'Turn on camera upload?', confirmLabel: 'Turn on', danger: false }
+    )
+    if (!confirmed) return
+    setSettingUpShoots(true)
+    setError('')
+    try {
+      const creds = await generateShootsCredentials(eventId)
+      setShoots(creds)
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setSettingUpShoots(false)
+    }
+  }
+
+  const handleShowShootsCredentials = async () => {
+    setError('')
+    try {
+      const creds = await getShootsCredentials(eventId)
+      setShoots(creds)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const handleRegenerateShoots = async () => {
+    const confirmed = await confirm(
+      "This invalidates the current username/password — you'll need to re-enter the new ones into your camera.",
+      { title: 'Regenerate camera credentials?', confirmLabel: 'Regenerate' }
+    )
+    if (!confirmed) return
+    setRegeneratingShoots(true)
+    setError('')
+    try {
+      const creds = await generateShootsCredentials(eventId)
+      setShoots(creds)
+      showToast('New credentials generated.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setRegeneratingShoots(false)
+    }
+  }
+
+  const handleDisconnectShoots = async () => {
+    const confirmed = await confirm(
+      "Your camera's saved FTP settings will stop working.",
+      { title: 'Turn off camera upload?', confirmLabel: 'Turn off' }
+    )
+    if (!confirmed) return
+    setDisconnectingShoots(true)
+    setError('')
+    try {
+      await disconnectShoots(eventId)
+      setShoots(null)
+      load()
+      showToast('Camera upload turned off.')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setDisconnectingShoots(false)
+    }
+  }
+
+  const handleToggleDriveBackup = async (enabled) => {
+    setTogglingDriveBackup(true)
+    setError('')
+    try {
+      await setEventDriveBackup(eventId, enabled)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setTogglingDriveBackup(false)
+    }
+  }
+
+  const handleReclaimDriveBackupNow = async () => {
+    setReclaimingDriveBackup(true)
+    setError('')
+    setDriveBackupMessage('')
+    try {
+      const result = await reclaimDriveBackupNow(eventId)
+      setDriveBackupMessage(`Reclaimed ${result.reclaimed_count} photo(s) from Drive.`)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setReclaimingDriveBackup(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    if (!event) return
+    try {
+      await navigator.clipboard.writeText(guestLink(event.guestSlug))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard API unavailable — ignore
+    }
+  }
+
+  const handleInvite = async (e) => {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    setTeamError('')
+    setInviteMessage('')
+    try {
+      const res = await inviteCollaborator(eventId, inviteEmail.trim())
+      setInviteMessage(
+        res.status === 'added'
+          ? 'Added — they can access this event immediately.'
+          : "Invite sent — they'll get access once they sign up."
+      )
+      setInviteEmail('')
+      loadTeam()
+    } catch (e) {
+      setTeamError(e.message)
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const handleRemoveCollaborator = async (userId) => {
+    setTeamError('')
+    try {
+      await removeCollaborator(eventId, userId)
+      loadTeam()
+    } catch (e) {
+      setTeamError(e.message)
+    }
+  }
+
+  const handleCancelInvite = async (inviteId) => {
+    setTeamError('')
+    try {
+      await cancelInvite(eventId, inviteId)
+      loadTeam()
+    } catch (e) {
+      setTeamError(e.message)
+    }
+  }
+
+  const handleDeletePhoto = async (photoId, filename) => {
+    const confirmed = await confirm(`Delete "${filename}"? This can't be undone.`, { title: 'Delete photo?', confirmLabel: 'Delete' })
+    if (!confirmed) return
+    setDeletingPhotoId(photoId)
+    setError('')
+    try {
+      await deletePhoto(eventId, photoId)
+      setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setDeletingPhotoId(null)
+    }
+  }
+
+  const handlePhotoFeatureMembership = async (photoId, patch) => {
+    setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: true }))
+    const previous = photos
+    setPhotos((prev) => prev.map((p) => (
+      p.photo_id === photoId
+        ? {
+            ...p,
+            face_search_visible: patch.face_search_visible ?? p.face_search_visible,
+            photo_selection_visible: patch.photo_selection_visible ?? p.photo_selection_visible,
+          }
+        : p
+    )))
+    try {
+      const updated = await updatePhotoFeatureMembership(eventId, photoId, patch)
+      setPhotos((prev) => prev.map((p) => (
+        p.photo_id === photoId
+          ? {
+              ...p,
+              face_count: updated.face_count ?? p.face_count,
+              face_indexed_at: updated.face_indexed_at ?? p.face_indexed_at,
+              face_search_visible: updated.face_search_visible,
+              photo_selection_visible: updated.photo_selection_visible,
+            }
+          : p
+      )))
+      // Membership flags feed face-group clustering — bust the cache so
+      // the Faces sub-tab refetches fresh on next open.
+      if (patch.face_search_visible !== undefined) {
+        setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      }
+    } catch (e) {
+      setPhotos(previous)
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: false }))
+    }
+  }
+
+  const handleDeleteEvent = async () => {
+    if (!event) return
+    const confirmed = await confirm(
+      `Delete "${event.name}"? This permanently deletes every photo and the guest link. This can't be undone.`,
+      { title: 'Delete event?', confirmLabel: 'Delete' }
+    )
+    if (!confirmed) return
+    setDeletingEvent(true)
+    setError('')
+    try {
+      await deleteEvent(eventId)
+      navigate('/events')
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      setDeletingEvent(false)
+    }
+  }
+
+  // Worker result lands a tick after the inputs change — fall back to the
+  // same pure function inline so the grid never flashes empty.
+  const managerInput = {
+    photos,
+    sourceFilter,
+    toolsFilter,
+    dupIdList: dupIds ? [...dupIds] : null,
+    blurryBelow: BLURRY_BELOW,
+  }
+  const visiblePhotos = managerVisible ?? runInline(filterManagerPhotos, managerInput)
+
+  const value = {
+    eventId, user, event, photos, analytics,
+    uploading, progress, error, copied, showGuestCard, setShowGuestCard,
+    collaborators, pendingInvites, inviteEmail, setInviteEmail, inviting,
+    inviteMessage, teamError, clients, pendingClientInvites,
+    clientInviteEmail, setClientInviteEmail, clientInviteCap, setClientInviteCap,
+    invitingClient, clientInviteMessage, clientError,
+    deletingPhotoId, savingPhotoFeatures, deletingEvent,
+    showEditDetails, setShowEditDetails, editName, setEditName,
+    editDate, setEditDate, editVenue, setEditVenue, editDesc, setEditDesc,
+    savingDetails, publishing, archiving, togglingDownload,
+    showCoverModal, setShowCoverModal, coverSrc, setCoverSrc,
+    coverCrop, setCoverCrop, coverZoom, setCoverZoom,
+    coverPixels, setCoverPixels, uploadingCover,
+    zipping, zipProgress, zippingPicks, picksZipProgress,
+    favView, setFavView, eventFavourites, studioPicks, togglingPickId,
+    expandedClient, grantCap, setGrantCap, grantExpiry, setGrantExpiry, savingGrant,
+    uploadTab, setUploadTab, logLines, skippedFiles,
+    driveUrl, connectingDrive, testingConnection, connectionTest, testedUrl,
+    showExportModal, setShowExportModal, exportUrl, exportTesting,
+    exportConnectionTest, exportTestedUrl, exportSource, setExportSource,
+    togglingGuestUploads, togglingFeature,
+    showGuestUploadCard, setShowGuestUploadCard,
+    showSlideshowCard, setShowSlideshowCard,
+    approvingId, windowDaysInput, setWindowDaysInput, savingWindow,
+    subGalleryName, setSubGalleryName, creatingSubGallery,
+    showSubGalleryCard, setShowSubGalleryCard,
+    syncingDrive, backingUpExisting, togglingAutoSync, togglingDriveBackup,
+    reclaimingDriveBackup, driveBackupMessage,
+    shoots, settingUpShoots, regeneratingShoots, disconnectingShoots,
+    liveNotice, startingEvent, sourceFilter, setSourceFilter,
+    photoStatusFilter, setPhotoStatusFilter, activeTab, setActiveTab,
+    albums, albumsError, newAlbumName, setNewAlbumName, creatingAlbum, setCreatingAlbum,
+    exportClient, setExportClient, exportFormat, setExportFormat, exporting,
+    privacyDraft, setPrivacyDraft,
+    accessDraft, setAccessDraft,
+    managerSelected, setManagerSelected, bulking,
+    metaPhotoId, setMetaPhotoId, dupIds, setDupIds,
+    toolsFilter, setToolsFilter, managerVisible,
+    viewingPhoto, viewingFaces, facesLoading,
+    aiView, setAiView, faceGroupsState, openGroupId, setOpenGroupId,
+    togglingHighlightId, visibleManageablePhotos, selectedCount, visiblePhotos,
+    load, loadAlbums, loadTeam, loadClients, loadFavourites, loadPicks,
+    handleStartEvent, handleToggleGuestUploads, handleToggleFeature,
+    handleInviteClient, handleRemoveClient, openEditDetails, handleSaveDetails,
+    handlePublish, handleArchive, handleRestore, handleAllowDownload,
+    handleCoverFile, handleSaveCover, handleRemoveCover,
+    handleStudioZip, handlePicksZip, handleArchivePhoto, handleRestorePhoto,
+    toggleManagerSelect, toggleManagerSelectAllVisible,
+    selectionMembers, aiMembers, openFaceViewer,
+    handleBulkRemoveVisible, handleBulkMembership, handleBulkAddAllVisible,
+    handleTogglePick, openGrantPanel, handleSaveGrant,
+    handleSubmitBehalf, handleUnsubmit, handleRevoke, handleRestoreAccess,
+    handleApprovePhoto, handleToggleHighlight, handleRejectPhoto,
+    handleSaveWindowDays, handleCreateSubGallery, handleFiles,
+    handleDriveUrlChange, handleTestConnection, handleDriveConnect, handleDriveSync,
+    handleBackupExisting, handleExportUrlChange, handleExportTestConnection,
+    handleExportConnect, handleToggleAutoSync,
+    handleSetupShoots, handleShowShootsCredentials, handleRegenerateShoots,
+    handleDisconnectShoots, handleToggleDriveBackup, handleReclaimDriveBackupNow,
+    handleCopy, handleInvite, handleRemoveCollaborator, handleCancelInvite,
+    handleDeletePhoto, handlePhotoFeatureMembership, handleDeleteEvent,
+    handleSelectionExport, guestLink, formatBytes,
+  }
+
+  return (
+    <EventContext.Provider value={value}>
+      <EventShell>
+        <Outlet />
+      </EventShell>
+      <PhotoFaceViewer
+        photo={viewingPhoto}
+        faces={viewingFaces}
+        loading={facesLoading}
+        onClose={() => { setViewingPhoto(null); setViewingFaces([]) }}
+        onRemove={viewingPhoto ? () => {
+          handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
+          setViewingPhoto(null)
+          setViewingFaces([])
+        } : undefined}
+      />
+      {metaPhotoId && (
+        <PhotoMetaModal
+          eventId={eventId}
+          photo={photos.find((p) => p.photo_id === metaPhotoId) || null}
+          onClose={() => setMetaPhotoId(null)}
+          onChanged={load}
+        />
+      )}
+    </EventContext.Provider>
+  )
+}

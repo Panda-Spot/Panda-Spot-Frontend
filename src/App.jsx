@@ -26,12 +26,22 @@ import NotFound from './pages/public/NotFound.jsx'
 // Authenticated Photographer Studio Pages
 import Dashboard from './pages/Dashboard.jsx'
 import Events from './pages/Events.jsx'
+import EventWorkspace from './pages/event/EventWorkspace.jsx'
+import Overview from './pages/event/Overview.jsx'
+import Photos from './pages/event/Photos.jsx'
+import AISearch from './pages/event/AISearch.jsx'
+import Selection from './pages/event/Selection.jsx'
+import EventAlbums from './pages/event/EventAlbums.jsx'
+import Guests from './pages/event/Guests.jsx'
+import Exports from './pages/event/Exports.jsx'
+import Tools from './pages/event/Tools.jsx'
+import EventTeam from './pages/event/EventTeam.jsx'
 import Clients from './pages/Clients.jsx'
 import Team from './pages/Team.jsx'
 import MyInvitations from './pages/MyInvitations.jsx'
 import AccessBoard from './pages/AccessBoard.jsx'
 import Settings from './pages/Settings.jsx'
-import EventDetail from './pages/EventDetail.jsx'
+import EventAttendees from './pages/EventAttendees.jsx'
 import GuestEvent from './pages/GuestEvent.jsx'
 import GuestUpload from './pages/GuestUpload.jsx'
 import GuestSlideshow from './pages/GuestSlideshow.jsx'
@@ -56,7 +66,6 @@ import ClientGallery from './pages/ClientGallery.jsx'
 import ClientFavourites from './pages/ClientFavourites.jsx'
 import ClientAlbum from './pages/ClientAlbum.jsx'
 import StudioAlbum from './pages/StudioAlbum.jsx'
-import EventAttendees from './pages/EventAttendees.jsx'
 import Studio from './pages/Studio.jsx'
 import Inquire from './pages/Inquire.jsx'
 import { ClientContracts, ClientContractDetail } from './pages/ClientContracts.jsx'
@@ -300,38 +309,29 @@ function App() {
           </AppShell>
         }
       />
+      {/* Event workspace: own sidebar, grouped sections (no home sidebar inside an event) */}
       <Route
         path="/events/:eventId"
         element={
-          <AppShell>
-            <ProtectedRoute>
-              <EventDetail />
-            </ProtectedRoute>
-          </AppShell>
+          <ProtectedRoute>
+            <EventWorkspace />
+          </ProtectedRoute>
         }
-      />
-      {/* Album proofing: studio workspace (Phase 23) */}
-      <Route
-        path="/events/:eventId/albums/:albumId"
-        element={
-          <AppShell>
-            <ProtectedRoute>
-              <StudioAlbum />
-            </ProtectedRoute>
-          </AppShell>
-        }
-      />
-      {/* Lead capture: studio attendee dashboard (Phase 10) */}
-      <Route
-        path="/events/:eventId/attendees"
-        element={
-          <AppShell>
-            <ProtectedRoute>
-              <EventAttendees />
-            </ProtectedRoute>
-          </AppShell>
-        }
-      />
+      >
+        <Route index element={<Overview />} />
+        <Route path="photos" element={<Photos />} />
+        <Route path="ai-search" element={<AISearch />} />
+        <Route path="selection" element={<Selection />} />
+        <Route path="albums" element={<EventAlbums />} />
+        {/* Album proofing: studio workspace (Phase 23) */}
+        <Route path="albums/:albumId" element={<StudioAlbum />} />
+        {/* Lead capture: studio attendee dashboard (Phase 10) */}
+        <Route path="attendees" element={<EventAttendees />} />
+        <Route path="guests" element={<Guests />} />
+        <Route path="exports" element={<Exports />} />
+        <Route path="tools" element={<Tools />} />
+        <Route path="team" element={<EventTeam />} />
+      </Route>
       {/* Business studio suite (Phase 12) */}
       <Route
         path="/studio"
