@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route, NavLink, Navigate, Link, useLocation } from 'react-router-dom'
+import { Camera } from 'lucide-react'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -64,8 +65,6 @@ import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import ProtectedRoute from './ProtectedRoute.jsx'
 import AppShell from './components/AppShell.jsx'
-import CameraShutter from './components/CameraShutter.jsx'
-import RouteTransition from './components/RouteTransition.jsx'
 import { ShutterProvider } from './context/ShutterContext.jsx'
 
 // Styles
@@ -82,7 +81,9 @@ function AuthLayout({ children }) {
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <CameraShutter size="sm" mark />
+          <span style={{ width: 26, height: 26, borderRadius: 8, background: 'var(--accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <Camera size={14} />
+          </span>
           PandaSpot
           <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 9999, marginLeft: 8 }}>
             STUDIO
@@ -104,7 +105,6 @@ function App() {
   return (
     <ShutterProvider>
       <ScrollToTop />
-      <RouteTransition />
       <Routes>
       {/* 1. Public Marketing Routes (PDF Plan) */}
       <Route path="/" element={<Home />} />

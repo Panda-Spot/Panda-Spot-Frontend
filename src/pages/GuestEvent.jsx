@@ -24,7 +24,6 @@ import LeadCaptureForm from '../components/LeadCaptureForm.jsx'
 import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
-import CameraShutter from '../components/CameraShutter.jsx'
 import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 const MAX_SELFIES = 3
@@ -83,10 +82,6 @@ export default function GuestEvent() {
   // fresh. Never shown in the UI directly — from the guest's perspective
   // nothing happens until they tap the button.
   const prefetchRef = useRef(null)
-  // MERGE (Studio-Verse merge, Phase 16 — new design system): the camera-
-  // iris shutter plays once on first paint, then this flips true and the
-  // overlay unmounts — "the shutter opens, welcome" (see D4/CameraShutter.jsx).
-  const [shutterOpened, setShutterOpened] = useState(false)
 
   useEffect(() => {
     getPublicEvent(slug)
@@ -391,11 +386,6 @@ export default function GuestEvent() {
 
   return (
     <div ref={shellRef} className="guest-shell" style={accentStyle}>
-      {!shutterOpened && (
-        <div className="guest-shutter-overlay" style={{ background: heroStyle?.background || 'var(--bg)' }}>
-          <CameraShutter size="lg" reveal onOpened={() => setShutterOpened(true)} />
-        </div>
-      )}
       <div className="guest-hero" style={heroStyle}>
         {event?.logo_url ? (
           <img className="guest-logo" src={fileUrl(event.logo_url)} alt={event.studio_name || 'Studio logo'} />
