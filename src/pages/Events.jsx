@@ -40,6 +40,7 @@ export default function Events() {
   // Feature choice is mandatory at creation — at least one must stay on.
   const [newFaceSearch, setNewFaceSearch] = useState(true)
   const [newPhotoSelection, setNewPhotoSelection] = useState(false)
+  const [newEventDate, setNewEventDate] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
   const [roleFilter, setRoleFilter] = useState('all') // all | owner | collaborator
   const [search, setSearch] = useState('')
@@ -90,8 +91,9 @@ export default function Events() {
     setCreating(true)
     setError('')
     try {
-      await createEvent(name.trim(), { faceSearch: newFaceSearch, photoSelection: newPhotoSelection })
+      await createEvent(name.trim(), { faceSearch: newFaceSearch, photoSelection: newPhotoSelection, eventDate: newEventDate || undefined })
       setName('')
+      setNewEventDate('')
       pop()
       load()
     } catch (e) {
@@ -113,15 +115,6 @@ export default function Events() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Events
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Create an event, then bulk-upload the photos so guests can find themselves by selfie.
-        </p>
-      </div>
-
       <form className="card" onSubmit={handleCreate}>
         <div className="guest-link-label">New event</div>
         <div className="row" style={{ flexWrap: 'wrap' }}>
@@ -130,6 +123,13 @@ export default function Events() {
             placeholder="Event name (e.g. Smith Wedding 2026)"
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="text-input"
+            type="date"
+            value={newEventDate}
+            onChange={(e) => setNewEventDate(e.target.value)}
+            style={{ minWidth: 160 }}
           />
           {trialExhausted ? (
             <Link to="/billing">
@@ -283,6 +283,9 @@ export default function Events() {
                         {ev.name}
                         <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
                       </p>
+                      {ev.event_date && (
+                        <p className="hint">{new Date(ev.event_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                      )}
                       <p className="hint">{ev.photo_count} photo{ev.photo_count === 1 ? '' : 's'}</p>
                       <div className="event-card-pills">
                         <span className={`status-pill ${ev.face_search_enabled ? 'active' : 'off'}`}>

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Archive, ArchiveRestore } from 'lucide-react'
+import { Archive, ArchiveRestore } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 
 // Locked-down controls: archiving, feature switches and deletion live only
@@ -19,15 +19,6 @@ export default function Danger() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <AlertTriangle size={22} style={{ color: '#FBBF24' }} /> Danger section
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Archiving, feature switches and deletion — think twice here. Features are picked at creation; this is the only place they change afterwards.
-        </p>
-      </div>
-
       <div className="event-stack">
         <div className="card">
           <div className="guest-link-label">Features</div>
@@ -81,10 +72,17 @@ export default function Danger() {
           </div>
         )}
 
-        {event?.role === 'owner' && (
+        {event?.role === 'owner' && !event?.archived_at && (
+          <div className="card">
+            <div className="guest-link-label">Delete event</div>
+            <p className="hint">Archive this event first, then return here to permanently delete it.</p>
+          </div>
+        )}
+
+        {event?.role === 'owner' && event?.archived_at && (
           <div className="card danger-zone">
             <div className="guest-link-label">Delete event</div>
-            <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event.</p>
+            <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event. Only available for archived events — archive first, then return here to delete.</p>
             <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
               {deletingEvent ? 'Deleting.' : 'Delete event'}
             </button>
