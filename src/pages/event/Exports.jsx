@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 
 export default function Exports() {
@@ -10,6 +10,9 @@ export default function Exports() {
     studioPicks, zippingPicks, picksZipProgress, handlePicksZip,
     clients, exportClient, setExportClient, exportFormat, setExportFormat,
     handleSelectionExport, exporting,
+    handleToggleDriveBackup, togglingDriveBackup, handleBackupExisting, backingUpExisting,
+    handleReclaimDriveBackupNow, reclaimingDriveBackup, driveBackupMessage,
+    exportSource, setExportSource,
     setActiveTab,
   } = useEvent()
 
@@ -126,6 +129,55 @@ export default function Exports() {
             Open albums
           </Link>
         </div>
+
+        {event?.drive_folder_url && (
+          <div className="card">
+            <div className="guest-link-label">Google Drive export</div>
+            <p className="hint">
+              Back up photos to your connected Drive folder. Exported photos live in Drive for 2 days before being pulled back.
+            </p>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={!!event.drive_backup_enabled}
+                disabled={togglingDriveBackup || !event.drive_backup_available}
+                onChange={(e) => handleToggleDriveBackup(e.target.checked)}
+              />
+              Enable Drive backup
+            </label>
+            {event.drive_backup_enabled && (
+              <>
+                <label className="field-label" htmlFor="export-source-filter" style={{ marginTop: 10 }}>Which photos to export</label>
+                <select
+                  id="export-source-filter"
+                  className="text-input"
+                  value={exportSource}
+                  onChange={(e) => setExportSource(e.target.value)}
+                  style={{ maxWidth: 280 }}
+                >
+                  <option value="">All local photos (uploaded + PandaShoots)</option>
+                  <option value="upload">Uploaded only</option>
+                  <option value="shoots">PandaShoots only</option>
+                </select>
+                <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+                  <button className="btn secondary" type="button" onClick={handleBackupExisting} disabled={backingUpExisting}>
+                    <Upload size={14} /> {backingUpExisting ? 'Starting…' : 'Export to Drive'}
+                  </button>
+                  <button className="btn secondary" type="button" onClick={handleReclaimDriveBackupNow} disabled={reclaimingDriveBackup}>
+                    {reclaimingDriveBackup ? 'Reclaiming…' : 'Free up space'}
+                  </button>
+                </div>
+                <ul className="notice-list" style={{ marginTop: 8 }}>
+                  <li>7 days total before permanent deletion everywhere — make your own copy in Drive before then.</li>
+                </ul>
+                {driveBackupMessage && <p className="hint">{driveBackupMessage}</p>}
+              </>
+            )}
+            {!event.drive_folder_url && !event.drive_backup_available && (
+              <p className="hint" style={{ marginTop: 6 }}>Drive backup is not configured on this instance.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

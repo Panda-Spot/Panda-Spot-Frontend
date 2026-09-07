@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Download, Star } from 'lucide-react'
+import { Download, Heart, Lock, Star } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
@@ -30,9 +31,22 @@ export default function Selection() {
   return (
     <div>
       {!event?.photo_selection_enabled ? (
-        <div className="card">
-          <div className="guest-link-label">Photo Selection is off</div>
-          <p className="hint">Turn it on from Overview → Features to invite clients and collect picks.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '40px 24px' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14,
+            background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 14px',
+          }}>
+            <Heart size={24} style={{ color: '#EF4444' }} />
+          </div>
+          <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>Photo Selection is off</h3>
+          <p className="hint" style={{ maxWidth: 380, margin: '0 auto 16px', lineHeight: 1.5 }}>
+            Turn it on from <Link to={`/events/${eventId}/danger`} style={{ color: '#F59E0B' }}>Danger → Features</Link> to invite clients and collect picks.
+          </p>
+          <Link className="btn secondary" to={`/events/${eventId}/danger`}>
+            <Lock size={14} /> Open Danger section
+          </Link>
         </div>
       ) : !canView ? (
         <div className="card">

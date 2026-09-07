@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Camera, Lock, ScanFace, Heart, Search, Plus } from 'lucide-react'
+import { AlertTriangle, Camera, Lock, ScanFace, Heart, Search, Plus, CalendarDays, Building2, Gift, Sparkles, Crown, FileImage } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -12,14 +12,31 @@ import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 
 const PAGE_SIZES = [5, 10, 20, 50]
 
+const PRESETS = [
+  { key: 'wedding', label: 'Wedding', icon: Heart, faceSearch: true, photoSelection: true },
+  { key: 'corporate', label: 'Corporate', icon: Building2, faceSearch: true, photoSelection: false },
+  { key: 'birthday', label: 'Birthday', icon: Gift, faceSearch: true, photoSelection: false },
+  { key: 'minimal', label: 'Minimal', icon: Sparkles, faceSearch: true, photoSelection: false },
+  { key: 'premium', label: 'Premium', icon: Crown, faceSearch: true, photoSelection: true },
+  { key: 'blank', label: 'Blank theme', icon: FileImage, faceSearch: true, photoSelection: false },
+]
+
+const TYPE_FILTERS = [
+  { key: 'all', label: 'All types' },
+  { key: 'wedding', label: 'Wedding' },
+  { key: 'corporate', label: 'Corporate' },
+  { key: 'birthday', label: 'Birthday' },
+]
+
 // Pure + self-contained (runs in a Web Worker): filter by status, role and
 // search, newest first. NOTE: keep closure-free — serialized to the worker.
-function deriveVisibleEvents({ events, status, role, query }) {
+function deriveVisibleEvents({ events, status, role, type, query }) {
   const list = Array.isArray(events) ? events : []
   const q = (query || '').trim().toLowerCase()
   const filtered = list.filter((e) => {
     if (status === 'archived' ? !e.archived_at : status === 'active' ? !!e.archived_at : false) return false
     if (role !== 'all' && e.role !== role) return false
+    if (type !== 'all' && e.event_type !== type) return false
     if (q && !(e.name || '').toLowerCase().includes(q)) return false
     return true
   })
@@ -44,12 +61,14 @@ export default function Events() {
   const [newEventDate, setNewEventDate] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
   const [roleFilter, setRoleFilter] = useState('all') // all | owner | collaborator
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [selectedPreset, setSelectedPreset] = useState('wedding')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [subscription, setSubscription] = useState(null)
 
-  const filters = { status: statusFilter, role: roleFilter, query: search }
+  const filters = { status: statusFilter, role: roleFilter, type: typeFilter, query: search }
 
   const load = () => {
     setLoading(true)
@@ -72,10 +91,10 @@ export default function Events() {
       .then((rows) => { if (!stale) setVisibleEvents(rows) })
       .catch(() => { if (!stale) setVisibleEvents(runInline(deriveVisibleEvents, { events: allEvents, ...filters })) })
     return () => { stale = true }
-  }, [allEvents, statusFilter, roleFilter, search]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allEvents, statusFilter, roleFilter, typeFilter, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the page in range whenever the result set or page size changes.
-  useEffect(() => { setPage(1) }, [statusFilter, roleFilter, search, pageSize])
+  useEffect(() => { setPage(1) }, [statusFilter, roleFilter, typeFilter, search, pageSize])
   const pageCount = Math.max(1, Math.ceil(visibleEvents.length / pageSize))
   const safePage = Math.min(page, pageCount)
   const pagedEvents = visibleEvents.slice((safePage - 1) * pageSize, safePage * pageSize)
@@ -92,7 +111,13 @@ export default function Events() {
     setCreating(true)
     setError('')
     try {
-      await createEvent(name.trim(), { faceSearch: newFaceSearch, photoSelection: newPhotoSelection, eventDate: newEventDate || undefined })
+      const preset = PRESETS.find((p) => p.key === selectedPreset)
+      await createEvent(name.trim(), {
+        faceSearch: newFaceSearch,
+        photoSelection: newPhotoSelection,
+        eventDate: newEventDate || undefined,
+        eventType: preset?.key || undefined,
+      })
       setName('')
       setNewEventDate('')
       setNewFaceSearch(true)
@@ -210,6 +235,22 @@ export default function Events() {
                   </button>
                 ))}
               </div>
+              <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+                {TYPE_FILTERS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTypeFilter(key)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: typeFilter === key ? 'var(--bg-surface)' : 'transparent',
+                      color: typeFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </GlassCard>
 
@@ -246,6 +287,11 @@ export default function Events() {
                     <div className="event-card-body">
                       <p className="event-card-name" title={ev.name}>
                         {ev.name}
+                        {ev.event_type && (
+                          <span className="role-badge" style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', marginLeft: 6 }}>
+                            {ev.event_type}
+                          </span>
+                        )}
                         <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
                       </p>
                       {ev.event_date && (
@@ -259,6 +305,12 @@ export default function Events() {
                         <span className={`status-pill ${ev.photo_selection_enabled ? 'active' : 'off'}`}>
                           Selection
                         </span>
+                        {ev.shoots_connected && (
+                          <span className="status-pill active">PandaShoots</span>
+                        )}
+                        {ev.guest_upload_enabled && (
+                          <span className="status-pill active">Guest Upload</span>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -359,6 +411,37 @@ export default function Events() {
                 value={newEventDate}
                 onChange={(e) => setNewEventDate(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="field-label">Event type</label>
+              <p className="hint" style={{ marginBottom: 8 }}>Pick a preset to pre-configure features.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {PRESETS.map((p) => {
+                  const Icon = p.icon
+                  const active = selectedPreset === p.key
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPreset(p.key)
+                        setNewFaceSearch(p.faceSearch)
+                        setNewPhotoSelection(p.photoSelection)
+                      }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                        padding: '12px 8px', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
+                        border: `2px solid ${active ? '#F59E0B' : 'var(--border-default)'}`,
+                        background: active ? 'rgba(245,158,11,0.08)' : 'var(--bg-elevated)',
+                        color: active ? '#F59E0B' : 'var(--text-secondary)',
+                      }}
+                    >
+                      <Icon size={20} />
+                      <span className="text-xs font-medium">{p.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div>
               <label className="field-label">Features</label>

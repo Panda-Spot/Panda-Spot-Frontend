@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Star, XCircle } from 'lucide-react'
+import { CheckCircle2, Star, Upload, XCircle } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import Dropzone from '../../components/Dropzone.jsx'
@@ -38,6 +38,8 @@ export default function Photos() {
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
 
+  const [showUploadModal, setShowUploadModal] = useState(false)
+
   return (
     <div>
       <div className="event-stack">
@@ -53,178 +55,221 @@ export default function Photos() {
             </button>
           </div>
         ) : (
-          <div className="card upload-section">
-            <div className="guest-link-label">Upload photos</div>
-            <div className="upload-tabs">
-              <button
-                type="button"
-                className={uploadTab === 'files' ? 'upload-tab active' : 'upload-tab'}
-                onClick={() => setUploadTab('files')}
-              >
-                Upload files
-              </button>
-              <button
-                type="button"
-                className={uploadTab === 'drive' ? 'upload-tab active' : 'upload-tab'}
-                onClick={() => setUploadTab('drive')}
-              >
-                Import from Google Drive
-              </button>
-              <button
-                type="button"
-                className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
-                onClick={() => setUploadTab('shoots')}
-              >
-                PandaShoots
-              </button>
-            </div>
-
-            {uploadTab === 'files' ? (
-              <Dropzone
-                onFiles={handleFiles}
-                accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
-                disabled={uploading}
-                hint="Photos (JPG/PNG/WebP, face-indexed) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks"
-              />
-            ) : uploadTab === 'shoots' ? (
-              <div className="drive-import">
-                {!event?.shoots_connected ? (
-                  <>
-                    <ul className="notice-list">
-                      <li>Photos land in this gallery — scanned for faces and thumbnailed — while the shoot is still happening.</li>
-                      <li>Needs a camera with built-in FTP transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.</li>
-                    </ul>
-                    <button className="btn" type="button" onClick={handleSetupShoots} disabled={settingUpShoots}>
-                      {settingUpShoots ? 'Setting up…' : 'Set up camera upload'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="hint">Camera upload is on for this event.</p>
-                    {!shoots ? (
-                      <button className="btn" type="button" onClick={handleShowShootsCredentials}>
-                        Show camera setup details
-                      </button>
-                    ) : (
-                      <div className="shoots-credentials">
-                        <div className="shoots-field"><span>Host</span><code>{shoots.ftp_host}</code></div>
-                        <div className="shoots-field"><span>Port</span><code>{shoots.ftp_port}</code></div>
-                        <div className="shoots-field"><span>Username</span><code>{shoots.ftp_username}</code></div>
-                        <div className="shoots-field"><span>Password</span><code>{shoots.ftp_password}</code></div>
-                        <p className="hint">
-                          Enter these into your camera&apos;s FTP transfer settings menu, and set it to upload on capture.
-                        </p>
-                      </div>
-                    )}
-                    <div className="row">
-                      <button className="btn secondary" type="button" onClick={handleRegenerateShoots} disabled={regeneratingShoots}>
-                        {regeneratingShoots ? 'Regenerating…' : 'Regenerate credentials'}
-                      </button>
-                      <button className="btn danger-btn" type="button" onClick={handleDisconnectShoots} disabled={disconnectingShoots}>
-                        {disconnectingShoots ? 'Turning off…' : 'Turn off camera upload'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : event?.drive_folder_url ? (
-              <div className="drive-import">
-                <p className="hint">
-                  Connected to{' '}
-                  <a href={event.drive_folder_url} target="_blank" rel="noreferrer">this Drive folder</a>.
-                  {' '}
-                  {event.last_drive_sync_at
-                    ? `Last synced ${new Date(event.last_drive_sync_at).toLocaleString()}.`
-                    : 'Not synced yet.'}
-                </p>
-                <ul className="notice-list">
-                  <li>Syncing checks for photos added or removed in the folder since the last sync.</li>
-                  <li>New photos are imported; ones deleted from Drive are removed from PandaSpot too.</li>
-                </ul>
-                <div className="row">
-                  <button className="btn" type="button" onClick={handleDriveSync} disabled={uploading}>
-                    {syncingDrive ? 'Syncing…' : 'Sync now'}
-                  </button>
-                  <label className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={!!event.drive_sync_enabled}
-                      disabled={togglingAutoSync}
-                      onChange={(e) => handleToggleAutoSync(e.target.checked)}
-                    />
-                    Auto-sync once a day
-                  </label>
+          <>
+            {uploading ? (
+              <div className="card upload-section" style={{ cursor: 'pointer' }} onClick={() => setShowUploadModal(true)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Upload size={18} style={{ color: '#22C55E' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>Uploading photos…</div>
+                    <div className="hint">{progress?.percent ?? 0}% complete — click to view details</div>
+                  </div>
+                  <div style={{ width: 80, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${progress?.percent ?? 0}%`, height: '100%', background: '#22C55E', borderRadius: 3, transition: 'width 0.3s' }} />
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="drive-import">
-                <ul className="notice-list">
-                  <li>Imported photos and videos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails (photos) and face-search data are kept.</li>
-                  <li>Downloads and shares fetch the original from your Drive folder live.</li>
-                  <li>Keep the folder shared as &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific photos can no longer be downloaded through PandaSpot (search still works fine).</li>
-                  <li>Connecting scans and imports every photo currently in the folder, so it can take a while for a large one.</li>
-                </ul>
-                <div className="row">
-                  <input
-                    className="text-input"
-                    type="url"
-                    placeholder="https://drive.google.com/drive/folders/..."
-                    value={driveUrl}
-                    onChange={(e) => handleDriveUrlChange(e.target.value)}
-                    disabled={uploading}
-                  />
-                  <button
-                    className="btn secondary"
-                    type="button"
-                    onClick={handleTestConnection}
-                    disabled={uploading || testingConnection || !driveUrl.trim()}
-                  >
-                    {testingConnection ? 'Testing…' : 'Test connection'}
-                  </button>
-                  <button
-                    className="btn"
-                    type="button"
-                    onClick={handleDriveConnect}
-                    disabled={uploading || !(connectionTest?.ok && testedUrl === driveUrl.trim())}
-                    title={!(connectionTest?.ok && testedUrl === driveUrl.trim()) ? 'Test the connection first' : undefined}
-                  >
-                    {connectingDrive ? 'Connecting…' : 'Connect folder'}
-                  </button>
+              <button
+                className="card upload-section"
+                type="button"
+                onClick={() => setShowUploadModal(true)}
+                style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Upload size={18} style={{ color: '#F59E0B' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>Upload photos</div>
+                    <div className="hint">Drag & drop, import from Google Drive, or set up PandaShoots</div>
+                  </div>
                 </div>
-                {connectionTest && (
-                  <p className={connectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
-                    {connectionTest.ok ? (
-                      <>
-                        <CheckCircle2 size={14} /> Reachable — &quot;{connectionTest.folderName}&quot;
-                        {' · '}
-                        {connectionTest.permission === 'writer'
-                          ? 'Editor access given to anyone with the link'
-                          : connectionTest.permission === 'commenter'
-                            ? 'Commenter access given to anyone with the link'
-                            : connectionTest.permission === 'reader'
-                              ? 'Viewer access given to anyone with the link'
-                              : "Accessible, but the exact permission level couldn't be read"}
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={14} /> {connectionTest.message}
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
+              </button>
             )}
 
-            <JobProgressLog lines={logLines} progress={progress} />
-            {skippedFiles.length > 0 && (
-              <div className="skipped-files-box">
-                <p className="hint">Skipped {skippedFiles.length} file(s) — not imported/uploaded:</p>
-                <ul className="notice-list">
-                  {skippedFiles.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
+            <Modal open={showUploadModal} onClose={() => setShowUploadModal(false)} title="Upload photos" size="lg">
+              <div className="upload-tabs">
+                <button
+                  type="button"
+                  className={uploadTab === 'files' ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setUploadTab('files')}
+                >
+                  Upload files
+                </button>
+                <button
+                  type="button"
+                  className={uploadTab === 'drive' ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setUploadTab('drive')}
+                >
+                  Import from Google Drive
+                </button>
+                <button
+                  type="button"
+                  className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setUploadTab('shoots')}
+                >
+                  PandaShoots
+                </button>
               </div>
-            )}
-          </div>
+
+              {uploadTab === 'files' ? (
+                <Dropzone
+                  onFiles={handleFiles}
+                  accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
+                  disabled={uploading}
+                  hint="Photos (JPG/PNG/WebP, face-indexed) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks"
+                />
+              ) : uploadTab === 'shoots' ? (
+                <div className="drive-import">
+                  {!event?.shoots_connected ? (
+                    <>
+                      <ul className="notice-list">
+                        <li>Photos land in this gallery — scanned for faces and thumbnailed — while the shoot is still happening.</li>
+                        <li>Needs a camera with built-in FTP transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.</li>
+                      </ul>
+                      <button className="btn" type="button" onClick={handleSetupShoots} disabled={settingUpShoots}>
+                        {settingUpShoots ? 'Setting up…' : 'Set up camera upload'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="hint">Camera upload is on for this event.</p>
+                      {!shoots ? (
+                        <button className="btn" type="button" onClick={handleShowShootsCredentials}>
+                          Show camera setup details
+                        </button>
+                      ) : (
+                        <div className="shoots-credentials">
+                          <div className="shoots-field"><span>Host</span><code>{shoots.ftp_host}</code></div>
+                          <div className="shoots-field"><span>Port</span><code>{shoots.ftp_port}</code></div>
+                          <div className="shoots-field"><span>Username</span><code>{shoots.ftp_username}</code></div>
+                          <div className="shoots-field"><span>Password</span><code>{shoots.ftp_password}</code></div>
+                          <p className="hint">
+                            Enter these into your camera&apos;s FTP transfer settings menu, and set it to upload on capture.
+                          </p>
+                        </div>
+                      )}
+                      <div className="row">
+                        <button className="btn secondary" type="button" onClick={handleRegenerateShoots} disabled={regeneratingShoots}>
+                          {regeneratingShoots ? 'Regenerating…' : 'Regenerate credentials'}
+                        </button>
+                        <button className="btn danger-btn" type="button" onClick={handleDisconnectShoots} disabled={disconnectingShoots}>
+                          {disconnectingShoots ? 'Turning off…' : 'Turn off camera upload'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : event?.drive_folder_url ? (
+                <div className="drive-import">
+                  <p className="hint">
+                    Connected to{' '}
+                    <a href={event.drive_folder_url} target="_blank" rel="noreferrer">this Drive folder</a>.
+                    {' '}
+                    {event.last_drive_sync_at
+                      ? `Last synced ${new Date(event.last_drive_sync_at).toLocaleString()}.`
+                      : 'Not synced yet.'}
+                  </p>
+                  <ul className="notice-list">
+                    <li>Syncing checks for photos added or removed in the folder since the last sync.</li>
+                    <li>New photos are imported; ones deleted from Drive are removed from PandaSpot too.</li>
+                  </ul>
+                  <div className="row">
+                    <button className="btn" type="button" onClick={handleDriveSync} disabled={uploading}>
+                      {syncingDrive ? 'Syncing…' : 'Sync now'}
+                    </button>
+                    <label className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={!!event.drive_sync_enabled}
+                        disabled={togglingAutoSync}
+                        onChange={(e) => handleToggleAutoSync(e.target.checked)}
+                      />
+                      Auto-sync once a day
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="drive-import">
+                  <ul className="notice-list">
+                    <li>Imported photos and videos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails (photos) and face-search data are kept.</li>
+                    <li>Downloads and shares fetch the original from your Drive folder live.</li>
+                    <li>Keep the folder shared as &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific photos can no longer be downloaded through PandaSpot (search still works fine).</li>
+                    <li>Connecting scans and imports every photo currently in the folder, so it can take a while for a large one.</li>
+                  </ul>
+                  <div className="row">
+                    <input
+                      className="text-input"
+                      type="url"
+                      placeholder="https://drive.google.com/drive/folders/..."
+                      value={driveUrl}
+                      onChange={(e) => handleDriveUrlChange(e.target.value)}
+                      disabled={uploading}
+                    />
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={uploading || testingConnection || !driveUrl.trim()}
+                    >
+                      {testingConnection ? 'Testing…' : 'Test connection'}
+                    </button>
+                    <button
+                      className="btn"
+                      type="button"
+                      onClick={handleDriveConnect}
+                      disabled={uploading || !(connectionTest?.ok && testedUrl === driveUrl.trim())}
+                      title={!(connectionTest?.ok && testedUrl === driveUrl.trim()) ? 'Test the connection first' : undefined}
+                    >
+                      {connectingDrive ? 'Connecting…' : 'Connect folder'}
+                    </button>
+                  </div>
+                  {connectionTest && (
+                    <p className={connectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
+                      {connectionTest.ok ? (
+                        <>
+                          <CheckCircle2 size={14} /> Reachable — &quot;{connectionTest.folderName}&quot;
+                          {' · '}
+                          {connectionTest.permission === 'writer'
+                            ? 'Editor access given to anyone with the link'
+                            : connectionTest.permission === 'commenter'
+                              ? 'Commenter access given to anyone with the link'
+                              : connectionTest.permission === 'reader'
+                                ? 'Viewer access given to anyone with the link'
+                                : "Accessible, but the exact permission level couldn't be read"}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={14} /> {connectionTest.message}
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <JobProgressLog lines={logLines} progress={progress} />
+              {skippedFiles.length > 0 && (
+                <div className="skipped-files-box">
+                  <p className="hint">Skipped {skippedFiles.length} file(s) — not imported/uploaded:</p>
+                  <ul className="notice-list">
+                    {skippedFiles.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+            </Modal>
+          </>
         )}
 
         {error && <p className="error">{error}</p>}

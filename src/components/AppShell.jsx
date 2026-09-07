@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../auth.jsx'
 import { requestEmailVerification } from '../api.js'
 import ThemeToggle from './ThemeToggle.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import Avatar from './ui/Avatar.jsx'
 import { useShutterNavigate } from '../context/ShutterContext.jsx'
 
@@ -252,9 +253,10 @@ export default function AppShell({ children }) {
   const sidebarRef = useRef(null)
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+      return stored === null ? true : stored === 'true'
     } catch {
-      return false
+      return true
     }
   })
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -508,6 +510,7 @@ export default function AppShell({ children }) {
               )}
             </div>
             <div className="app-topbar-actions">
+              <NotificationBell />
               {user?.email && <span className="app-topbar-user hint">{user.email}</span>}
               <ThemeToggle className="topbar-theme-toggle" />
             </div>

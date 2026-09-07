@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../auth.jsx'
 import ThemeToggle from '../../components/ThemeToggle.jsx'
+import NotificationBell from '../../components/NotificationBell.jsx'
 import Avatar from '../../components/ui/Avatar.jsx'
 import { useShutterNavigate } from '../../context/ShutterContext.jsx'
 import { useEvent } from './EventContext.jsx'
@@ -94,9 +95,10 @@ export default function EventShell() {
   const shutterNavigate = useShutterNavigate()
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(SIDEBAR_KEY) === 'true'
+      const stored = localStorage.getItem(SIDEBAR_KEY)
+      return stored === null ? true : stored === 'true'
     } catch {
-      return false
+      return true
     }
   })
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -255,6 +257,7 @@ export default function EventShell() {
               )}
             </div>
             <div className="app-topbar-actions">
+              <NotificationBell />
               {user?.email && <span className="app-topbar-user hint">{user.email}</span>}
               <ThemeToggle className="topbar-theme-toggle" />
             </div>

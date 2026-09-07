@@ -207,11 +207,11 @@ export const adminResetAccountPassword = (email, newPassword) =>
 
 // --- Events (photographer, authenticated) ---
 
-export const createEvent = (name, { faceSearch = true, photoSelection = false, eventDate } = {}) =>
+export const createEvent = (name, { faceSearch = true, photoSelection = false, eventDate, eventType } = {}) =>
   request("/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, face_search_enabled: faceSearch, photo_selection_enabled: photoSelection, event_date: eventDate || null }),
+    body: JSON.stringify({ name, face_search_enabled: faceSearch, photo_selection_enabled: photoSelection, event_date: eventDate || null, event_type: eventType || null }),
   })
 
 export const listEvents = (status) => {
@@ -1701,3 +1701,16 @@ export const respondClientQuestionnaire = (assignmentId, answers) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ answers }),
   })
+
+// ── Notifications ────────────────────────────────────────────────────
+export const listNotifications = (limit = 50) =>
+  request(`/notifications?limit=${limit}`)
+
+export const unreadNotificationCount = () =>
+  request("/notifications/unread-count")
+
+export const markNotificationRead = (id) =>
+  request(`/notifications/${id}/read`, { method: "POST" })
+
+export const markAllNotificationsRead = () =>
+  request("/notifications/read-all", { method: "POST" })

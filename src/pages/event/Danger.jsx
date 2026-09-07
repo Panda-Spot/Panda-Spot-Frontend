@@ -1,11 +1,8 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, ArchiveRestore } from 'lucide-react'
+import { Archive, ArchiveRestore, Trash2, AlertTriangle } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 
-// Locked-down controls: archiving, feature switches and deletion live only
-// here — features are chosen at event creation and shouldn't be flipped
-// casually from the everyday pages.
 export default function Danger() {
   const {
     eventId, event,
@@ -72,20 +69,31 @@ export default function Danger() {
           </div>
         )}
 
-        {event?.role === 'owner' && !event?.archived_at && (
-          <div className="card">
-            <div className="guest-link-label">Delete event</div>
-            <p className="hint">Archive this event first, then return here to permanently delete it.</p>
-          </div>
-        )}
-
-        {event?.role === 'owner' && event?.archived_at && (
-          <div className="card danger-zone">
-            <div className="guest-link-label">Delete event</div>
-            <p className="hint">Permanently deletes this event, every photo, and the guest link. Guests will no longer be able to search this event. Only available for archived events — archive first, then return here to delete.</p>
-            <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
-              {deletingEvent ? 'Deleting.' : 'Delete event'}
-            </button>
+        {event?.role === 'owner' && (
+          <div className={`card ${event?.archived_at ? 'danger-zone' : ''}`}>
+            <div className="guest-link-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Trash2 size={14} /> Delete event
+            </div>
+            {event?.archived_at ? (
+              <>
+                <p className="hint">
+                  Permanently deletes this event, every photo, and the guest link. This cannot be undone.
+                </p>
+                <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
+                  {deletingEvent ? 'Deleting…' : 'Delete permanently'}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">
+                  Archive this event first, then come back here to permanently delete it. Or delete directly — the event
+                  will be archived and immediately deleted in one step.
+                </p>
+                <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
+                  {deletingEvent ? 'Deleting…' : 'Archive & delete'}
+                </button>
+              </>
+            )}
           </div>
         )}
 
