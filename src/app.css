@@ -1599,9 +1599,9 @@
 
 .app-content {
   flex: 1;
-  max-width: 1080px;
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   padding: 28px 24px 60px;
 }
 
@@ -2312,14 +2312,16 @@ h2.section-title {
 }
 
 .app-content {
-  max-width: 1220px;
+  max-width: none;
+  margin: 0;
+  width: 100%;
   padding: 30px 28px 70px;
 }
 
 .verify-banner {
   width: calc(100% - 56px);
-  max-width: 1164px;
-  margin: 16px auto 0;
+  max-width: none;
+  margin: 16px 28px 0;
   background: var(--surface-soft);
   border: 1px solid rgba(14, 138, 138, 0.2);
 }
