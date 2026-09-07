@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Lock } from 'lucide-react'
+import { AlertTriangle, Camera, Lock, Search } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -10,39 +10,19 @@ import Modal from '../components/ui/Modal.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 
-function guestLink(slug) {
-  return `${window.location.origin}/e/${slug}`
-}
+const PAGE_SIZES = [5, 10, 20, 50]
 
-function CopyLinkButton({ slug }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(guestLink(slug))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard API unavailable — ignore
-    }
-  }
-
-  return (
-    <button className="btn secondary copy-btn" type="button" onClick={handleCopy}>
-      {copied ? 'Copied!' : 'Copy guest link'}
-    </button>
-  )
-}
-
-// Pure + self-contained (runs in a Web Worker): filter by tab, newest first.
-// NOTE: keep closure-free — the worker serializes this function's source.
-function deriveVisibleEvents({ events, status }) {
+// Pure + self-contained (runs in a Web Worker): filter by status, role and
+// search, newest first. NOTE: keep closure-free — serialized to the worker.
+function deriveVisibleEvents({ events, status, role, query }) {
   const list = Array.isArray(events) ? events : []
-  const filtered = status === 'all'
-    ? list.slice()
-    : list.filter((e) => (status === 'archived' ? !!e.archived_at : !e.archived_at))
+  const q = (query || '').trim().toLowerCase()
+  const filtered = list.filter((e) => {
+    if (status === 'archived' ? !e.archived_at : status === 'active' ? !!e.archived_at : false) return false
+    if (role !== 'all' && e.role !== role) return false
+    if (q && !(e.name || '').toLowerCase().includes(q)) return false
+    return true
+  })
   filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
   return filtered
 }
@@ -61,14 +41,20 @@ export default function Events() {
   const [newFaceSearch, setNewFaceSearch] = useState(true)
   const [newPhotoSelection, setNewPhotoSelection] = useState(false)
   const [statusFilter, setStatusFilter] = useState('active')
+  const [roleFilter, setRoleFilter] = useState('all') // all | owner | collaborator
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [subscription, setSubscription] = useState(null)
+
+  const filters = { status: statusFilter, role: roleFilter, query: search }
 
   const load = () => {
     setLoading(true)
     listEvents('all')
       .then((rows) => {
         setAllEvents(rows || [])
-        setVisibleEvents(runInline(deriveVisibleEvents, { events: rows || [], status: statusFilter }))
+        setVisibleEvents(runInline(deriveVisibleEvents, { events: rows || [], ...filters }))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -76,15 +62,21 @@ export default function Events() {
 
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tab switches re-filter the already-loaded list in a worker — instant,
+  // Filter changes re-filter the already-loaded list in a worker — instant,
   // no API call. The previous list stays on screen until the new one lands.
   useEffect(() => {
     let stale = false
-    runInWorker(deriveVisibleEvents, { events: allEvents, status: statusFilter })
+    runInWorker(deriveVisibleEvents, { events: allEvents, ...filters })
       .then((rows) => { if (!stale) setVisibleEvents(rows) })
-      .catch(() => { if (!stale) setVisibleEvents(runInline(deriveVisibleEvents, { events: allEvents, status: statusFilter })) })
+      .catch(() => { if (!stale) setVisibleEvents(runInline(deriveVisibleEvents, { events: allEvents, ...filters })) })
     return () => { stale = true }
-  }, [allEvents, statusFilter])
+  }, [allEvents, statusFilter, roleFilter, search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the page in range whenever the result set or page size changes.
+  useEffect(() => { setPage(1) }, [statusFilter, roleFilter, search, pageSize])
+  const pageCount = Math.max(1, Math.ceil(visibleEvents.length / pageSize))
+  const safePage = Math.min(page, pageCount)
+  const pagedEvents = visibleEvents.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   useEffect(() => {
     getMySubscription()
@@ -188,59 +180,147 @@ export default function Events() {
         </div>
       ) : (
         <>
-          <div className="flex gap-1 p-1 rounded-xl w-fit mb-4" style={{ background: 'var(--bg-elevated)' }}>
-            {[
-              { key: 'active', label: 'Active' },
-              { key: 'archived', label: 'Archived' },
-              { key: 'all', label: 'All' },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={{
-                  background: statusFilter === key ? 'var(--bg-surface)' : 'transparent',
-                  color: statusFilter === key ? '#F59E0B' : 'var(--text-secondary)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <GlassCard hover={false}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 rounded-lg px-3 py-2 flex-1 min-w-[200px]" style={{ background: 'var(--bg-elevated)' }}>
+                <Search size={15} style={{ color: 'var(--text-tertiary)' }} />
+                <input
+                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                  style={{ color: 'var(--text-primary)' }}
+                  placeholder="Search events by name…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <label className="text-xs flex items-center gap-2" style={{ color: 'var(--text-tertiary)' }}>
+                Per page
+                <select
+                  className="rounded-lg px-2 py-1.5 text-xs"
+                  style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                >
+                  {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="flex gap-3 flex-wrap mt-3">
+              <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+                {[
+                  { key: 'active', label: 'Active' },
+                  { key: 'archived', label: 'Archived' },
+                  { key: 'all', label: 'All' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setStatusFilter(key)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: statusFilter === key ? 'var(--bg-surface)' : 'transparent',
+                      color: statusFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--bg-elevated)' }}>
+                {[
+                  { key: 'all', label: 'All roles' },
+                  { key: 'owner', label: 'Owner' },
+                  { key: 'collaborator', label: 'Collaborator' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setRoleFilter(key)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: roleFilter === key ? 'var(--bg-surface)' : 'transparent',
+                      color: roleFilter === key ? '#F59E0B' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
+
+          <p className="text-xs mt-4 mb-3" style={{ color: 'var(--text-tertiary)' }}>
+            {visibleEvents.length === 0
+              ? `No events found · ${allEvents.length} total`
+              : `Showing ${((safePage - 1) * pageSize) + 1}–${Math.min(safePage * pageSize, visibleEvents.length)} of ${visibleEvents.length} found · ${allEvents.length} total`}
+          </p>
+
           {visibleEvents.length === 0 ? (
             <p className="hint">
-              {statusFilter === 'archived'
-                ? 'No archived events — archiving hides an event from guests and clients without deleting anything.'
-                : 'No events yet — create one above.'}
+              {allEvents.length === 0
+                ? 'No events yet — create one above.'
+                : 'No events match these filters.'}
             </p>
           ) : (
-            <ul className="event-list">
-              {visibleEvents.map((ev) => (
-                <li key={ev.id} className="event-list-item">
-                  <Link to={`/events/${ev.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <>
+              <div className="event-grid">
+                {pagedEvents.map((ev) => (
+                  <Link key={ev.id} to={`/events/${ev.id}`} className="event-card">
                     {ev.cover_url ? (
                       <img
                         src={fileUrl(ev.cover_url)}
                         alt=""
-                        style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                        className="event-card-cover"
                         draggable={false}
                         onError={(e) => { e.currentTarget.style.display = 'none' }}
                       />
-                    ) : null}
-                    <span style={{ flex: 1 }}>
-                      {ev.name}
-                      <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
-                    </span>
-                    <span className="count">{ev.photo_count} photo{ev.photo_count === 1 ? '' : 's'}</span>
+                    ) : (
+                      <div className="event-card-cover event-card-cover-empty">
+                        <Camera size={28} />
+                      </div>
+                    )}
+                    <div className="event-card-body">
+                      <p className="event-card-name" title={ev.name}>
+                        {ev.name}
+                        <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
+                      </p>
+                      <p className="hint">{ev.photo_count} photo{ev.photo_count === 1 ? '' : 's'}</p>
+                      <div className="event-card-pills">
+                        <span className={`status-pill ${ev.face_search_enabled ? 'active' : 'off'}`}>
+                          Face Search
+                        </span>
+                        <span className={`status-pill ${ev.photo_selection_enabled ? 'active' : 'off'}`}>
+                          Selection
+                        </span>
+                      </div>
+                    </div>
                   </Link>
-                  <div className="event-list-footer">
-                    <span className="hint guest-link-text">{guestLink(ev.guestSlug)}</span>
-                    <CopyLinkButton slug={ev.guestSlug} />
-                  </div>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between flex-wrap gap-2 mt-4">
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  Page {safePage} of {pageCount}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    disabled={safePage >= pageCount}
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}
