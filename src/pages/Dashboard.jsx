@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { gsap } from 'gsap'
-import { Camera, CalendarDays, Heart, ImageIcon, Lock, Users } from 'lucide-react'
+import { CalendarDays, Heart, ImageIcon, Lock, Users, ScanFace, Zap, BookOpen, Receipt, QrCode, Tv, Gift, ChevronDown } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
@@ -44,8 +44,18 @@ function CopyLinkButton({ slug }) {
 }
 
 /* ── One-time welcome popup for a brand-new free trial ─────── */
+const TRIAL_PERKS = [
+  { icon: ScanFace, title: 'AI face search', text: 'Guests take a selfie and instantly find every photo they appear in — no sorting by you.' },
+  { icon: Heart, title: 'Photo selection', text: 'Clients favourite their picks and submit — you get a clean final list, not chats.' },
+  { icon: Zap, title: 'Live shoot uploads', text: 'Camera-to-cloud FTP lands photos in the gallery while you keep shooting.' },
+  { icon: BookOpen, title: 'Album proofing', text: 'Share flipbook versions, collect pinned comments, get approvals locked.' },
+  { icon: QrCode, title: 'QR cards + TV wall', text: 'Printable guest QR plus a live venue slideshow that updates itself.' },
+  { icon: Receipt, title: 'Studio billing', text: 'Quotations, bills, receipts, packages and bookings in one place.' },
+]
+
 function TrialWelcomeModal({ subscription }) {
   const [dismissed, setDismissed] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (subscription?.status !== 'TRIAL') return
@@ -76,15 +86,55 @@ function TrialWelcomeModal({ subscription }) {
     : null
 
   return (
-    <Modal open={!dismissed} onClose={close} title="Welcome to PandaSpot!" size="sm">
-      <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+    <Modal open={!dismissed} onClose={close} title="Welcome to PandaSpot!" size="lg">
+      <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
         You&apos;re on a <strong style={{ color: 'var(--text-primary)' }}>free trial</strong> — upload up to{' '}
         <strong style={{ color: 'var(--text-primary)' }}>{subscription.photo_quota_total} photos</strong>
         {daysLeft !== null && (
           <> for the next <strong style={{ color: 'var(--text-primary)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong></>
-        )}. Create your first event to get started.
+        )}.
       </p>
-      <GoldButton onClick={close} className="w-full justify-center">Let&apos;s go</GoldButton>
+
+      <div className="trial-bonus">
+        <Gift size={18} className="trial-bonus-icon" />
+        <div>
+          <p className="trial-bonus-title">Signup bonus — everything unlocked, no credit card</p>
+          <p className="trial-bonus-text">Face search, photo selection, albums, studio suite and billing are all open during your trial.</p>
+        </div>
+      </div>
+
+      <p className="trial-perks-heading">What you get</p>
+      <ul className="trial-perks">
+        {TRIAL_PERKS.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="trial-perk">
+            <span className="trial-perk-icon"><Icon size={18} /></span>
+            <span>
+              <strong style={{ color: 'var(--text-primary)' }}>{title}</strong>
+              <span className="trial-perk-text"> — {text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <button type="button" className="trial-readmore" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+        {expanded ? 'Show less' : 'Read more — how studios save hours every event'}
+        <ChevronDown size={15} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </button>
+
+      {expanded && (
+        <div className="trial-deepdive">
+          <p><strong>Before PandaSpot:</strong> you cull thousands of photos by hand, export sneak-peeks, and chase every guest and client over WhatsApp for picks and approvals.</p>
+          <p><strong>With PandaSpot:</strong> upload once — guests serve themselves with a selfie, clients submit a locked favourite list, and albums get pinned feedback plus a locked approval. Same-day delivery stops being a heroic effort.</p>
+          <p><strong>Live events:</strong> PandaShoots pushes camera shots straight into the gallery and the venue TV wall, so the crowd sees itself during the event — and every shared photo links new guests back to you.</p>
+          <p><strong>Money side:</strong> packages, quotations, bills, receipts and bookings live next to your galleries, so the business paperwork stops living in five different apps.</p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mt-4">
+        <Tv size={15} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        <p className="hint" style={{ margin: 0 }}>Tip: create your first event to get your guest link and QR card.</p>
+      </div>
+      <GoldButton onClick={close} className="w-full justify-center mt-4">Let&apos;s go</GoldButton>
     </Modal>
   )
 }
