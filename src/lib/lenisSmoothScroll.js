@@ -163,6 +163,9 @@ class SmoothScroller {
     window.removeEventListener('touchmove', this.onTouchMove)
     window.removeEventListener('scroll', this.onScroll)
     this.listeners.clear()
+    if (instance === this) {
+      instance = null
+    }
   }
 }
 

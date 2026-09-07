@@ -24,7 +24,6 @@ import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
 import HeroInteractiveDemo from '../../components/public/HeroInteractiveDemo.jsx'
 import WorkflowInteractiveStepper from '../../components/public/WorkflowInteractiveStepper.jsx'
 import FAQAccordion from '../../components/public/FAQAccordion.jsx'
-import { initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import { initScrollAnimations } from '../../lib/scrollAnimations.js'
 
 export default function Home() {
@@ -40,11 +39,9 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    const scroller = initSmoothScroll({ lerp: 0.085 })
     const cleanupAnim = initScrollAnimations()
     return () => {
       cleanupAnim?.()
-      scroller?.destroy()
     }
   }, [])
 

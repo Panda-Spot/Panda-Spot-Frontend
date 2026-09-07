@@ -53,6 +53,9 @@ export default function GoldInput({
           type="button"
           onClick={() => setShowPass(v => !v)}
           className="absolute right-0 top-5 text-[var(--text-tertiary)] hover:text-[var(--accent-primary)] transition-colors"
+          aria-label={showPass ? 'Hide password' : 'Show password'}
+          title={showPass ? 'Hide password' : 'Show password'}
+          tabIndex={-1}
         >
           {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>

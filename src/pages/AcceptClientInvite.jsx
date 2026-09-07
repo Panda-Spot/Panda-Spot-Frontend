@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { acceptClientInvite, getClientInvite } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import PasswordInput from '../components/ui/PasswordInput.jsx'
 
 // MERGE (Studio-Verse Photo Selection): unlike InviteAccept.jsx (staff
 // collaborator invites, which requires an existing PandaSpot login), a
@@ -61,13 +62,12 @@ export default function AcceptClientInvite() {
               placeholder="Optional"
             />
             <label className="field-label" htmlFor="client-password">Set a password</label>
-            <input
+            <PasswordInput
               id="client-password"
-              className="text-input"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
+              autoComplete="new-password"
               required
             />
           </>
