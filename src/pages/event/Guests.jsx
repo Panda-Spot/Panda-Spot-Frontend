@@ -54,15 +54,6 @@ export default function Guests() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Guests
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Guest link and QR cards, guest uploads moderation, live TV wall and attendees.
-        </p>
-      </div>
-
       <div className="event-stack">
         {event && (
           <div className="card guest-link-card">

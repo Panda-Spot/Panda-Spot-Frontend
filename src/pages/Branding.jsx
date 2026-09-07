@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CreditCard, Palette, Receipt } from 'lucide-react'
+import { CreditCard, Receipt } from 'lucide-react'
 import { fileUrl, getBranding, getMySubscription, getStudioProfile, saveBranding, updateStudioProfile } from '../api.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
@@ -136,12 +136,6 @@ export default function Branding() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Palette size={22} className="text-gold-500" /> Studio Profile
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          How your studio appears on guest pages and guest cards — name, logo, and brand color.
-        </p>
         <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
           For full gallery themes, presets, your studio address, and custom domains, see{' '}
           <Link to="/themes" style={{ color: 'var(--accent)' }}>Gallery Themes</Link>.

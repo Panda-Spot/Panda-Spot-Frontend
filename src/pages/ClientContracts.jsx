@@ -22,7 +22,6 @@ export function ClientContracts() {
   return (
     <div>
       <Link className="back-link" to="/client"><ArrowLeft size={13} style={{ display: 'inline' }} /> Your events</Link>
-      <h1 style={{ marginTop: 10 }}>Contracts</h1>
       {rows.length === 0 ? (
         <p className="hint">No contracts assigned to you yet.</p>
       ) : (

@@ -89,15 +89,6 @@ export default function Billing() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <CreditCard size={22} className="text-gold-500" /> Billing
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Your SaaS subscription, wallet credits, and client invoicing.
-        </p>
-      </div>
-
       {freeAccessEnabled && (
         <p className="hint">Platform free access is currently enabled. Upload quota tracking is wired but not enforced until the platform turns free access off.</p>
       )}

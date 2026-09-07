@@ -57,7 +57,6 @@ export default function ClientQuestionnaires() {
   return (
     <div>
       <Link className="back-link" to="/client"><ArrowLeft size={13} style={{ display: 'inline' }} /> Your events</Link>
-      <h1 style={{ marginTop: 10 }}>Questionnaires</h1>
       {rows.length === 0 ? (
         <p className="hint">No questionnaires assigned to you yet.</p>
       ) : (

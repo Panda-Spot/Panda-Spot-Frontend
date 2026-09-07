@@ -17,15 +17,6 @@ export default function Exports() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Exports
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Every download in one place — full gallery, studio picks and client selection records.
-        </p>
-      </div>
-
       <div className="event-stack">
         {event?.started && (
           <div className="card">

@@ -18,15 +18,6 @@ export default function EventTeam() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Team
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Second shooters and assistants for this event only.
-        </p>
-      </div>
-
       {event?.role !== 'owner' ? (
         <div className="card">
           <div className="guest-link-label">Team</div>

@@ -65,25 +65,25 @@ const GROUPS = [
 ]
 
 const TITLES = {
-  '': 'Overview',
-  photos: 'Photos & Imports',
-  'ai-search': 'AI Face Search',
-  selection: 'Photo Selection',
-  albums: 'Albums',
-  guests: 'Guests',
-  exports: 'Exports',
-  tools: 'Tools',
-  theme: 'Theme',
-  team: 'Team',
-  danger: 'Danger',
-  attendees: 'Attendees',
+  '': { title: 'Overview', desc: 'Details, numbers, enabled features and next steps.' },
+  photos: { title: 'Photos & Imports', desc: 'Upload, import and manage photos.' },
+  'ai-search': { title: 'AI Face Search', desc: 'Searchable photos, face groups and analytics.' },
+  selection: { title: 'Photo Selection', desc: 'Clients, favourites and exports.' },
+  albums: { title: 'Albums', desc: 'Proofing projects and versions.' },
+  guests: { title: 'Guests', desc: 'Links, uploads, TV wall and attendees.' },
+  exports: { title: 'Exports', desc: 'Zips, records and proofs.' },
+  tools: { title: 'Tools', desc: 'Quality, duplicates and covers.' },
+  theme: { title: 'Theme', desc: "This event's look." },
+  team: { title: 'Team', desc: 'Second shooters for this event.' },
+  danger: { title: 'Danger', desc: 'Archive, features and deletion.' },
+  attendees: { title: 'Attendees', desc: 'Visitors, leads and CSV export.' },
 }
 
 function sectionOf(pathname, eventId) {
   const rest = pathname.split(`/events/${eventId}`)[1] || '/'
   const seg = rest.split('/').filter(Boolean)[0] || ''
-  if (seg === 'albums' && rest.split('/').filter(Boolean).length > 1) return 'Albums'
-  return TITLES[seg] || 'Event'
+  if (seg === 'albums' && rest.split('/').filter(Boolean).length > 1) return TITLES.albums
+  return TITLES[seg] || { title: 'Event', desc: '' }
 }
 
 export default function EventShell() {
@@ -248,7 +248,12 @@ export default function EventShell() {
             >
               <Menu size={20} />
             </button>
-            <h1 className="app-topbar-title">{sectionOf(location.pathname, eventId)}</h1>
+            <div className="app-topbar-heading">
+              <h1 className="app-topbar-title">{sectionOf(location.pathname, eventId).title}</h1>
+              {sectionOf(location.pathname, eventId).desc && (
+                <span className="app-topbar-sub">{sectionOf(location.pathname, eventId).desc}</span>
+              )}
+            </div>
             <div className="app-topbar-actions">
               {user?.email && <span className="app-topbar-user hint">{user.email}</span>}
               <ThemeToggle className="topbar-theme-toggle" />

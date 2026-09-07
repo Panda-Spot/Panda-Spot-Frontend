@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LayoutDashboard, Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
+import { Users, Calendar, Image, HardDrive, Search } from 'lucide-react'
 import { driveBackupConnectUrl, getAdminOverview } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import StatTile from '../components/StatTile.jsx'
@@ -22,15 +22,6 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <LayoutDashboard size={22} className="text-gold-500" /> Platform overview
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Every studio, event, photo, and search on the platform.
-        </p>
-      </div>
-
       {user?.is_admin && (
         <GlassCard hover={false}>
           <h2 className="section-title" style={{ fontSize: 18, marginTop: 0 }}>Drive backup <span className="hint">(advanced, beta — platform setup)</span></h2>

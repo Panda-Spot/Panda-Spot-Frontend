@@ -300,12 +300,6 @@ export default function BillingDocuments() {
     <div className="space-y-6">
       <div>
         <Link className="back-link" to="/billing">&larr; Billing</Link>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2 mt-1" style={{ color: 'var(--text-primary)' }}>
-          <Receipt size={22} className="text-gold-500" /> Invoicing
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Service catalog → quotation → confirmed bill → payments & receipts, all as real PDFs.
-        </p>
       </div>
       {error && <p className="error">{error}</p>}
 

@@ -102,9 +102,6 @@ export default function ClientFavourites() {
     <div ref={containerRef}>
       <Link className="back-link" to={`/client/${eventId}`}>&larr; Back to gallery</Link>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          My Favourites{favourites.length > 0 ? ` (${favourites.length})` : ''}
-        </h1>
         {allowDownload && favourites.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <GoldButton size="sm" variant="outline" icon={<Table size={14} />} loading={exportingFormat === 'csv'} onClick={() => handleRecordExport('csv')} title="My selected filenames as CSV">

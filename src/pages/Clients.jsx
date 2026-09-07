@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, Search, UserPlus, Users } from 'lucide-react'
+import { Mail, Search, UserPlus } from 'lucide-react'
 import {
   checkClientDuplicate,
   createClientAccount,
@@ -241,9 +241,6 @@ export default function Clients() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Users size={22} className="text-gold-500" /> Clients
-          </h1>
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
             {roster.length} client{roster.length === 1 ? '' : 's'} across {events.length} event{events.length === 1 ? '' : 's'}
             {pendingCount > 0 && ` · ${pendingCount} invite${pendingCount === 1 ? '' : 's'} pending`}

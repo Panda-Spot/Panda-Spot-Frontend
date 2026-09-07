@@ -51,15 +51,6 @@ export default function AISearch() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          AI Face Search
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Selfie-searchable photos, face groups and guest search analytics.
-        </p>
-      </div>
-
       <div className="event-stack">
         {analytics && (
           <div className="card analytics-card">

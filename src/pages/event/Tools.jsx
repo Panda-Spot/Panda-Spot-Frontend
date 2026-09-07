@@ -13,15 +13,6 @@ export default function Tools() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Tools
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Analyze quality, find duplicates and look-alikes, and shortlist cover photos.
-        </p>
-      </div>
-
       <div className="event-stack">
         <PhotoToolsCard
           eventId={eventId}

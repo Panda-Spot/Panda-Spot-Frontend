@@ -71,36 +71,35 @@ const CLIENT_NAV = [
   { to: '/client/questionnaires', icon: ClipboardList, label: 'Questionnaires' },
 ]
 
-const PAGE_TITLES = [
-  { test: (p) => p === '/dashboard', title: 'Dashboard' },
-  { test: (p) => p === '/events', title: 'Events' },
-  { test: (p) => p.startsWith('/events/'), title: 'Event' },
-  { test: (p) => p === '/clients', title: 'Clients' },
-  { test: (p) => p.startsWith('/clients'), title: 'Clients' },
-  { test: (p) => p === '/team', title: 'Team' },
-  { test: (p) => p === '/invitations', title: 'My Invitations' },
-  { test: (p) => p === '/access', title: 'Access Board' },
-  { test: (p) => p === '/branding', title: 'Studio Profile' },
-  { test: (p) => p === '/themes', title: 'Gallery Themes' },
-  { test: (p) => p === '/studio', title: 'Studio' },
-  { test: (p) => p === '/billing', title: 'Billing' },
-  { test: (p) => p === '/billing/documents', title: 'Invoicing' },
-  { test: (p) => p === '/support', title: 'Support' },
-  { test: (p) => p === '/settings', title: 'Settings' },
-  { test: (p) => p === '/client', title: 'My Gallery' },
-  { test: (p) => /\/client\/[^/]+\/favourites$/.test(p), title: 'Favourites' },
-  { test: (p) => p.startsWith('/client/'), title: 'My Gallery' },
-  { test: (p) => p === '/admin', title: 'Overview' },
-  { test: (p) => p === '/admin/clients', title: 'Studios' },
-  { test: (p) => p.startsWith('/admin/clients/'), title: 'Studio' },
-  { test: (p) => p === '/admin/events', title: 'All Events' },
-  { test: (p) => p.startsWith('/admin/events/'), title: 'Event (admin)' },
-  { test: (p) => p === '/admin/metrics', title: 'Metrics' },
-  { test: (p) => p === '/admin/plans', title: 'Plans' },
+const PAGE_META = [
+  { test: (p) => p === '/dashboard', title: 'Dashboard', desc: 'Studio overview — numbers, charts and next steps.' },
+  { test: (p) => p === '/events', title: 'Events', desc: 'Create events, then bulk-upload photos for selfie search.' },
+  { test: (p) => p === '/clients', title: 'Clients', desc: 'Every client holding gallery access, across events.' },
+  { test: (p) => p.startsWith('/clients'), title: 'Clients', desc: 'Every client holding gallery access, across events.' },
+  { test: (p) => p === '/team', title: 'Team', desc: 'Second shooters and assistants across your events.' },
+  { test: (p) => p === '/invitations', title: 'My Invitations', desc: 'Invites sent to you — accept to get access.' },
+  { test: (p) => p === '/access', title: 'Access Board', desc: 'Who can see which event.' },
+  { test: (p) => p === '/branding', title: 'Studio Profile', desc: 'Studio name, logo, colors and contact.' },
+  { test: (p) => p === '/themes', title: 'Gallery Themes', desc: 'Gallery themes, studio address and domains.' },
+  { test: (p) => p === '/studio', title: 'Studio', desc: 'Inquiries, bookings, packages, contracts and expenses.' },
+  { test: (p) => p === '/billing', title: 'Billing', desc: 'Subscription, wallet credits and invoicing.' },
+  { test: (p) => p === '/billing/documents', title: 'Invoicing', desc: 'Quotations, bills, payments and receipts.' },
+  { test: (p) => p === '/support', title: 'Support', desc: 'Help tickets — raise and track.' },
+  { test: (p) => p === '/settings', title: 'Settings', desc: 'Account and password.' },
+  { test: (p) => p === '/client', title: 'My Gallery', desc: 'Your gallery.' },
+  { test: (p) => /\/client\/[^/]+\/favourites$/.test(p), title: 'Favourites', desc: 'Your shortlisted photos.' },
+  { test: (p) => p.startsWith('/client/'), title: 'My Gallery', desc: 'Your gallery.' },
+  { test: (p) => p === '/admin', title: 'Overview', desc: 'Platform overview.' },
+  { test: (p) => p === '/admin/clients', title: 'Studios', desc: 'Every studio on the platform.' },
+  { test: (p) => p.startsWith('/admin/clients/'), title: 'Studio', desc: 'Studio detail and actions.' },
+  { test: (p) => p === '/admin/events', title: 'All Events', desc: 'Every event on the platform.' },
+  { test: (p) => p.startsWith('/admin/events/'), title: 'Event (admin)', desc: 'Event detail and overrides.' },
+  { test: (p) => p === '/admin/metrics', title: 'Metrics', desc: 'Engagement and feature adoption.' },
+  { test: (p) => p === '/admin/plans', title: 'Plans', desc: 'Plans and platform settings.' },
 ]
 
-function pageTitleFor(pathname) {
-  return PAGE_TITLES.find((p) => p.test(pathname))?.title || 'PandaSpot'
+function pageMetaFor(pathname) {
+  return PAGE_META.find((p) => p.test(pathname)) || { title: 'PandaSpot', desc: '' }
 }
 
 /* Sidebar is ALWAYS dark — like VS Code / Linear / Notion sidebars.
@@ -502,7 +501,12 @@ export default function AppShell({ children }) {
             >
               <Menu size={20} />
             </button>
-            <h1 className="app-topbar-title">{pageTitleFor(location.pathname)}</h1>
+            <div className="app-topbar-heading">
+              <h1 className="app-topbar-title">{pageMetaFor(location.pathname).title}</h1>
+              {pageMetaFor(location.pathname).desc && (
+                <span className="app-topbar-sub">{pageMetaFor(location.pathname).desc}</span>
+              )}
+            </div>
             <div className="app-topbar-actions">
               {user?.email && <span className="app-topbar-user hint">{user.email}</span>}
               <ThemeToggle className="topbar-theme-toggle" />

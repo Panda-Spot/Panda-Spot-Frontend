@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { LifeBuoy } from 'lucide-react'
 import { createSupportTicket, listClientEvents, listSupportTickets, replySupportTicket, setSupportTicketStatus } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
@@ -97,14 +96,6 @@ export default function Support() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <LifeBuoy size={22} className="text-gold-500" /> {isSuperAdmin ? 'Support Tickets' : 'Support'}
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          {isSuperAdmin ? 'Every tenant ticket across the platform.' : 'Raise a ticket and track replies here.'}
-        </p>
-      </div>
       {error && <p className="error">{error}</p>}
 
       {!isSuperAdmin && (

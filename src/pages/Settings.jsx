@@ -98,7 +98,6 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
         <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           Signed in as <strong>{user?.email || '…'}</strong>
         </p>

@@ -295,8 +295,6 @@ export default function Studio() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 10 }}>Studio</h1>
-      <p className="hint">Bookings pipeline, packages, contracts, questionnaires, and expenses — the business side of the studio.</p>
       <div className="row source-filter-row" style={{ marginBottom: 4 }}>
         {TABS.map((t) => (
           <button key={t.key} type="button" className={tab === t.key ? 'upload-tab active' : 'upload-tab'} onClick={() => setTab(t.key)}>

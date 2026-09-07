@@ -235,13 +235,6 @@ export default function Dashboard() {
     <div ref={containerRef}>
       <TrialWelcomeModal subscription={subscription} />
 
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          {greetingTime()}, {user?.name || 'Studio'}
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{today}</p>
-      </div>
-
       {/* ── Stat Cards ─── */}
       <div className="stat-row grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Events" value={summary?.totals?.events ?? 0} icon={CalendarDays} />

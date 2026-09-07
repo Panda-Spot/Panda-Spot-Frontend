@@ -48,15 +48,6 @@ export default function Overview() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          {event?.name || 'Event'}
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Top overview — details, numbers, enabled features and next steps.
-        </p>
-      </div>
-
       <div className="event-stack">
         {event?.archived_at && (
           <div className="card" style={{ borderColor: 'var(--accent-primary)' }}>

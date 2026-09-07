@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LayoutGrid, Mail, UserPlus } from 'lucide-react'
+import { Mail, UserPlus } from 'lucide-react'
 import {
   inviteClient,
   listClients,
@@ -141,15 +141,6 @@ export default function AccessBoard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <LayoutGrid size={22} className="text-gold-500" /> Access Board
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Who can see which event — assign, invite, or remove in one place.
-        </p>
-      </div>
-
       {error && <p className="error">{error}</p>}
 
       {events.length === 0 ? (

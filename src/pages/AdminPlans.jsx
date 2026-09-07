@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, CreditCard } from 'lucide-react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import {
   createAdminPlan,
   getAdminPlatformSettings,
@@ -192,14 +192,6 @@ export default function AdminPlans() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <CreditCard size={22} className="text-gold-500" /> Plans & platform settings
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          The plan catalog, special-access windows, and platform-wide trial/grace defaults.
-        </p>
-      </div>
       {error && <p className="error">{error}</p>}
 
       <GlassCard hover={false}>

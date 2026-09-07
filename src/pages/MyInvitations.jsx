@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Building2, CalendarDays, Inbox, Mail, Search, User } from 'lucide-react'
+import { Building2, CalendarDays, Mail, Search, User } from 'lucide-react'
 import { acceptInvite, declineInvite, getInvite, listMyInvites } from '../api.js'
 import { useToast } from '../toast.jsx'
 import { pop } from '../lib/confetti.js'
@@ -134,9 +134,6 @@ export default function MyInvitations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Inbox size={22} className="text-gold-500" /> My Invitations
-        </h1>
         <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           {filtered.length} pending · you only get access after you Accept
         </p>

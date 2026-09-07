@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays } from 'lucide-react'
 import { listAdminEvents } from '../api.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
@@ -28,15 +27,6 @@ export default function AdminEvents() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <CalendarDays size={22} className="text-gold-500" /> All Events
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Every event on the platform, across every studio — find one by name or owner email.
-        </p>
-      </div>
-
       <GlassCard hover={false}>
         <div className="flex gap-3 flex-wrap items-center">
           <input

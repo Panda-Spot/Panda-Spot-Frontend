@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2 } from 'lucide-react'
 import { createAdminStudio, listAdminPlans, listAdminUsers, suspendAdminUser, unsuspendAdminUser } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
@@ -99,15 +98,6 @@ export default function AdminClients() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Building2 size={22} className="text-gold-500" /> Studios
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Every studio account on the platform — search, review usage, and act on one.
-        </p>
-      </div>
-
       <GlassCard hover={false}>
       <form onSubmit={handleCreate}>
         <div className="guest-link-label">Create studio</div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart3, MessageSquare, Search, Target, Users } from 'lucide-react'
+import { MessageSquare, Search, Target, Users } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
@@ -56,15 +56,6 @@ export default function AdminMetrics() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <BarChart3 size={22} className="text-gold-500" /> Metrics
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Platform-wide engagement, feature adoption, storage, and usage.
-        </p>
-      </div>
-
       <h2 className="section-title">Guest engagement</h2>
       <div className="card analytics-card">
         <div className="stat-grid">

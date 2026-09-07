@@ -40,15 +40,6 @@ export default function Photos() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Photos &amp; Imports
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Bulk-upload the event photos here. Face indexing runs only when Face Search is enabled for this event.
-        </p>
-      </div>
-
       <div className="event-stack">
         {event && !event.started ? (
           <div className="card upload-section">

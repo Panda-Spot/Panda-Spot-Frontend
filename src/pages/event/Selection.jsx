@@ -29,15 +29,6 @@ export default function Selection() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Photo Selection
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Clients log in to browse, favourite and submit — publish when uploads are done.
-        </p>
-      </div>
-
       {!event?.photo_selection_enabled ? (
         <div className="card">
           <div className="guest-link-label">Photo Selection is off</div>

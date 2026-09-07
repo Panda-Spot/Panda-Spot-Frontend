@@ -10,15 +10,6 @@ export default function Theme() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Gallery theme
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Override the studio default for this event only.
-        </p>
-      </div>
-
       <div className="event-stack">
         {event && (event.role === 'owner' || event.role === 'collaborator') && (
           <EventThemePicker eventId={eventId} currentThemeId={event.gallery_theme_id} onSaved={load} />

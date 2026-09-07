@@ -31,15 +31,6 @@ export default function EventAlbums() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Albums
-        </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Stage favourites as sources, upload spreads or a print PDF, then send for pinned client review.
-        </p>
-      </div>
-
       <div className="event-stack">
         <div className="card">
           <div className="guest-link-label">Albums ({albums ? albums.length : '…'})</div>

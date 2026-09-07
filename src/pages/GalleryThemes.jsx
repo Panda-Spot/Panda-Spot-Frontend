@@ -310,8 +310,6 @@ export default function GalleryThemes() {
   return (
     <div>
       <Link className="back-link" to="/branding"><ArrowLeft size={13} style={{ display: 'inline' }} /> Studio profile</Link>
-      <h1 style={{ marginTop: 10 }}>Gallery themes & addresses</h1>
-      <p className="hint">Brand every public page — guest galleries, reviews, albums, TV wall, share cards — and serve them from your own address.</p>
 
       <h2 className="section-title">Your themes</h2>
       {themes.length === 0 && <p className="hint">No custom themes yet — start from a preset below. Until then every gallery uses the PandaSpot default.</p>}

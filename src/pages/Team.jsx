@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, Search, UserPlus, Users } from 'lucide-react'
+import { Mail, Search, UserPlus } from 'lucide-react'
 import {
   cancelInvite,
   inviteCollaborator,
@@ -210,9 +210,6 @@ export default function Team() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Users size={22} className="text-gold-500" /> Team
-          </h1>
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
             {counts.active} active · {counts.pending} pending · {counts.accepted} accepted · {counts.declined} declined
           </p>
