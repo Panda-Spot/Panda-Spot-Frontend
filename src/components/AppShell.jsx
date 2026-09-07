@@ -330,7 +330,7 @@ export default function AppShell({ children }) {
         .sv-spacer { transition: width 0.3s ease; }
         /* Thin stylish sidebar scrollbar in theme teal */
         .sv-sidebar nav { scrollbar-width: thin; scrollbar-color: #0e8a8a transparent; }
-        .sv-sidebar nav::-webkit-scrollbar { width: 6px; }
+        .sv-sidebar nav::-webkit-scrollbar { width: 4px; }
         .sv-sidebar nav::-webkit-scrollbar-track { background: transparent; }
         .sv-sidebar nav::-webkit-scrollbar-thumb {
           background: linear-gradient(180deg, #0e8a8a, #0b6e6e);

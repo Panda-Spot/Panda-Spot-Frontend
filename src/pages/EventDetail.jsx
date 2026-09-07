@@ -82,6 +82,7 @@ import FaceGroupsView from '../components/FaceGroupsView.jsx'
 import { isVideoFile } from '../utils/media.js'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../jobPersistence.js'
 import { pop } from '../lib/confetti.js'
+import { runInline, runInWorker } from '../lib/workerTask.js'
 import GuestCard from '../GuestCard.jsx'
 import Modal from '../components/Modal.jsx'
 import Dropzone from '../components/Dropzone.jsx'
@@ -137,6 +138,29 @@ function getCroppedImg(imageSrc, pixelCrop) {
     }
     image.onerror = () => reject(new Error('Could not read the cover image'))
     image.src = imageSrc
+  })
+}
+
+// Manager gallery filter — pure + self-contained so it can run in a Web
+// Worker (see workerTask.js). Mirrors the gallery's approval/source/tool
+// rules exactly. NOTE: keep closure-free — the worker serializes this
+// function's source.
+function filterManagerPhotos({ photos, sourceFilter, toolsFilter, dupIdList, blurryBelow }) {
+  const dup = dupIdList ? new Set(dupIdList) : null
+  const f = toolsFilter || {}
+  return (Array.isArray(photos) ? photos : []).filter((p) => {
+    if (!p || p.approval_status === 'pending') return false
+    if (sourceFilter !== 'all' && (p.source || 'upload') !== sourceFilter) return false
+    if (f.faces === '0' && (p.face_count || 0) !== 0) return false
+    if (f.faces === '1' && (p.face_count || 0) !== 1) return false
+    if (f.faces === '2+' && (p.face_count || 0) < 2) return false
+    if (f.blur === 'sharp' && !(p.sharpness != null && p.sharpness >= blurryBelow)) return false
+    if (f.blur === 'blurry' && !(p.sharpness != null && p.sharpness < blurryBelow)) return false
+    if (f.blur === 'unmeasured' && p.sharpness != null) return false
+    if (f.dupOnly && !(dup && dup.has(p.photo_id))) return false
+    if ((p.rating || 0) < (f.minRating || 0)) return false
+    if (f.tag && f.tag !== 'all' && (p.color_tag || '') !== f.tag) return false
+    return true
   })
 }
 
@@ -279,19 +303,23 @@ export default function EventDetail() {
   const [metaPhotoId, setMetaPhotoId] = useState(null)
   const [dupIds, setDupIds] = useState(null)
   const [toolsFilter, setToolsFilter] = useState({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })
-  const matchesToolsFilter = (p) => {
-    const f = toolsFilter
-    if (f.faces === '0' && (p.face_count || 0) !== 0) return false
-    if (f.faces === '1' && (p.face_count || 0) !== 1) return false
-    if (f.faces === '2+' && (p.face_count || 0) < 2) return false
-    if (f.blur === 'sharp' && !(p.sharpness != null && p.sharpness >= BLURRY_BELOW)) return false
-    if (f.blur === 'blurry' && !(p.sharpness != null && p.sharpness < BLURRY_BELOW)) return false
-    if (f.blur === 'unmeasured' && p.sharpness != null) return false
-    if (f.dupOnly && !(dupIds && dupIds.has(p.photo_id))) return false
-    if ((p.rating || 0) < f.minRating) return false
-    if (f.tag !== 'all' && (p.color_tag || '') !== f.tag) return false
-    return true
-  }
+  // Manager gallery visible list, crunched in a Web Worker so big photo
+  // lists never freeze the UI. Same pure function runs inline as fallback.
+  const [managerVisible, setManagerVisible] = useState(null)
+  useEffect(() => {
+    const input = {
+      photos,
+      sourceFilter,
+      toolsFilter,
+      dupIdList: dupIds ? [...dupIds] : null,
+      blurryBelow: BLURRY_BELOW,
+    }
+    let stale = false
+    runInWorker(filterManagerPhotos, input)
+      .then((rows) => { if (!stale) setManagerVisible(rows) })
+      .catch(() => { if (!stale) setManagerVisible(runInline(filterManagerPhotos, input)) })
+    return () => { stale = true }
+  }, [photos, sourceFilter, toolsFilter, dupIds])
   // Phase 22 — face viewer modal state for the AI member grid.
   const [viewingPhoto, setViewingPhoto] = useState(null)
   const [viewingFaces, setViewingFaces] = useState([])
@@ -1598,6 +1626,17 @@ export default function EventDetail() {
     }
   }
 
+  // Worker result lands a tick after the inputs change — fall back to the
+  // same pure function inline so the grid never flashes empty.
+  const managerInput = {
+    photos,
+    sourceFilter,
+    toolsFilter,
+    dupIdList: dupIds ? [...dupIds] : null,
+    blurryBelow: BLURRY_BELOW,
+  }
+  const visiblePhotos = managerVisible ?? runInline(filterManagerPhotos, managerInput)
+
   return (
     <div>
       <Link className="back-link" to="/events">&larr; All events</Link>
@@ -1610,6 +1649,10 @@ export default function EventDetail() {
       )}
       <h1 className="section-title">{event?.name || 'Event'}</h1>
       <p className="subtle">Bulk-upload the event photos here. Face indexing runs only when Face Search is enabled for this event.</p>
+
+      {/* Uniform vertical rhythm: every section below is a flex item with
+          the same gap, so spacing never depends on per-card margins. */}
+      <div className="event-stack">
 
       {event?.archived_at && (
         <div className="card" style={{ borderColor: 'var(--accent-primary)' }}>
@@ -3169,11 +3212,7 @@ export default function EventDetail() {
             )
           })}
         </div>
-        {photos
-          .filter((p) => p.approval_status !== 'pending')
-          .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
-          .filter(matchesToolsFilter)
-          .length === 0 ? (
+        {visiblePhotos.length === 0 ? (
             <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
               No photos found under the "{
                 {
@@ -3187,11 +3226,7 @@ export default function EventDetail() {
             </p>
           ) : (
             <div className="photo-grid">
-              {photos
-                .filter((p) => p.approval_status !== 'pending')
-                .filter((p) => sourceFilter === 'all' || (p.source || 'upload') === sourceFilter)
-                .filter(matchesToolsFilter)
-                .map((p) => (
+              {visiblePhotos.map((p) => (
             <div className="photo-card" key={p.photo_id}>
               <div style={{ position: 'relative' }}>
                 <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
@@ -3364,6 +3399,7 @@ export default function EventDetail() {
           </button>
         </div>
       )}
+      </div>{/* end .event-stack */}
       {/* Phase 9: per-photo inspector (metadata, rating/tag, presets, cover). */}
       {metaPhotoId && (
         <PhotoMetaModal

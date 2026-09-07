@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   assignContract,
@@ -94,13 +94,13 @@ export default function Studio() {
     setLoading(true)
     try {
       const [inq, cal, pkgs, tpls, conts, qs, books, exps, rep] = await Promise.all([
-        listInquiries(inquiryFilter || undefined).catch(() => []),
+        listInquiries().catch(() => []),
         getStudioCalendar(`${calMonth}-01`).catch(() => null),
         listPackages().catch(() => []),
         listContractTemplates().catch(() => []),
         listContracts().catch(() => []),
         listQuestionnaires().catch(() => []),
-        listBookings(bookingFilter || undefined).catch(() => []),
+        listBookings().catch(() => []),
         listExpenses().catch(() => []),
         getExpenseReport().catch(() => null),
       ])
@@ -120,7 +120,18 @@ export default function Studio() {
     }
   }
 
-  useEffect(() => { reload() }, [inquiryFilter, bookingFilter, calMonth]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { reload() }, [calMonth]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Status tabs filter the already-loaded lists locally — instant, no API
+  // call. CRUD actions call reload(), which refreshes everything at once.
+  const visibleInquiries = useMemo(
+    () => (inquiryFilter ? inquiries.filter((q) => q.status === inquiryFilter) : inquiries),
+    [inquiries, inquiryFilter]
+  )
+  const visibleBookings = useMemo(
+    () => (bookingFilter ? bookings.filter((b) => b.status === bookingFilter) : bookings),
+    [bookings, bookingFilter]
+  )
 
   const handleConvert = async (id) => {
     const ok = await confirm('Convert this inquiry into an event + client invite + booking?', { title: 'Convert inquiry?', confirmLabel: 'Convert' })
@@ -295,7 +306,7 @@ export default function Studio() {
       </div>
 
       {tab === 'inquiries' && (
-        <Section title={`Inquiries (${inquiries.length})`} hint="Public inquiries land here — convert the good ones into events, client invites, and bookings in one click.">
+        <Section title={`Inquiries (${visibleInquiries.length})`} hint="Public inquiries land here — convert the good ones into events, client invites, and bookings in one click.">
           <div className="row" style={{ marginBottom: 8 }}>
             {['', 'new', 'contacted', 'converted', 'lost'].map((s) => (
               <button key={s} type="button" className={inquiryFilter === s ? 'upload-tab active' : 'upload-tab'} onClick={() => setInquiryFilter(s)}>
@@ -303,9 +314,9 @@ export default function Studio() {
               </button>
             ))}
           </div>
-          {inquiries.length === 0 ? <p className="hint">No inquiries — share your inquiry link to start receiving them.</p> : (
+          {visibleInquiries.length === 0 ? <p className="hint">{inquiryFilter ? `No ${inquiryFilter} inquiries.` : 'No inquiries — share your inquiry link to start receiving them.'}</p> : (
             <ul className="team-list">
-              {inquiries.map((q) => (
+              {visibleInquiries.map((q) => (
                 <li key={q.id} className="team-list-item" style={{ display: 'block' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ flex: 1 }}>
@@ -544,7 +555,7 @@ export default function Studio() {
       )}
 
       {tab === 'bookings' && (
-        <Section title={`Bookings (${bookings.length})`} hint="Money side of events — agreed amounts plus linked billing-module bills, advances, and balances.">
+        <Section title={`Bookings (${visibleBookings.length})`} hint="Money side of events — agreed amounts plus linked billing-module bills, advances, and balances.">
           <div className="row" style={{ marginBottom: 8 }}>
             {['', 'inquiry', 'confirmed', 'completed', 'cancelled'].map((s) => (
               <button key={s} type="button" className={bookingFilter === s ? 'upload-tab active' : 'upload-tab'} onClick={() => setBookingFilter(s)}>
@@ -590,8 +601,11 @@ export default function Studio() {
             </div>
             <button className="btn" type="submit">Add booking</button>
           </form>
+          {visibleBookings.length === 0 ? (
+            <p className="hint">{bookingFilter ? `No ${bookingFilter} bookings.` : 'No bookings yet — add one above.'}</p>
+          ) : (
           <ul className="team-list">
-            {bookings.map((b) => (
+            {visibleBookings.map((b) => (
               <li key={b.id} className="team-list-item" style={{ display: 'block' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ flex: 1 }}>
@@ -624,6 +638,7 @@ export default function Studio() {
               </li>
             ))}
           </ul>
+          )}
         </Section>
       )}
 

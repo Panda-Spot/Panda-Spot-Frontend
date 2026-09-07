@@ -2620,6 +2620,28 @@ h2.section-title {
   margin: 16px 0;
 }
 
+/* Event detail uses one uniform stack — every section gets the exact same
+   gap, so spacing never depends on which per-card margins happen to apply. */
+.event-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.event-stack > .card,
+.event-stack > .guest-link-card,
+.event-stack > .team-card,
+.event-stack > .guest-card-section,
+.event-stack > .upload-section,
+.event-stack > .job-progress-card,
+.event-stack > .guest-alert-card,
+.event-stack > .analytics-card,
+.event-stack > .danger-zone {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .guest-link-label {
   display: flex;
   align-items: center;

@@ -11,6 +11,7 @@ import {
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
 import { useToast } from '../toast.jsx'
+import { runInWorker } from '../lib/workerTask.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import GoldInput from '../components/ui/GoldInput.jsx'
@@ -88,44 +89,73 @@ export default function Clients() {
 
   useEffect(() => { load() }, [])
 
-  const roster = useMemo(() => {
-    const map = new Map()
-    for (const ev of events) {
-      const data = byEvent[ev.id]
-      if (!data) continue
-      for (const c of data.clients || []) {
-        if (!map.has(c.user_id)) {
-          map.set(c.user_id, { ...c, event_names: [], accesses: [] })
+  // Pure + self-contained (runs in a Web Worker): merge per-event client
+  // lists into one cross-event roster, then apply the search box.
+  // NOTE: keep closure-free — the worker serializes this function's source.
+  const [roster, setRoster] = useState([])
+
+  useEffect(() => {
+    let stale = false
+    runInWorker(
+      ({ events, byEvent, search }) => {
+        const map = new Map()
+        for (const ev of events) {
+          const data = byEvent[ev.id]
+          if (!data) continue
+          for (const c of data.clients || []) {
+            if (!map.has(c.user_id)) {
+              map.set(c.user_id, { ...c, event_names: [], accesses: [] })
+            }
+            const row = map.get(c.user_id)
+            row.event_names.push(ev.name)
+            row.accesses.push({
+              event_id: ev.id,
+              event_name: ev.name,
+              favourite_cap: c.favourite_cap,
+              submitted_at: c.submitted_at,
+            })
+          }
         }
-        const row = map.get(c.user_id)
-        row.event_names.push(ev.name)
-        row.accesses.push({
-          event_id: ev.id,
-          event_name: ev.name,
-          favourite_cap: c.favourite_cap,
-          submitted_at: c.submitted_at,
-        })
-      }
-    }
-    return [...map.values()].sort((a, b) =>
-      (a.name || a.email || '').localeCompare(b.name || b.email || '')
+        const merged = [...map.values()].sort((a, b) =>
+          (a.name || a.email || '').localeCompare(b.name || b.email || '')
+        )
+        const q = (search || '').trim().toLowerCase()
+        if (!q) return merged
+        return merged.filter((c) =>
+          (c.name || '').toLowerCase().includes(q) ||
+          (c.email || '').toLowerCase().includes(q) ||
+          c.event_names.some((n) => n.toLowerCase().includes(q))
+        )
+      },
+      { events, byEvent, search }
     )
-  }, [events, byEvent])
+      .then((rows) => { if (!stale) setRoster(rows) })
+      .catch(() => {
+        if (!stale) {
+          // Worker unavailable — same merge inline so the page still works.
+          const map = new Map()
+          for (const ev of events) {
+            const data = byEvent[ev.id]
+            if (!data) continue
+            for (const c of data.clients || []) {
+              if (!map.has(c.user_id)) map.set(c.user_id, { ...c, event_names: [], accesses: [] })
+              const row = map.get(c.user_id)
+              row.event_names.push(ev.name)
+              row.accesses.push({ event_id: ev.id, event_name: ev.name, favourite_cap: c.favourite_cap, submitted_at: c.submitted_at })
+            }
+          }
+          setRoster([...map.values()])
+        }
+      })
+    return () => { stale = true }
+  }, [events, byEvent, search])
+
+  const filtered = roster
 
   const pendingCount = useMemo(
     () => Object.values(byEvent).reduce((n, d) => n + (d.pending_invites?.length || 0), 0),
     [byEvent]
   )
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return roster
-    return roster.filter((c) =>
-      (c.name || '').toLowerCase().includes(q) ||
-      (c.email || '').toLowerCase().includes(q) ||
-      c.event_names.some((n) => n.toLowerCase().includes(q))
-    )
-  }, [roster, search])
 
   const handleInvite = async (e) => {
     e.preventDefault()

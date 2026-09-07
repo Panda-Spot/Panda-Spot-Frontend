@@ -370,21 +370,21 @@ export default function Dashboard() {
             </div>
           </div>
           {subscription ? (
-            <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex flex-wrap gap-4 items-stretch">
               <div>
                 <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>Quota used</p>
                 <p className="font-display text-3xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                   {quotaUsed} <span className="text-base font-medium" style={{ color: 'var(--text-tertiary)' }}>/ {quotaTotal}</span>
                 </p>
               </div>
-              <div className="flex gap-3 flex-wrap">
-                <div className="rounded-lg px-4 py-3" style={{ background: 'var(--bg-elevated)' }}>
+              <div className="flex gap-3 flex-wrap flex-1" style={{ minWidth: 280 }}>
+                <div className="rounded-lg px-4 py-3 flex-1" style={{ background: 'var(--bg-elevated)', minWidth: 160 }}>
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Remaining</p>
                   <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                     {Math.max(0, quotaTotal - quotaUsed)} uploads
                   </p>
                 </div>
-                <div className="rounded-lg px-4 py-3" style={{ background: 'var(--bg-elevated)' }}>
+                <div className="rounded-lg px-4 py-3 flex-1" style={{ background: 'var(--bg-elevated)', minWidth: 160 }}>
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Plan</p>
                   <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>
                     {subscription.plan_name || '—'} ({subscription.status})

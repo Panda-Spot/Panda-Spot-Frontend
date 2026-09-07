@@ -1,46 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Lock } from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
-} from 'recharts'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
+import { runInline, runInWorker } from '../lib/workerTask.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
-
-/* ── Shared chart theme (gold) ────────────────────────────── */
-const GOLD = '#F59E0B'
-const axisProps = {
-  tick: { fill: '#6B6B76', fontSize: 11 },
-  axisLine: false,
-  tickLine: false,
-}
-
-function ChartTooltip({ active, payload, label, suffix = '' }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{
-      background: '#18181B',
-      border: '1px solid rgba(245,158,11,0.25)',
-      borderRadius: 10,
-      color: '#F5F5F7',
-      fontSize: 12,
-      padding: '8px 12px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-    }}>
-      <p style={{ color: '#A0A0AB', marginBottom: 4 }}>{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color || GOLD, fontWeight: 600 }}>
-          {p.value}{suffix} <span style={{ color: '#A0A0AB', fontWeight: 400 }}>{p.name}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
 
 function guestLink(slug) {
   return `${window.location.origin}/e/${slug}`
@@ -68,65 +35,22 @@ function CopyLinkButton({ slug }) {
   )
 }
 
-/* ── Horizontal bars for top events ───────────────────────── */
-function TopEventsBar({ data }) {
-  if (!data?.length) return (
-    <div className="flex items-center justify-center h-24">
-      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No photos uploaded yet</p>
-    </div>
-  )
-  const max = Math.max(...data.map((d) => d.photo_count), 1)
-  return (
-    <div className="space-y-3 mt-2">
-      {data.map((ev, i) => (
-        <Link key={ev.id} to={`/events/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs truncate max-w-[60%]" style={{ color: 'var(--text-primary)' }}>
-              {ev.name}
-            </span>
-            <span className="text-xs font-mono" style={{ color: GOLD }}>{ev.photo_count}</span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${(ev.photo_count / max) * 100}%`,
-                background: i === 0
-                  ? `linear-gradient(90deg, ${GOLD}, #FDE68A)`
-                  : `linear-gradient(90deg, ${GOLD}88, ${GOLD}44)`,
-              }}
-            />
-          </div>
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-// Last-6-months buckets (oldest → newest) from event createdAt timestamps.
-function eventsByMonth(events) {
-  const buckets = []
-  const now = new Date()
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    buckets.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      label: d.toLocaleString('default', { month: 'short' }),
-      count: 0,
-    })
-  }
-  for (const ev of events) {
-    const d = new Date(ev.createdAt)
-    if (Number.isNaN(d.getTime())) continue
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const bucket = buckets.find((b) => b.key === key)
-    if (bucket) bucket.count += 1
-  }
-  return buckets
+// Pure + self-contained (runs in a Web Worker): filter by tab, newest first.
+// NOTE: keep closure-free — the worker serializes this function's source.
+function deriveVisibleEvents({ events, status }) {
+  const list = Array.isArray(events) ? events : []
+  const filtered = status === 'all'
+    ? list.slice()
+    : list.filter((e) => (status === 'archived' ? !!e.archived_at : !e.archived_at))
+  filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  return filtered
 }
 
 export default function Events() {
-  const [events, setEvents] = useState([])
+  // All events are fetched ONCE per page load / CRUD — tab switches only
+  // re-filter locally (worker, previous list kept meanwhile), no API call.
+  const [allEvents, setAllEvents] = useState([])
+  const [visibleEvents, setVisibleEvents] = useState([])
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -134,15 +58,28 @@ export default function Events() {
   const [statusFilter, setStatusFilter] = useState('active')
   const [subscription, setSubscription] = useState(null)
 
-  const load = (status) => {
+  const load = () => {
     setLoading(true)
-    listEvents(status || 'active')
-      .then(setEvents)
+    listEvents('all')
+      .then((rows) => {
+        setAllEvents(rows || [])
+        setVisibleEvents(runInline(deriveVisibleEvents, { events: rows || [], status: statusFilter }))
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load(statusFilter) }, [statusFilter])
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tab switches re-filter the already-loaded list in a worker — instant,
+  // no API call. The previous list stays on screen until the new one lands.
+  useEffect(() => {
+    let stale = false
+    runInWorker(deriveVisibleEvents, { events: allEvents, status: statusFilter })
+      .then((rows) => { if (!stale) setVisibleEvents(rows) })
+      .catch(() => { if (!stale) setVisibleEvents(runInline(deriveVisibleEvents, { events: allEvents, status: statusFilter })) })
+    return () => { stale = true }
+  }, [allEvents, statusFilter])
 
   useEffect(() => {
     getMySubscription()
@@ -159,7 +96,7 @@ export default function Events() {
       await createEvent(name.trim())
       setName('')
       pop()
-      load(statusFilter)
+      load()
     } catch (e) {
       setError(e.message)
     } finally {
@@ -172,9 +109,6 @@ export default function Events() {
   const quotaFull = quotaTotal > 0 && quotaUsed >= quotaTotal
   const trialExhausted = subscription?.status === 'TRIAL' && quotaFull
 
-  const monthly = eventsByMonth(events)
-  const topEvents = [...events].sort((a, b) => (b.photo_count || 0) - (a.photo_count || 0)).slice(0, 5)
-
   return (
     <div>
       <div className="mb-6">
@@ -184,35 +118,6 @@ export default function Events() {
         <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           Create an event, then bulk-upload the photos so guests can find themselves by selfie.
         </p>
-      </div>
-
-      <div className="grid xl:grid-cols-3 gap-5 mb-8">
-        <GlassCard hover={false}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Events Created</h2>
-          <p className="text-xs mt-0.5 mb-3" style={{ color: 'var(--text-tertiary)' }}>Last 6 months</p>
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={monthly} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="label" {...axisProps} />
-              <YAxis {...axisProps} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip suffix=" events" />} />
-              <Bar dataKey="count" name="events" radius={[4, 4, 0, 0]}>
-                {monthly.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={i === monthly.length - 1 ? GOLD : `rgba(245,158,11,${0.28 + (i / (monthly.length - 1)) * 0.4})`}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </GlassCard>
-
-        <GlassCard hover={false} className="xl:col-span-2">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Top Events by Photos</h2>
-          <p className="text-xs mt-0.5 mb-3" style={{ color: 'var(--text-tertiary)' }}>Events with the most uploaded photos</p>
-          <TopEventsBar data={topEvents} />
-        </GlassCard>
       </div>
 
       <form className="card row" onSubmit={handleCreate}>
@@ -266,7 +171,7 @@ export default function Events() {
               </button>
             ))}
           </div>
-          {events.length === 0 ? (
+          {visibleEvents.length === 0 ? (
             <p className="hint">
               {statusFilter === 'archived'
                 ? 'No archived events — archiving hides an event from guests and clients without deleting anything.'
@@ -274,7 +179,7 @@ export default function Events() {
             </p>
           ) : (
             <ul className="event-list">
-              {events.map((ev) => (
+              {visibleEvents.map((ev) => (
                 <li key={ev.id} className="event-list-item">
                   <Link to={`/events/${ev.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     {ev.cover_url ? (
