@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Camera, Lock, Search } from 'lucide-react'
+import { AlertTriangle, Camera, Lock, ScanFace, Heart, Search, Plus } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -37,6 +37,7 @@ export default function Events() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [limitAlert, setLimitAlert] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   // Feature choice is mandatory at creation — at least one must stay on.
   const [newFaceSearch, setNewFaceSearch] = useState(true)
   const [newPhotoSelection, setNewPhotoSelection] = useState(false)
@@ -94,6 +95,9 @@ export default function Events() {
       await createEvent(name.trim(), { faceSearch: newFaceSearch, photoSelection: newPhotoSelection, eventDate: newEventDate || undefined })
       setName('')
       setNewEventDate('')
+      setNewFaceSearch(true)
+      setNewPhotoSelection(false)
+      setCreateOpen(false)
       pop()
       load()
     } catch (e) {
@@ -115,57 +119,18 @@ export default function Events() {
 
   return (
     <div>
-      <form className="card" onSubmit={handleCreate}>
-        <div className="guest-link-label">New event</div>
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          <input
-            className="text-input"
-            placeholder="Event name (e.g. Smith Wedding 2026)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            className="text-input"
-            type="date"
-            value={newEventDate}
-            onChange={(e) => setNewEventDate(e.target.value)}
-            style={{ minWidth: 160 }}
-          />
-          {trialExhausted ? (
-            <Link to="/billing">
-              <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
-            </Link>
-          ) : (
-            <button className="btn" type="submit" disabled={creating || !name.trim() || (!newFaceSearch && !newPhotoSelection)}>
-              {creating ? 'Creating…' : 'Create Event'}
-            </button>
-          )}
-        </div>
-        <p className="hint" style={{ marginTop: 8 }}>
-          Pick what this event does — required, at least one. Changing features later lives in the event&apos;s Danger section.
-        </p>
-        <div className="row" style={{ flexWrap: 'wrap', marginTop: 4 }}>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={newFaceSearch}
-              onChange={(e) => setNewFaceSearch(e.target.checked)}
-            />
-            Face Search — guests find their own photos with a selfie
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={newPhotoSelection}
-              onChange={(e) => setNewPhotoSelection(e.target.checked)}
-            />
-            Photo Selection — clients log in to browse, favourite, and submit picks
-          </label>
-        </div>
-        {!newFaceSearch && !newPhotoSelection && (
-          <p className="error" style={{ marginTop: 8 }}>Pick at least one feature to create the event.</p>
+      <div className="flex items-center justify-between mb-4">
+        <div />
+        {trialExhausted ? (
+          <Link to="/billing">
+            <GoldButton icon={<Lock size={14} />}>Upgrade Plan</GoldButton>
+          </Link>
+        ) : (
+          <button className="btn" type="button" onClick={() => setCreateOpen(true)}>
+            <Plus size={15} /> New Event
+          </button>
         )}
-      </form>
+      </div>
 
       {error && <p className="error">{error}</p>}
 
@@ -370,6 +335,85 @@ export default function Events() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* ── Create event modal ── */}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New event" size="md">
+        <form onSubmit={handleCreate}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label className="field-label">Event name</label>
+              <input
+                className="text-input w-full"
+                placeholder="Smith Wedding 2026"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="field-label">Event date</label>
+              <input
+                className="text-input w-full"
+                type="date"
+                value={newEventDate}
+                onChange={(e) => setNewEventDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">Features</label>
+              <p className="hint" style={{ marginBottom: 8 }}>Pick at least one. You can change these later in Danger.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setNewFaceSearch((v) => !v)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 8, padding: '18px 12px', borderRadius: 12, cursor: 'pointer', transition: 'all 0.15s',
+                    border: `2px solid ${newFaceSearch ? '#F59E0B' : 'var(--border-default)'}`,
+                    background: newFaceSearch ? 'rgba(245,158,11,0.08)' : 'var(--bg-elevated)',
+                    color: newFaceSearch ? '#F59E0B' : 'var(--text-secondary)',
+                  }}
+                >
+                  <ScanFace size={28} />
+                  <span className="text-xs font-semibold">Face Search</span>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.3 }}>
+                    Guests find their photos with a selfie
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewPhotoSelection((v) => !v)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 8, padding: '18px 12px', borderRadius: 12, cursor: 'pointer', transition: 'all 0.15s',
+                    border: `2px solid ${newPhotoSelection ? '#F59E0B' : 'var(--border-default)'}`,
+                    background: newPhotoSelection ? 'rgba(245,158,11,0.08)' : 'var(--bg-elevated)',
+                    color: newPhotoSelection ? '#F59E0B' : 'var(--text-secondary)',
+                  }}
+                >
+                  <Heart size={28} />
+                  <span className="text-xs font-semibold">Photo Selection</span>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.3 }}>
+                    Clients browse, favourite, and submit picks
+                  </span>
+                </button>
+              </div>
+              {!newFaceSearch && !newPhotoSelection && (
+                <p className="error" style={{ marginTop: 6 }}>Pick at least one feature.</p>
+              )}
+            </div>
+            {error && <p className="error">{error}</p>}
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="btn secondary" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </button>
+              <button className="btn" type="submit" disabled={creating || !name.trim() || (!newFaceSearch && !newPhotoSelection)}>
+                {creating ? 'Creating…' : 'Create Event'}
+              </button>
+            </div>
+          </div>
+        </form>
       </Modal>
     </div>
   )

@@ -10,7 +10,7 @@ import { ConfirmProvider } from './confirm.jsx'
 import { initSmoothScroll } from './lib/lenisSmoothScroll.js'
 
 // Buttery inertial page scrolling (singleton, no-ops for reduced motion).
-initSmoothScroll({ lerp: 0.09, wheelMultiplier: 0.9 })
+initSmoothScroll({ lerp: 0.15, wheelMultiplier: 1.0 })
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
