@@ -164,12 +164,13 @@ export default function Home() {
   // Hardware-accelerated Lenis smooth scrolling with 0 React re-renders during scroll
   useEffect(() => {
     const lenis = new Lenis({
-      lerp: 0.08,            // Smooth but no overshoot/bounce
+      lerp: 0.1,                  // Balance: smooth but settles quickly
       smoothWheel: true,
-      wheelMultiplier: 1,    // No scroll amplification (prevents overshoot)
-      touchMultiplier: 1,    // Native-feeling touch
-      infinite: false,       // No infinite scroll
-      overscroll: false,     // Disable overscroll bounce
+      wheelMultiplier: 1,          // No amplification → no overshoot
+      touchInertiaExponent: 1,     // Default 1.7 causes too much momentum overshoot
+      touchMultiplier: 1,
+      overscroll: false,           // Prevent scrolling past page boundaries
+      infinite: false,
     })
 
     lenis.on('scroll', (e) => {

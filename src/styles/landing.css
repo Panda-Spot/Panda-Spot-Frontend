@@ -60,6 +60,13 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Disable browser overscroll bounce for the landing page — prevents fight with Lenis */
+html:has(.landing-page),
+html:has(.landing-page) body {
+  overscroll-behavior: none;
+  scroll-behavior: auto;
+}
+
 /* Ambient canvas lighting & grid */
 .landing-bg-layer {
   position: fixed;
@@ -149,17 +156,20 @@
 }
 
 /* ==========================================================================
-   FLOATING ISLAND NAVBAR
+   FIXED ISLAND NAVBAR (position:fixed avoids Lenis sticky conflict)
    ========================================================================== */
 .landing-nav-wrapper {
-  position: sticky;
+  position: fixed;
   top: 16px;
+  left: 0;
+  right: 0;
   z-index: 100;
-  width: 100%;
   padding: 0 20px;
+  pointer-events: none;
 }
 
 .landing-nav {
+  pointer-events: all;
   max-width: 1140px;
   margin: 0 auto;
   height: 62px;
@@ -288,7 +298,7 @@
    HERO SECTION (LUXURY EDITORIAL)
    ========================================================================== */
 .landing-hero {
-  padding: 90px 0 55px;
+  padding: 110px 0 55px;
   position: relative;
   text-align: center;
 }
@@ -1539,7 +1549,7 @@
     display: none;
   }
   .landing-hero {
-    padding: 60px 0 40px;
+    padding: 95px 0 40px;
   }
   .landing-hero-ctas {
     flex-direction: column;
@@ -1637,6 +1647,9 @@
 }
 
 @media (max-width: 480px) {
+  .landing-hero {
+    padding: 88px 0 32px;
+  }
   .landing-container {
     padding: 0 16px;
   }
