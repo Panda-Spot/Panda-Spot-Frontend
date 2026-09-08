@@ -16,6 +16,7 @@ import { useToast } from '../toast.jsx'
 import { celebrate } from '../lib/confetti.js'
 import useBrandColours from '../hooks/useBrandColours.js'
 import useGalleryTheme from '../hooks/useGalleryTheme.js'
+import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
@@ -103,16 +104,16 @@ export default function ClientGallery() {
       setLightboxIndex(null)
       return
     }
+    lockScroll()
     const onKey = (e) => {
       if (e.key === 'Escape') setLightboxIndex(null)
       else if (e.key === 'ArrowLeft') setLightboxIndex((i) => (i > 0 ? i - 1 : i))
       else if (e.key === 'ArrowRight') setLightboxIndex((i) => (photos && i < photos.length - 1 ? i + 1 : i))
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      unlockScroll()
     }
   }, [lightboxIndex, photos])
 

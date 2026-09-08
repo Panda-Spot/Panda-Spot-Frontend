@@ -24,6 +24,7 @@ import useGalleryTheme from '../hooks/useGalleryTheme.js'
 import Lightbox from '../components/Lightbox.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
 import PasswordInput from '../components/ui/PasswordInput.jsx'
+import Modal from '../components/Modal.jsx'
 
 const MAX_SELFIES = 3
 const MAX_GROUP_SELFIES = 8
@@ -550,47 +551,35 @@ export default function GuestEvent() {
       )}
 
       {showNotice && event && (
-        <div className="modal-backdrop" onClick={() => setShowNotice(false)}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <Shield size={20} style={{ color: '#22C55E' }} />
-              </div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Privacy notice</h3>
+        <Modal open={showNotice} onClose={() => setShowNotice(false)} title="Privacy notice">
+          {event.privacy_notice_text ? (
+            <p style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              {event.privacy_notice_text}
+            </p>
+          ) : (
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              To find your photos at this event, the studio scans your selfie for faces and compares it with
+              faces in the event gallery. Your selfie is used only for this search — it is never saved or shared,
+              and the search record can be deleted on request.
+            </p>
+          )}
+          <div style={{
+            padding: '12px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.06)',
+            border: '1px solid rgba(34,197,94,0.15)', fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 600, color: '#22C55E' }}>
+              <CheckCircle2 size={14} /> What happens to your selfie
             </div>
-            {event.privacy_notice_text ? (
-              <p style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                {event.privacy_notice_text}
-              </p>
-            ) : (
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                To find your photos at this event, the studio scans your selfie for faces and compares it with
-                faces in the event gallery. Your selfie is used only for this search — it is never saved or shared,
-                and the search record can be deleted on request.
-              </p>
-            )}
-            <div style={{
-              padding: '12px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.06)',
-              border: '1px solid rgba(34,197,94,0.15)', fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 600, color: '#22C55E' }}>
-                <CheckCircle2 size={14} /> What happens to your selfie
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                <li>Processed in memory only — the file is never saved</li>
-                <li>A search record (not your photo) stays behind</li>
-                <li>Deleted automatically after the retention period, or sooner if you ask</li>
-              </ul>
-            </div>
-            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-              <button type="button" className="btn" onClick={() => setShowNotice(false)}>Got it</button>
-            </div>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>Processed in memory only — the file is never saved</li>
+              <li>A search record (not your photo) stays behind</li>
+              <li>Deleted automatically after the retention period, or sooner if you ask</li>
+            </ul>
           </div>
-        </div>
+          <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+            <button type="button" className="btn" onClick={() => setShowNotice(false)}>Got it</button>
+          </div>
+        </Modal>
       )}
 
       {event && !event.expired && !event.login_required && (!event.locked || unlocked) && event.allow_guest_data_delete_request && (

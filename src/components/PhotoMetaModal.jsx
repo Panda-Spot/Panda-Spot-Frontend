@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Download, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Download, Star, X } from 'lucide-react';
 import { downloadFile, fileUrl, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { useConfirm } from '../confirm.jsx';
+import { lockScroll, unlockScroll } from '../utils/scrollLock.js';
 import GalleryMedia from './GalleryMedia.jsx';
 
 const TAGS = [
@@ -32,6 +34,20 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [preset, setPreset] = useState('full');
   const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (photo) {
+      lockScroll();
+      return () => unlockScroll();
+    }
+  }, [photo]);
+
+  useEffect(() => {
+    if (!photo) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [photo, onClose]);
 
   if (!photo) return null;
 
@@ -96,10 +112,15 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     ['Captured', photo.exif_captured_at ? new Date(photo.exif_captured_at).toLocaleString() : null],
   ].filter(([, v]) => v != null && v !== '');
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <h3 style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{photo.filename}</h3>
+      <div className="modal-panel modal-scrollable" data-modal-panel="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.filename}</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
         <GalleryMedia src={fileUrl(photo.thumbnail_url || photo.url)} filename={photo.filename} style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8 }} />
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <div><div className="hint">Sharpness</div><div>{photo.sharpness != null ? Math.round(photo.sharpness) : 'not measured'}</div></div>
@@ -160,6 +181,7 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
           <button type="button" className="btn secondary" onClick={onClose}>Close</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
