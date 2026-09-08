@@ -556,11 +556,15 @@ export const getEventFaceGroups = (eventId) =>
 
 // Provision a client account directly (no email round trip) — returns a
 // one-time generated password when the studio didn't set one.
-export const createClientAccount = (eventId, { email, name, password, favouriteCap }) =>
+export const createClientAccount = (eventId, { email, name, password, favouriteCap, expiresAt }) =>
   request(`/events/${eventId}/clients/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, name, password, favourite_cap: favouriteCap ?? undefined }),
+    body: JSON.stringify({
+      email, name, password,
+      favourite_cap: favouriteCap ?? undefined,
+      expires_at: expiresAt || undefined,
+    }),
   })
 
 // --- Analytics (photographer, authenticated) ---
@@ -988,11 +992,11 @@ export const toggleEventFeature = (eventId, feature, enabled) =>
 
 // --- Photo Selection: studio-side client management ---
 
-export const inviteClient = (eventId, email, favouriteCap) =>
+export const inviteClient = (eventId, email, favouriteCap, expiresAt) =>
   request(`/events/${eventId}/clients/invite`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, favourite_cap: favouriteCap || undefined }),
+    body: JSON.stringify({ email, favourite_cap: favouriteCap || undefined, expires_at: expiresAt || undefined }),
   })
 
 export const listClients = (eventId) => request(`/events/${eventId}/clients`)

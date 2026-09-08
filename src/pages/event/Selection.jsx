@@ -15,7 +15,12 @@ export default function Selection() {
     handleTogglePick, studioPicks, togglingPickId,
     handlePhotoFeatureMembership, savingPhotoFeatures,
     clients, pendingClientInvites, clientInviteEmail, setClientInviteEmail,
-    clientInviteCap, setClientInviteCap, invitingClient, handleInviteClient,
+    clientInviteCap, setClientInviteCap, clientInviteExpiry, setClientInviteExpiry,
+    invitingClient, handleInviteClient,
+    createEmail, setCreateEmail, createName, setCreateName,
+    createPassword, setCreatePassword, createCap, setCreateCap,
+    createExpiry, setCreateExpiry, creatingClient, handleCreateClientAccount,
+    createClientMessage, createdClientPassword,
     clientInviteMessage, clientError, handleRemoveClient,
     expandedClient, openGrantPanel, grantCap, setGrantCap, grantExpiry, setGrantExpiry,
     savingGrant, handleSaveGrant, handleSubmitBehalf, handleUnsubmit,
@@ -207,7 +212,7 @@ export default function Selection() {
             <div className="guest-link-label">Clients</div>
             <p className="hint">Invite a client to log in and favourite their photos from this event.</p>
 
-            <form className="row" onSubmit={handleInviteClient}>
+            <form className="row" onSubmit={handleInviteClient} style={{ flexWrap: 'wrap' }}>
               <input
                 className="text-input"
                 type="email"
@@ -224,6 +229,14 @@ export default function Selection() {
                 value={clientInviteCap}
                 onChange={(e) => setClientInviteCap(e.target.value)}
               />
+              <input
+                className="text-input"
+                type="date"
+                title="Access expires (optional — per-event)"
+                style={{ maxWidth: 170 }}
+                value={clientInviteExpiry}
+                onChange={(e) => setClientInviteExpiry(e.target.value)}
+              />
               <button className="btn" type="submit" disabled={invitingClient || !clientInviteEmail.trim()}>
                 {invitingClient ? 'Inviting…' : 'Invite'}
               </button>
@@ -231,6 +244,65 @@ export default function Selection() {
 
             {clientInviteMessage && <p className="hint">{clientInviteMessage}</p>}
             {clientError && <p className="error">{clientError}</p>}
+
+            <div className="guest-link-label" style={{ marginTop: 14 }}>Or create their login directly</div>
+            <p className="hint">
+              Pick the email and password yourself and share them with the client — they log straight in,
+              no invite email. Same client can be on other events with a different cap and expiry.
+            </p>
+            <form className="row" onSubmit={handleCreateClientAccount} style={{ flexWrap: 'wrap' }}>
+              <input
+                className="text-input"
+                type="email"
+                placeholder="client@example.com"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+              />
+              <input
+                className="text-input"
+                type="text"
+                placeholder="Name (optional)"
+                style={{ maxWidth: 150 }}
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+              />
+              <input
+                className="text-input"
+                type="text"
+                placeholder="Password (blank = auto-generate)"
+                style={{ maxWidth: 220 }}
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <input
+                className="text-input"
+                type="number"
+                min="1"
+                placeholder="Cap (optional)"
+                style={{ maxWidth: 130 }}
+                value={createCap}
+                onChange={(e) => setCreateCap(e.target.value)}
+              />
+              <input
+                className="text-input"
+                type="date"
+                title="Access expires (optional — per-event)"
+                style={{ maxWidth: 170 }}
+                value={createExpiry}
+                onChange={(e) => setCreateExpiry(e.target.value)}
+              />
+              <button className="btn secondary" type="submit" disabled={creatingClient || !createEmail.trim()}>
+                {creatingClient ? 'Creating…' : 'Create login'}
+              </button>
+            </form>
+
+            {createClientMessage && <p className="hint">{createClientMessage}</p>}
+            {createdClientPassword && (
+              <p className="hint" style={{ userSelect: 'all' }}>
+                One-time password (copy now — never shown again): <strong>{createdClientPassword}</strong>
+              </p>
+            )}
 
             <ul className="team-list">
               {clients.map((c) => {
@@ -249,6 +321,7 @@ export default function Selection() {
                         {c.submitted_at && <span className="hint"> · submitted</span>}
                         {c.revoked_at && <span className="hint"> · revoked</span>}
                         {expired && !c.revoked_at && <span className="hint"> · expired</span>}
+                        {!expired && c.access_expires && <span className="hint"> · until {new Date(c.access_expires).toLocaleDateString()}</span>}
                       </span>
                       <button className="btn secondary" type="button" onClick={(e) => { e.stopPropagation(); handleRemoveClient(c.user_id) }}>
                         Remove
@@ -311,7 +384,11 @@ export default function Selection() {
               })}
               {pendingClientInvites.map((inv) => (
                 <li key={inv.invite_id} className="team-list-item team-list-item-pending">
-                  <span>{inv.email} <span className="hint">(pending)</span></span>
+                  <span>
+                    {inv.email} <span className="hint">(pending)</span>
+                    {inv.favourite_cap != null && <span className="hint"> · cap {inv.favourite_cap}</span>}
+                    {inv.expires_at && <span className="hint"> · until {new Date(inv.expires_at).toLocaleDateString()}</span>}
+                  </span>
                 </li>
               ))}
               {clients.length === 0 && pendingClientInvites.length === 0 && (

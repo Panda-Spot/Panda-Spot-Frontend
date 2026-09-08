@@ -29,6 +29,7 @@ import {
   getEventAnalytics,
   getShootsCredentials,
   inviteClient,
+  createClientAccount,
   inviteCollaborator,
   listAlbums,
   listClients,
@@ -189,9 +190,20 @@ export default function EventWorkspace() {
   const [pendingClientInvites, setPendingClientInvites] = useState([])
   const [clientInviteEmail, setClientInviteEmail] = useState('')
   const [clientInviteCap, setClientInviteCap] = useState('')
+  const [clientInviteExpiry, setClientInviteExpiry] = useState('')
   const [invitingClient, setInvitingClient] = useState(false)
   const [clientInviteMessage, setClientInviteMessage] = useState('')
   const [clientError, setClientError] = useState('')
+  // Studio-provisioned login: the studio picks email + password directly
+  // (no invite email round-trip) and relays the credentials itself.
+  const [createEmail, setCreateEmail] = useState('')
+  const [createName, setCreateName] = useState('')
+  const [createPassword, setCreatePassword] = useState('')
+  const [createCap, setCreateCap] = useState('')
+  const [createExpiry, setCreateExpiry] = useState('')
+  const [creatingClient, setCreatingClient] = useState(false)
+  const [createClientMessage, setCreateClientMessage] = useState('')
+  const [createdClientPassword, setCreatedClientPassword] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState(null)
   const [savingPhotoFeatures, setSavingPhotoFeatures] = useState({})
   const [deletingEvent, setDeletingEvent] = useState(false)
@@ -590,7 +602,8 @@ export default function EventWorkspace() {
     setClientInviteMessage('')
     try {
       const cap = clientInviteCap.trim() ? parseInt(clientInviteCap, 10) : undefined
-      const res = await inviteClient(eventId, clientInviteEmail.trim(), cap)
+      const expiresAt = clientInviteExpiry.trim() || undefined
+      const res = await inviteClient(eventId, clientInviteEmail.trim(), cap, expiresAt)
       setClientInviteMessage(
         res.status === 'added'
           ? 'Added — they can view this event immediately.'
@@ -598,11 +611,50 @@ export default function EventWorkspace() {
       )
       setClientInviteEmail('')
       setClientInviteCap('')
+      setClientInviteExpiry('')
       loadClients()
     } catch (e) {
       setClientError(e.message)
     } finally {
       setInvitingClient(false)
+    }
+  }
+
+  const handleCreateClientAccount = async (e) => {
+    e.preventDefault()
+    if (!createEmail.trim()) return
+    setCreatingClient(true)
+    setClientError('')
+    setCreateClientMessage('')
+    setCreatedClientPassword('')
+    try {
+      const res = await createClientAccount(eventId, {
+        email: createEmail.trim(),
+        name: createName.trim() || undefined,
+        password: createPassword || undefined,
+        favouriteCap: createCap.trim() ? parseInt(createCap, 10) : undefined,
+        expiresAt: createExpiry.trim() || undefined,
+      })
+      if (res.status === 'created' && res.generated_password) {
+        setCreatedClientPassword(res.generated_password)
+        setCreateClientMessage(`Login created for ${res.email} — copy the one-time password now, it won't be shown again.`)
+      } else {
+        setCreateClientMessage(
+          res.status === 'added'
+            ? `Added ${res.email} to this event with the given cap and expiry.`
+            : `Login created for ${res.email} — share the password you set.`
+        )
+      }
+      setCreateEmail('')
+      setCreateName('')
+      setCreatePassword('')
+      setCreateCap('')
+      setCreateExpiry('')
+      loadClients()
+    } catch (e) {
+      setClientError(e.message)
+    } finally {
+      setCreatingClient(false)
     }
   }
 
@@ -1653,8 +1705,13 @@ export default function EventWorkspace() {
     uploading, progress, error, copied, showGuestCard, setShowGuestCard,
     collaborators, pendingInvites, acceptedInvites, declinedInvites, inviteEmail, setInviteEmail, inviting,
     inviteMessage, teamError, clients, pendingClientInvites,
-    clientInviteEmail, setClientInviteEmail, clientInviteCap, setClientInviteCap,
+    clientInviteEmail, setClientInviteEmail, clientInviteCap,
+    setClientInviteCap, clientInviteExpiry, setClientInviteExpiry,
     invitingClient, clientInviteMessage, clientError,
+    createEmail, setCreateEmail, createName, setCreateName,
+    createPassword, setCreatePassword, createCap, setCreateCap,
+    createExpiry, setCreateExpiry, creatingClient,
+    createClientMessage, createdClientPassword,
     deletingPhotoId, savingPhotoFeatures, deletingEvent,
     showEditDetails, setShowEditDetails, editName, setEditName,
     editDate, setEditDate, editVenue, setEditVenue, editDesc, setEditDesc,
@@ -1693,7 +1750,7 @@ export default function EventWorkspace() {
     load, loadAlbums, loadTeam, loadClients, loadFavourites, loadPicks,
     handleStartEvent, requestStartEvent, showStartConfirm, setShowStartConfirm,
     handleToggleGuestUploads, handleToggleFeature,
-    handleInviteClient, handleRemoveClient, openEditDetails, handleSaveDetails,
+    handleInviteClient, handleCreateClientAccount, handleRemoveClient, openEditDetails, handleSaveDetails,
     handlePublish, handleArchive, handleRestore, handleAllowDownload,
     handleCoverFile, handleSaveCover, handleRemoveCover,
     handleStudioZip, handlePicksZip, handleArchivePhoto, handleRestorePhoto,
