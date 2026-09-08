@@ -258,6 +258,158 @@
   justify-content: space-between;
 }
 
+/* --- Studio gallery toolbar (Photos & Imports, Selection, AI Search) --- */
+
+.gallery-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.gallery-toolbar .text-input {
+  min-width: 0;
+}
+
+.gallery-search {
+  flex: 1;
+  min-width: 160px;
+}
+
+.view-switcher {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-switcher button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.view-switcher button + button {
+  border-left: 1px solid var(--border);
+}
+
+.view-switcher button.active {
+  background: rgba(245, 158, 11, 0.12);
+  color: #F59E0B;
+}
+
+.per-row-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.per-row-slider input[type="range"] {
+  width: 110px;
+  accent-color: #F59E0B;
+}
+
+.gallery-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 4px 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+/* --- Masonry + list layouts (same .photo-card markup) --- */
+
+.masonry-grid {
+  column-gap: 14px;
+  margin-top: 20px;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 14px;
+}
+
+.masonry-grid .photo-card > div:first-child {
+  height: auto;
+}
+
+.photo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.photo-list .photo-card {
+  flex-direction: row;
+  align-items: center;
+}
+
+.photo-list .photo-card > div:first-child {
+  width: 104px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+.photo-list .photo-card img,
+.photo-list .photo-card video {
+  height: 76px;
+}
+
+.photo-list .photo-card .meta {
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+/* --- Icon empty states (never bare text) --- */
+
+.gallery-empty {
+  text-align: center;
+  padding: 44px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.gallery-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+  color: #F59E0B;
+}
+
+.gallery-empty-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.gallery-empty-hint {
+  max-width: 420px;
+  margin: 0 auto 14px;
+  line-height: 1.5;
+}
+
 .photo-feature-membership {
   display: grid;
   gap: 6px;
@@ -1502,6 +1654,77 @@
 
 .upload-section {
   margin-top: 20px;
+}
+
+/* Inviting dropzone teaser — deliberately NOT a button shape: dashed
+   highlight card that invites a click or a file drop. */
+.upload-teaser {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 2px dashed rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(245, 158, 11, 0.015));
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
+}
+
+.upload-teaser:hover,
+.upload-teaser:focus-visible {
+  border-color: #F59E0B;
+  border-style: solid;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.18);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.upload-teaser.drag-over {
+  border-color: #22C55E;
+  border-style: solid;
+  background: rgba(34, 197, 94, 0.07);
+  box-shadow: 0 4px 22px rgba(34, 197, 94, 0.22);
+}
+
+.upload-teaser-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.06));
+  color: #F59E0B;
+}
+
+.upload-teaser-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.upload-teaser-hint {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Drive import explainer points — each its own visually distinct row. */
+.drive-import .notice-list {
+  list-style: none;
+}
+
+.drive-import .notice-list li {
+  position: relative;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--border);
+  border-left: 3px solid #F59E0B;
+  border-radius: 8px;
+  padding: 8px 12px 8px 14px;
 }
 
 /* --- Job progress log (event detail) --- */

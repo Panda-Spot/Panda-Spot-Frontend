@@ -7,7 +7,7 @@ export default function Tools() {
   const {
     eventId, event, photos, load,
     dupIds, setDupIds, setMetaPhotoId,
-    handleStartEvent, startingEvent, setActiveTab,
+    requestStartEvent, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
@@ -28,9 +28,9 @@ export default function Tools() {
           Start the event to unlock Tools and all other features.
         </p>
         {event.role === 'owner' ? (
-          <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-            {startingEvent ? 'Starting…' : 'Start event'}
-          </button>
+            <button className="btn" type="button" onClick={requestStartEvent}>
+              Start event
+            </button>
         ) : (
           <p className="hint">Only the event owner can start the event.</p>
         )}

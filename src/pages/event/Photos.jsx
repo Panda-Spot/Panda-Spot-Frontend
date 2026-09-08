@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Star, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, Columns3, ImageOff, LayoutGrid, List, Search, Star, Upload, XCircle } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
+import { drivePermissionLabel } from './EventWorkspace.jsx'
+import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
+import PhotoTiles from '../../components/gallery/PhotoTiles.jsx'
+import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 import { fileUrl } from '../../api.js'
 import Dropzone from '../../components/Dropzone.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
@@ -16,14 +20,14 @@ export default function Photos() {
     uploading, progress, error, logLines, skippedFiles,
     liveNotice, uploadTab, setUploadTab,
     driveUrl, connectingDrive, testingConnection, connectionTest, testedUrl,
-    handleDriveUrlChange, handleTestConnection, handleDriveConnect, handleDriveSync,
+    handleDriveUrlChange, handleTestConnection, handleDriveTestReset, handleDriveConnect, handleDriveSync,
     syncingDrive, handleToggleAutoSync, togglingAutoSync,
     shoots, settingUpShoots, handleSetupShoots, handleShowShootsCredentials,
     regeneratingShoots, handleRegenerateShoots, disconnectingShoots, handleDisconnectShoots,
-    handleFiles, handleStartEvent, startingEvent,
+    handleFiles, requestStartEvent,
     showExportModal, setShowExportModal, exportUrl, handleExportUrlChange,
     exportTesting, handleExportTestConnection, exportConnectionTest, exportTestedUrl,
-    handleExportConnect, exportSource, setExportSource,
+    handleExportConnect, handleClearExportFolder, exportSource, setExportSource,
     handleToggleDriveBackup, togglingDriveBackup, handleBackupExisting, backingUpExisting,
     handleReclaimDriveBackupNow, reclaimingDriveBackup, driveBackupMessage,
     photoStatusFilter, setPhotoStatusFilter, sourceFilter, setSourceFilter,
@@ -39,6 +43,50 @@ export default function Photos() {
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
 
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [teaserDragOver, setTeaserDragOver] = useState(false)
+  const [editingExportFolder, setEditingExportFolder] = useState(false)
+
+  // Whatever the server reports as the export target (explicit export
+  // folder, else the import folder) decides which modal body shows.
+  const importFolderUrl = event?.drive_folder_url || null
+  const customExportFolderUrl = event?.export_drive_folder_url || null
+  const hasExportTarget = !!(customExportFolderUrl || importFolderUrl)
+
+  // A freshly saved custom folder collapses the inline editor on its own.
+  useEffect(() => {
+    if (customExportFolderUrl) setEditingExportFolder(false)
+  }, [customExportFolderUrl])
+
+  // SSE progress carries { completed, total } but no percent — derive it.
+  const uploadPct = progress && progress.total > 0
+    ? Math.round((Math.min(progress.completed ?? 0, progress.total) / progress.total) * 100)
+    : 0
+
+  // Gallery presentation: layout views, per-row density, select mode (bulk
+  // checkboxes stay hidden until Select is tapped), name search, sort and
+  // client-side pagination over the worker-filtered visiblePhotos.
+  const [galleryView, setGalleryView] = useState('grid')
+  const [perRow, setPerRow] = useState(4)
+  const [selectMode, setSelectMode] = useState(false)
+  const [photoQuery, setPhotoQuery] = useState('')
+  const [photoSort, setPhotoSort] = useState('newest')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(48)
+
+  const searchedPhotos = useGalleryItems(visiblePhotos, { query: photoQuery, sort: photoSort })
+  const pageCount = Math.max(1, Math.ceil(searchedPhotos.length / pageSize))
+  const safePage = Math.min(page, pageCount)
+  const pagedPhotos = searchedPhotos.slice((safePage - 1) * pageSize, safePage * pageSize)
+
+  useEffect(() => { setPage(1) }, [visiblePhotos, photoQuery, photoSort, pageSize])
+
+  const toolFiltersActive = toolsFilter.blur !== 'all' || toolsFilter.faces !== 'all'
+    || toolsFilter.dupOnly || (toolsFilter.minRating || 0) > 0 || (toolsFilter.tag && toolsFilter.tag !== 'all')
+
+  const clearSearchAndFilters = () => {
+    setPhotoQuery('')
+    setToolsFilter({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })
+  }
 
   return (
     <div>
@@ -58,8 +106,8 @@ export default function Photos() {
               Start the event to unlock uploads, Google Drive import, and PandaShoots.
             </p>
             {event.role === 'owner' ? (
-              <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-                {startingEvent ? 'Starting…' : 'Start event'}
+              <button className="btn" type="button" onClick={requestStartEvent}>
+                Start event
               </button>
             ) : (
               <p className="hint">Only the event owner can start the event.</p>
@@ -79,36 +127,48 @@ export default function Photos() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Uploading photos…</div>
-                    <div className="hint">{progress?.percent ?? 0}% complete — click to view details</div>
+                    <div className="hint">{uploadPct}% complete — click to view details</div>
                   </div>
                   <div style={{ width: 80, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
-                    <div style={{ width: `${progress?.percent ?? 0}%`, height: '100%', background: '#22C55E', borderRadius: 3, transition: 'width 0.3s' }} />
+                    <div style={{ width: `${uploadPct}%`, height: '100%', background: '#22C55E', borderRadius: 3, transition: 'width 0.3s' }} />
                   </div>
                 </div>
               </div>
             ) : (
-              <button
-                className="card upload-section"
-                type="button"
+              <div
+                className={`card upload-teaser${teaserDragOver ? ' drag-over' : ''}`}
+                role="button"
+                tabIndex={0}
+                title="Open the upload dialog"
                 onClick={() => setShowUploadModal(true)}
-                style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowUploadModal(true) }
+                }}
+                onDragOver={(e) => { e.preventDefault(); setTeaserDragOver(true) }}
+                onDragLeave={() => setTeaserDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setTeaserDragOver(false)
+                  const files = Array.from(e.dataTransfer?.files || [])
+                  if (files.length === 0) return
+                  setShowUploadModal(true)
+                  handleFiles(files)
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <Upload size={18} style={{ color: '#F59E0B' }} />
+                <div className="upload-teaser-icon">
+                  <Upload size={26} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="upload-teaser-title">
+                    {teaserDragOver ? 'Drop to upload' : 'Upload photos'}
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>Upload photos</div>
-                    <div className="hint">
-                      Drag &amp; drop{event?.pandashoots_enabled ? ', import from Google Drive, or set up PandaShoots' : ' or import from Google Drive'}
-                    </div>
+                  <div className="hint">
+                    Drop files here or click to browse — JPG, PNG, WebP and video
+                    {event?.pandashoots_enabled ? ' · Drive import & PandaShoots inside' : ' · Drive import inside'}
                   </div>
                 </div>
-              </button>
+                <div className="upload-teaser-hint">Click or drop files</div>
+              </div>
             )}
 
             <Modal open={showUploadModal} onClose={() => setShowUploadModal(false)} title="Upload photos" size="lg">
@@ -143,7 +203,7 @@ export default function Photos() {
                   onFiles={handleFiles}
                   accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
                   disabled={uploading}
-                  hint="Photos (JPG/PNG/WebP, face-indexed) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks"
+                  hint="Photos (JPG/PNG/WebP) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks. Faces are indexed only after you add photos to AI Search."
                 />
               ) : uploadTab === 'shoots' ? (
                 <div className="drive-import">
@@ -218,7 +278,8 @@ export default function Photos() {
               ) : (
                 <div className="drive-import">
                   <ul className="notice-list">
-                    <li>Imported photos and videos aren&apos;t stored on PandaSpot&apos;s server — only thumbnails (photos) and face-search data are kept.</li>
+                    <li>Imported originals aren&apos;t stored on PandaSpot&apos;s server — only thumbnails (photos) are kept at import.</li>
+                    <li>Faces are indexed only after you add photos to AI Search — PandaShoots captures are the exception, indexed live.</li>
                     <li>Downloads and shares fetch the original from your Drive folder live.</li>
                     <li>Keep the folder shared as &quot;Anyone with the link can view&quot; — if you later restrict or delete files there, those specific photos can no longer be downloaded through PandaSpot (search still works fine).</li>
                     <li>Connecting scans and imports every photo currently in the folder, so it can take a while for a large one.</li>
@@ -230,25 +291,37 @@ export default function Photos() {
                       placeholder="https://drive.google.com/drive/folders/..."
                       value={driveUrl}
                       onChange={(e) => handleDriveUrlChange(e.target.value)}
-                      disabled={uploading}
+                      disabled={uploading || connectingDrive}
                     />
-                    <button
-                      className="btn secondary"
-                      type="button"
-                      onClick={handleTestConnection}
-                      disabled={uploading || testingConnection || !driveUrl.trim()}
-                    >
-                      {testingConnection ? 'Testing…' : 'Test connection'}
-                    </button>
-                    <button
-                      className="btn"
-                      type="button"
-                      onClick={handleDriveConnect}
-                      disabled={uploading || !(connectionTest?.ok && testedUrl === driveUrl.trim())}
-                      title={!(connectionTest?.ok && testedUrl === driveUrl.trim()) ? 'Test the connection first' : undefined}
-                    >
-                      {connectingDrive ? 'Connecting…' : 'Connect folder'}
-                    </button>
+                    {connectionTest?.ok && testedUrl === driveUrl.trim() ? (
+                      <>
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={handleDriveConnect}
+                          disabled={uploading || connectingDrive}
+                        >
+                          {connectingDrive ? 'Connecting…' : 'Import from this folder'}
+                        </button>
+                        <button
+                          className="btn secondary"
+                          type="button"
+                          onClick={handleDriveTestReset}
+                          disabled={uploading || connectingDrive}
+                        >
+                          Use a different folder
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={handleTestConnection}
+                        disabled={uploading || testingConnection || !driveUrl.trim()}
+                      >
+                        {testingConnection ? 'Testing…' : 'Test & continue'}
+                      </button>
+                    )}
                   </div>
                   {connectionTest && (
                     <p className={connectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
@@ -256,13 +329,7 @@ export default function Photos() {
                         <>
                           <CheckCircle2 size={14} /> Reachable — &quot;{connectionTest.folderName}&quot;
                           {' · '}
-                          {connectionTest.permission === 'writer'
-                            ? 'Editor access given to anyone with the link'
-                            : connectionTest.permission === 'commenter'
-                              ? 'Commenter access given to anyone with the link'
-                              : connectionTest.permission === 'reader'
-                                ? 'Viewer access given to anyone with the link'
-                                : "Accessible, but the exact permission level couldn't be read"}
+                          {drivePermissionLabel(connectionTest.permission)}
                         </>
                       ) : (
                         <>
@@ -345,7 +412,7 @@ export default function Photos() {
           ))}
         </div>
 
-        {(event?.photo_selection_enabled || event?.face_search_enabled) && visibleManageablePhotos.length > 0 && (
+        {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
           <div className="card" style={{ padding: '10px 14px' }}>
             <div className="row" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
               <label className="checkbox-row" style={{ margin: 0 }}>
@@ -470,25 +537,94 @@ export default function Photos() {
             )
           })}
         </div>
-        {visiblePhotos.length === 0 ? (
-          <p className="hint" style={{ padding: '24px 12px', textAlign: 'center', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
-            No photos found under the &quot;{
-              {
-                all: 'All',
-                upload: 'Uploaded',
-                shoots: 'PandaShoots',
-                drive_import: 'Drive import',
-                guest: 'Guest uploads',
-              }[sourceFilter] || sourceFilter
-            }&quot; filter.
-          </p>
+        <div className="card gallery-toolbar">
+          <div className="view-switcher" aria-label="Gallery layout">
+            {[
+              { key: 'grid', icon: LayoutGrid, label: 'Grid' },
+              { key: 'masonry', icon: Columns3, label: 'Masonry' },
+              { key: 'list', icon: List, label: 'List' },
+            ].map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={galleryView === key ? 'active' : ''}
+                onClick={() => setGalleryView(key)}
+                title={`${label} view`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
+          {galleryView !== 'list' && (
+            <label className="per-row-slider" title="Photos per row">
+              {perRow} per row
+              <input
+                type="range" min={2} max={10} step={1} value={perRow}
+                onChange={(e) => setPerRow(Number(e.target.value))}
+              />
+            </label>
+          )}
+          <input
+            className="text-input gallery-search"
+            type="search"
+            placeholder="Search by image name…"
+            value={photoQuery}
+            onChange={(e) => setPhotoQuery(e.target.value)}
+          />
+          <select
+            className="text-input" value={photoSort}
+            onChange={(e) => setPhotoSort(e.target.value)}
+            title="Sort photos"
+            style={{ width: 'auto' }}
+          >
+            {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+          <select
+            className="text-input" value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            title="Photos per page"
+            style={{ width: 'auto' }}
+          >
+            {[24, 48, 96].map((n) => <option key={n} value={n}>{n} / page</option>)}
+          </select>
+          {(event?.photo_selection_enabled || event?.face_search_enabled) && (
+            <button
+              className={selectMode ? 'btn' : 'btn secondary'}
+              type="button"
+              onClick={() => setSelectMode((v) => !v)}
+            >
+              {selectMode ? 'Done' : 'Select'}
+            </button>
+          )}
+        </div>
+        {searchedPhotos.length === 0 ? (
+          <GalleryEmpty
+            icon={photoQuery ? Search : ImageOff}
+            title={photos.length === 0
+              ? `No photos under “${{ all: 'All', upload: 'Uploaded', shoots: 'PandaShoots', drive_import: 'Drive import', guest: 'Guest uploads' }[sourceFilter] || sourceFilter}” yet`
+              : 'No photos match'}
+            hint={photos.length === 0
+              ? 'Upload files, import from Google Drive, or set up PandaShoots to get started.'
+              : toolFiltersActive
+                ? 'Try clearing the tool filters or search. Sharpness, tags, ratings and duplicates appear after running Analyze on the Tools page.'
+                : 'Try a different search.'}
+            action={(photos.length > 0 && (toolFiltersActive || photoQuery)) ? { label: 'Clear search & filters', onClick: clearSearchAndFilters } : undefined}
+          />
         ) : (
-          <div className="photo-grid">
-            {visiblePhotos.map((p) => (
+          <>
+            <PhotoTiles
+              items={pagedPhotos}
+              view={galleryView}
+              perRow={perRow}
+              renderCard={(p) => (
               <div className="photo-card" key={p.photo_id}>
                 <div style={{ position: 'relative' }}>
-                  <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                  {(event?.photo_selection_enabled || event?.face_search_enabled) && (
+                  <GalleryMedia
+                    src={fileUrl(p.thumbnail_url || p.url)}
+                    filename={p.filename}
+                    style={galleryView === 'masonry' ? { height: 'auto' } : undefined}
+                  />
+                  {selectMode && (event?.photo_selection_enabled || event?.face_search_enabled) && (
                     <input
                       type="checkbox"
                       title="Select for bulk add to Photo Selection / AI Search"
@@ -562,20 +698,78 @@ export default function Photos() {
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+            />
+            <div className="gallery-pagination">
+              <span>
+                Showing {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, searchedPhotos.length)} of {searchedPhotos.length}
+              </span>
+              {pageCount > 1 && (
+                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                  <button
+                    className="btn secondary" type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage(safePage - 1)}
+                  >
+                    Prev
+                  </button>
+                  <span>Page {safePage} of {pageCount}</span>
+                  <button
+                    className="btn secondary" type="button"
+                    disabled={safePage >= pageCount}
+                    onClick={() => setPage(safePage + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         )}
         </>)}
       </div>
 
       {event && (
         <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Export to Google Drive">
-          {event.drive_folder_url ? (
+          {hasExportTarget ? (
             <div className="export-modal-body">
-              <p className="hint">
-                Connected to{' '}
-                <a href={event.drive_folder_url} target="_blank" rel="noreferrer">this Drive folder</a>.
-              </p>
+              <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+                <div className="guest-link-label">Export folder</div>
+                {customExportFolderUrl ? (
+                  <p className="hint" style={{ margin: '0 0 8px' }}>
+                    Using a separate export folder:{' '}
+                    <a href={customExportFolderUrl} target="_blank" rel="noreferrer">open in Drive</a>
+                    {' · '}
+                    <button type="button" className="dismiss-btn" onClick={handleClearExportFolder}>
+                      Use the import folder instead
+                    </button>
+                  </p>
+                ) : (
+                  <p className="hint" style={{ margin: '0 0 8px' }}>
+                    Using the import folder:{' '}
+                    <a href={importFolderUrl} target="_blank" rel="noreferrer">open in Drive</a>
+                  </p>
+                )}
+                {!customExportFolderUrl && !editingExportFolder && (
+                  <button className="btn secondary" type="button" onClick={() => setEditingExportFolder(true)}>
+                    Use a different folder
+                  </button>
+                )}
+                {editingExportFolder && !customExportFolderUrl && (
+                  <ExportFolderForm
+                    uploading={uploading}
+                    exportUrl={exportUrl}
+                    onUrlChange={handleExportUrlChange}
+                    exportTesting={exportTesting}
+                    onTest={handleExportTestConnection}
+                    connectionTest={exportConnectionTest}
+                    testedUrl={exportTestedUrl}
+                    connectingDrive={connectingDrive}
+                    onSave={handleExportConnect}
+                    saveLabel="Save export folder"
+                  />
+                )}
+              </div>
               <label
                 className="checkbox-row"
                 title={!event.drive_backup_available ? 'Drive backup is not set up on this PandaSpot instance yet' : undefined}
@@ -634,74 +828,86 @@ export default function Photos() {
             </div>
           ) : (
             <div className="export-modal-body">
-              <p className="hint">No Drive folder is connected to this event yet — paste one below to enable export.</p>
+              <p className="hint">No export folder yet — paste a Drive folder below. It is only used for export; nothing is ever imported from it.</p>
               <ul className="notice-list">
-                <li>The folder must be shared as &quot;Anyone with the link can view&quot; (or better) so PandaSpot can write to it.</li>
-                <li>Connecting also scans and imports every photo already in the folder, so it can take a while for a large one.</li>
+                <li>The folder must be shared as &quot;Anyone with the link&quot; with Editor access so PandaSpot can write to it.</li>
               </ul>
-              <div className="row">
-                <input
-                  className="text-input"
-                  type="url"
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  value={exportUrl}
-                  onChange={(e) => handleExportUrlChange(e.target.value)}
-                  disabled={uploading}
-                />
-              </div>
-              <div className="row" style={{ marginTop: 8 }}>
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={handleExportTestConnection}
-                  disabled={uploading || exportTesting || !exportUrl.trim()}
-                >
-                  {exportTesting ? 'Testing…' : 'Test connection'}
-                </button>
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={handleExportConnect}
-                  disabled={
-                    uploading ||
-                    !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim()) ||
-                    (exportConnectionTest?.permission && exportConnectionTest.permission !== 'writer')
-                  }
-                  title={
-                    !(exportConnectionTest?.ok && exportTestedUrl === exportUrl.trim())
-                      ? 'Test the connection first'
-                      : exportConnectionTest?.permission && exportConnectionTest.permission !== 'writer'
-                        ? 'Export requires Editor access on the folder'
-                        : undefined
-                  }
-                >
-                  {connectingDrive ? 'Connecting…' : 'Connect & enable export'}
-                </button>
-              </div>
-              {exportConnectionTest && (
-                <p className={exportConnectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
-                  {exportConnectionTest.ok ? (
-                    <>
-                      <CheckCircle2 size={14} /> Reachable — &quot;{exportConnectionTest.folderName}&quot;
-                      {' · '}
-                      {exportConnectionTest.permission === 'writer'
-                        ? 'Editor access given to anyone with the link'
-                        : exportConnectionTest.permission === 'commenter'
-                          ? 'Commenter access given to anyone with the link'
-                          : exportConnectionTest.permission === 'reader'
-                            ? 'Viewer access given to anyone with the link'
-                            : "Accessible, but the exact permission level couldn't be read"}
-                    </>
-                  ) : (
-                    <>
-                      <XCircle size={14} /> {exportConnectionTest.message}
-                    </>
-                  )}
-                </p>
-              )}
+              <ExportFolderForm
+                uploading={uploading}
+                exportUrl={exportUrl}
+                onUrlChange={handleExportUrlChange}
+                exportTesting={exportTesting}
+                onTest={handleExportTestConnection}
+                connectionTest={exportConnectionTest}
+                testedUrl={exportTestedUrl}
+                connectingDrive={connectingDrive}
+                onSave={handleExportConnect}
+                saveLabel="Save export folder"
+              />
             </div>
           )}
         </Modal>
+      )}
+    </div>
+  )
+}
+
+// Export-folder connect form (also reused for a custom folder): one
+// "Test & continue" button, and only after the test passes does the save
+// button appear — never two competing actions at once.
+function ExportFolderForm({
+  uploading, exportUrl, onUrlChange,
+  exportTesting, onTest, connectionTest, testedUrl,
+  connectingDrive, onSave, saveLabel,
+}) {
+  const tested = connectionTest?.ok && testedUrl === exportUrl.trim()
+  return (
+    <div>
+      <div className="row">
+        <input
+          className="text-input"
+          type="url"
+          placeholder="https://drive.google.com/drive/folders/..."
+          value={exportUrl}
+          onChange={(e) => onUrlChange(e.target.value)}
+          disabled={uploading || connectingDrive}
+        />
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        {tested ? (
+          <button
+            className="btn"
+            type="button"
+            onClick={onSave}
+            disabled={uploading || connectingDrive}
+          >
+            {connectingDrive ? 'Saving…' : saveLabel}
+          </button>
+        ) : (
+          <button
+            className="btn"
+            type="button"
+            onClick={onTest}
+            disabled={uploading || exportTesting || !exportUrl.trim()}
+          >
+            {exportTesting ? 'Testing…' : 'Test & continue'}
+          </button>
+        )}
+      </div>
+      {connectionTest && (
+        <p className={connectionTest.ok ? 'hint connection-test-ok' : 'error connection-test-fail'}>
+          {connectionTest.ok ? (
+            <>
+              <CheckCircle2 size={14} /> Reachable — &quot;{connectionTest.folderName}&quot;
+              {' · '}
+              {drivePermissionLabel(connectionTest.permission)}
+            </>
+          ) : (
+            <>
+              <XCircle size={14} /> {connectionTest.message}
+            </>
+          )}
+        </p>
       )}
     </div>
   )

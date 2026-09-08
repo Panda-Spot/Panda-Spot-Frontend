@@ -380,6 +380,19 @@ export const setDriveAutoSync = (eventId, enabled) =>
     body: JSON.stringify({ enabled }),
   })
 
+// Points backup/export at a different Drive folder than the import folder.
+// Verified (readable + Editor) server-side but never imported from —
+// clearing it (clearExportFolder) falls back to the import folder.
+export const saveExportFolder = (eventId, folderUrl) =>
+  request(`/events/${eventId}/export-folder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder_url: folderUrl }),
+  })
+
+export const clearExportFolder = (eventId) =>
+  request(`/events/${eventId}/export-folder`, { method: "DELETE" })
+
 // --- Shoots (camera-to-cloud live upload) ---
 
 // Fetches the event's current Shoots FTP credentials, or { connected: false }

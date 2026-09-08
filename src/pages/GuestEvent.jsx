@@ -593,7 +593,7 @@ export default function GuestEvent() {
         </div>
       )}
 
-      {event && !event.expired && !event.login_required && (!event.locked || unlocked) && (
+      {event && !event.expired && !event.login_required && (!event.locked || unlocked) && event.allow_guest_data_delete_request && (
         <div className="card" style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />

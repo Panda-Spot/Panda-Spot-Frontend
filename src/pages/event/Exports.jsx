@@ -13,7 +13,7 @@ export default function Exports() {
     handleToggleDriveBackup, togglingDriveBackup, handleBackupExisting, backingUpExisting,
     handleReclaimDriveBackupNow, reclaimingDriveBackup, driveBackupMessage,
     exportSource, setExportSource,
-    handleStartEvent, startingEvent,
+    requestStartEvent,
     setActiveTab,
   } = useEvent()
 
@@ -35,8 +35,8 @@ export default function Exports() {
           Start the event to unlock Exports and all other features.
         </p>
         {event.role === 'owner' ? (
-          <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-            {startingEvent ? 'Starting…' : 'Start event'}
+          <button className="btn" type="button" onClick={requestStartEvent}>
+            Start event
           </button>
         ) : (
           <p className="hint">Only the event owner can start the event.</p>

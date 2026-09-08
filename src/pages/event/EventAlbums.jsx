@@ -9,7 +9,7 @@ export default function EventAlbums() {
   const { showToast } = useToast()
   const {
     eventId, event, albums, albumsError, newAlbumName, setNewAlbumName,
-    creatingAlbum, setCreatingAlbum, loadAlbums, handleStartEvent, startingEvent, setActiveTab,
+    creatingAlbum, setCreatingAlbum, loadAlbums, requestStartEvent, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('albums') }, [setActiveTab])
@@ -48,9 +48,9 @@ export default function EventAlbums() {
               Start the event to unlock Albums and all other features.
             </p>
             {event.role === 'owner' && (
-              <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-                {startingEvent ? 'Starting…' : 'Start event'}
-              </button>
+                <button className="btn" type="button" onClick={requestStartEvent}>
+                  Start event
+                </button>
             )}
             {event.role !== 'owner' && (
               <p className="hint">Only the event owner can start the event.</p>

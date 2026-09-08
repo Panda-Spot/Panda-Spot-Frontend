@@ -9,6 +9,7 @@ import {
   archivePhoto,
   backupExistingPhotosToDrive,
   bulkSetMembership,
+  clearExportFolder,
   downloadSelectionCsv,
   downloadSelectionPdf,
   downloadSelectionTxt,
@@ -44,6 +45,7 @@ import {
   restoreEvent,
   restorePhoto,
   revokeClient,
+  saveExportFolder,
   setDriveAutoSync,
   setEventAllowDownload,
   setEventDriveBackup,
@@ -72,6 +74,7 @@ import { uploadLargeFile } from '../../lib/largeUpload.js'
 import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
 import PhotoMetaModal from '../../components/PhotoMetaModal.jsx'
 import PhotoFaceViewer from '../../components/PhotoFaceViewer.jsx'
+import StartEventConfirm from './StartEventConfirm.jsx'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../../jobPersistence.js'
 import { pop } from '../../lib/confetti.js'
 import { runInline, runInWorker } from '../../lib/workerTask.js'
@@ -101,6 +104,18 @@ function formatBytes(bytes) {
   const units = ['B', 'KB', 'MB', 'GB']
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+// Human sentence for a Drive folder permission probe — shared by the
+// connection-test toast and the inline result in Photos.jsx.
+export function drivePermissionLabel(permission) {
+  return permission === 'writer'
+    ? 'Editor access given to anyone with the link'
+    : permission === 'commenter'
+      ? 'Commenter access given to anyone with the link'
+      : permission === 'reader'
+        ? 'Viewer access given to anyone with the link'
+        : "Accessible, but the exact permission level couldn't be read"
 }
 
 // Renders the react-easy-crop pixel area to a JPEG blob for the cover upload.
@@ -247,6 +262,11 @@ export default function EventWorkspace() {
   const [disconnectingShoots, setDisconnectingShoots] = useState(false)
   const [liveNotice, setLiveNotice] = useState('')
   const [startingEvent, setStartingEvent] = useState(false)
+  // Shared start-event confirmation: every Start button across the event
+  // pages opens the same modal (StartEventConfirm) instead of starting
+  // immediately — starting is irreversible and starts the retention clock.
+  const [showStartConfirm, setShowStartConfirm] = useState(false)
+  const requestStartEvent = useCallback(() => setShowStartConfirm(true), [])
   const [sourceFilter, setSourceFilter] = useState('all')
   const [photoStatusFilter, setPhotoStatusFilter] = useState('active') // active | archived | all
   // Phase 21 — three workspace tabs: manager (files in/out), selection
@@ -1237,14 +1257,23 @@ export default function EventWorkspace() {
     setConnectionTest(null)
     try {
       const result = await testDriveFolderConnection(eventId, url)
+      const label = drivePermissionLabel(result.permission)
       setConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
       setTestedUrl(url)
+      showToast(`Reachable — "${result.folder_name}" · ${label}`)
     } catch (e) {
       setConnectionTest({ ok: false, message: e.message })
       setTestedUrl(url)
+      showToast(e.message, { type: 'error' })
     } finally {
       setTestingConnection(false)
     }
+  }
+
+  // Back out of a passed test to try a different folder URL.
+  const handleDriveTestReset = () => {
+    setConnectionTest(null)
+    setTestedUrl('')
   }
 
   const handleDriveConnect = async () => {
@@ -1332,9 +1361,11 @@ export default function EventWorkspace() {
       const result = await testDriveFolderConnection(eventId, url)
       setExportConnectionTest({ ok: true, folderName: result.folder_name, permission: result.permission })
       setExportTestedUrl(url)
+      showToast(`Reachable — "${result.folder_name}" · ${drivePermissionLabel(result.permission)}`)
     } catch (e) {
       setExportConnectionTest({ ok: false, message: e.message })
       setExportTestedUrl(url)
+      showToast(e.message, { type: 'error' })
     } finally {
       setExportTesting(false)
     }
@@ -1346,38 +1377,30 @@ export default function EventWorkspace() {
       showToast('Export needs the folder shared as Editor, not Viewer or Commenter.', { type: 'error' })
       return
     }
-    const confirmed = await confirm(
-      "This scans the folder now and imports every photo currently inside it — could take a while for a large folder. " +
-      "Once connected, you can back up your existing PandaSpot photos into this same folder.",
-      { title: 'Connect this Drive folder?', confirmLabel: 'Connect', danger: false }
-    )
-    if (!confirmed) return
-
+    // Export folders are verified + stored only — never imported from.
+    // (The old flow called connectDriveFolder here, which also imported.)
     setConnectingDrive(true)
-    setUploading(true)
-    setError('')
-    setProgress(null)
-    setLogLines([])
-    setSkippedFiles([])
     try {
-      const { job_id: jobId, files_found: filesFound } = await connectDriveFolder(eventId, exportUrl.trim())
-      if (event?.drive_backup_available) {
-        await setEventDriveBackup(eventId, true)
-      }
+      const res = await saveExportFolder(eventId, exportUrl.trim())
       setExportUrl('')
       setExportConnectionTest(null)
       setExportTestedUrl('')
-      setLogLines([
-        event?.drive_backup_available
-          ? `Connected and export enabled — found ${filesFound} file(s) in the folder`
-          : `Connected — found ${filesFound} file(s) in the folder. Drive backup is not configured on this PandaSpot instance yet.`,
-      ])
-      watchJob(jobId, { failedLabel: 'Import failed' })
+      showToast(`Export folder set — "${res.folder_name || 'Drive folder'}"`)
+      load()
     } catch (e) {
       showToast(e.message, { type: 'error' })
-      setUploading(false)
     } finally {
       setConnectingDrive(false)
+    }
+  }
+
+  const handleClearExportFolder = async () => {
+    try {
+      await clearExportFolder(eventId)
+      showToast('Export folder cleared — exports go to the import folder.')
+      load()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
     }
   }
 
@@ -1668,7 +1691,8 @@ export default function EventWorkspace() {
     aiView, setAiView, faceGroupsState, openGroupId, setOpenGroupId,
     togglingHighlightId, visibleManageablePhotos, selectedCount, visiblePhotos,
     load, loadAlbums, loadTeam, loadClients, loadFavourites, loadPicks,
-    handleStartEvent, handleToggleGuestUploads, handleToggleFeature,
+    handleStartEvent, requestStartEvent, showStartConfirm, setShowStartConfirm,
+    handleToggleGuestUploads, handleToggleFeature,
     handleInviteClient, handleRemoveClient, openEditDetails, handleSaveDetails,
     handlePublish, handleArchive, handleRestore, handleAllowDownload,
     handleCoverFile, handleSaveCover, handleRemoveCover,
@@ -1680,9 +1704,9 @@ export default function EventWorkspace() {
     handleSubmitBehalf, handleUnsubmit, handleRevoke, handleRestoreAccess,
     handleApprovePhoto, handleToggleHighlight, handleRejectPhoto,
     handleSaveWindowDays, handleCreateSubGallery, handleFiles,
-    handleDriveUrlChange, handleTestConnection, handleDriveConnect, handleDriveSync,
+    handleDriveUrlChange, handleTestConnection, handleDriveTestReset, handleDriveConnect, handleDriveSync,
     handleBackupExisting, handleExportUrlChange, handleExportTestConnection,
-    handleExportConnect, handleToggleAutoSync,
+    handleExportConnect, handleClearExportFolder, handleToggleAutoSync,
     handleSetupShoots, handleShowShootsCredentials, handleRegenerateShoots,
     handleDisconnectShoots, handleToggleDriveBackup, handleReclaimDriveBackupNow,
     handleCopy, handleInvite, handleRemoveCollaborator, handleCancelInvite,
@@ -1695,6 +1719,7 @@ export default function EventWorkspace() {
       <EventShell>
         <Outlet />
       </EventShell>
+      <StartEventConfirm />
       <PhotoFaceViewer
         photo={viewingPhoto}
         faces={viewingFaces}

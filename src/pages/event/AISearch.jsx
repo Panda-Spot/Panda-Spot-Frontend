@@ -6,6 +6,8 @@ import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import FaceGroupsView from '../../components/FaceGroupsView.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
+import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
 import StatTile from '../../components/StatTile.jsx'
 import TrendChart from '../../components/TrendChart.jsx'
@@ -18,12 +20,15 @@ export default function AISearch() {
     faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer,
     handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
     privacyDraft, setPrivacyDraft,
-    handleStartEvent, startingEvent, setActiveTab,
+    requestStartEvent, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('ai') }, [setActiveTab])
 
   const [savingPrivacy, setSavingPrivacy] = useState(false)
+  const [memberQuery, setMemberQuery] = useState('')
+  const [memberSort, setMemberSort] = useState('newest')
+  const shownAiMembers = useGalleryItems(aiMembers(), { query: memberQuery, sort: memberSort })
 
   const handlePrivacySave = async () => {
     if (!privacyDraft) return
@@ -65,8 +70,8 @@ export default function AISearch() {
           Start the event to unlock AI Face Search and all other features.
         </p>
         {event.role === 'owner' ? (
-          <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-            {startingEvent ? 'Starting…' : 'Start event'}
+          <button className="btn" type="button" onClick={requestStartEvent}>
+            Start event
           </button>
         ) : (
           <p className="hint">Only the event owner can start the event.</p>
@@ -106,6 +111,11 @@ export default function AISearch() {
             <p className="hint">
               Only these photos are selfie-searchable by guests. Photos without face data index in the background once added.
             </p>
+            {event?.match_threshold != null && (
+              <p className="hint">
+                Match strictness: {Math.round(event.match_threshold * 100)}% similarity — rises automatically when guests report wrong matches.
+              </p>
+            )}
             <div className="row source-filter-row" style={{ marginBottom: 8 }}>
               {[
                 { key: 'members', label: `Members` },
@@ -142,10 +152,38 @@ export default function AISearch() {
                   </button>
                 </div>
                 {aiMembers().length === 0 ? (
-                  <p className="hint">Nothing in AI Search yet — select photos in Photos &amp; Imports and add them.</p>
+                  <GalleryEmpty
+                    title="Nothing in AI Search yet"
+                    hint="Select photos in Photos & Imports and add them."
+                  />
                 ) : (
+                  <>
+                    <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <input
+                        className="text-input gallery-search"
+                        type="search"
+                        placeholder="Search by image name…"
+                        value={memberQuery}
+                        onChange={(e) => setMemberQuery(e.target.value)}
+                      />
+                      <select
+                        className="text-input" value={memberSort}
+                        onChange={(e) => setMemberSort(e.target.value)}
+                        title="Sort photos"
+                        style={{ width: 'auto' }}
+                      >
+                        {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    {shownAiMembers.length === 0 ? (
+                      <GalleryEmpty
+                        icon={Search}
+                        title="No photos match"
+                        hint="Try a different search."
+                      />
+                    ) : (
                   <div className="photo-grid">
-                    {aiMembers().map((p) => (
+                    {shownAiMembers.map((p) => (
                       <div className="photo-card" key={p.photo_id}>
                         <div style={{ cursor: 'zoom-in' }} onClick={() => openFaceViewer(p)} title="Open fullscreen + face closeups">
                           <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
@@ -168,6 +206,8 @@ export default function AISearch() {
                       </div>
                     ))}
                   </div>
+                    )}
+                  </>
                 )}
               </>
             )}

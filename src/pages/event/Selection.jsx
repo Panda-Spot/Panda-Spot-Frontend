@@ -1,9 +1,11 @@
-import { useEffect } from 'react'
-import { Download, Heart, Lock, Star } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Download, Heart, Lock, Search, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
+import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 
 export default function Selection() {
   const {
@@ -21,11 +23,15 @@ export default function Selection() {
     handlePicksZip, zippingPicks, picksZipProgress,
     exportClient, setExportClient, exportFormat, setExportFormat,
     handleSelectionExport, exporting,
-    handleStartEvent, startingEvent,
+    requestStartEvent,
     formatBytes, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('selection') }, [setActiveTab])
+
+  const [memberQuery, setMemberQuery] = useState('')
+  const [memberSort, setMemberSort] = useState('newest')
+  const shownMembers = useGalleryItems(selectionMembers(), { query: memberQuery, sort: memberSort })
 
   const canView = event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator')
 
@@ -46,8 +52,8 @@ export default function Selection() {
             Start the event to unlock Photo Selection and all other features.
           </p>
           {event.role === 'owner' ? (
-            <button className="btn" type="button" onClick={handleStartEvent} disabled={startingEvent}>
-              {startingEvent ? 'Starting…' : 'Start event'}
+            <button className="btn" type="button" onClick={requestStartEvent}>
+              Start event
             </button>
           ) : (
             <p className="hint">Only the event owner can start the event.</p>
@@ -122,10 +128,38 @@ export default function Selection() {
               </button>
             </div>
             {selectionMembers().length === 0 ? (
-              <p className="hint">Nothing in Photo Selection yet — select photos in Photos &amp; Imports and add them.</p>
+              <GalleryEmpty
+                title="Nothing in Photo Selection yet"
+                hint="Select photos in Photos & Imports and add them."
+              />
             ) : (
+              <>
+                <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <input
+                    className="text-input gallery-search"
+                    type="search"
+                    placeholder="Search by image name…"
+                    value={memberQuery}
+                    onChange={(e) => setMemberQuery(e.target.value)}
+                  />
+                  <select
+                    className="text-input" value={memberSort}
+                    onChange={(e) => setMemberSort(e.target.value)}
+                    title="Sort photos"
+                    style={{ width: 'auto' }}
+                  >
+                    {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                  </select>
+                </div>
+                {shownMembers.length === 0 ? (
+                  <GalleryEmpty
+                    icon={Search}
+                    title="No photos match"
+                    hint="Try a different search."
+                  />
+                ) : (
               <div className="photo-grid">
-                {selectionMembers().map((p) => (
+                {shownMembers.map((p) => (
                   <div className="photo-card" key={p.photo_id}>
                     <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
                     <div className="meta">
@@ -152,6 +186,8 @@ export default function Selection() {
                   </div>
                 ))}
               </div>
+                )}
+              </>
             )}
           </div>
 

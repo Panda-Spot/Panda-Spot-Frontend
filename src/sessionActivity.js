@@ -9,7 +9,12 @@
 // tabs share one idle clock: working in tab A keeps tab B logged in too.
 // (Only a timestamp is shared — never the token itself.)
 
-export const IDLE_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+export const IDLE_TIMEOUT_MS = (() => {
+  // QA override: set VITE_IDLE_TIMEOUT_MINUTES=1 in .env to verify the
+  // idle logout in a minute instead of waiting 30. Production default: 30.
+  const override = Number(import.meta.env?.VITE_IDLE_TIMEOUT_MINUTES)
+  return Number.isFinite(override) && override > 0 ? override * 60 * 1000 : 30 * 60 * 1000
+})()
 export const SESSION_CHECK_INTERVAL_MS = 30 * 1000 // re-evaluate every 30s
 export const REFRESH_BEFORE_EXPIRY_MS = 10 * 60 * 1000 // renew token when <10 min left
 export const ACTIVITY_WRITE_THROTTLE_MS = 5 * 1000 // persist at most every 5s
