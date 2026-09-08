@@ -20,9 +20,24 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange })
   const photo = items[index]
   const go = (dir) => onIndexChange((i) => Math.min(Math.max(i + dir, 0), items.length - 1))
 
+  // Instant preview: thumbnails only, never the full original — plus the
+  // neighbours preloaded so arrow/swipe navigation has zero delay.
+  const thumbSrc = (p) => (p ? fileUrl(p.thumbnail_url || p.url) : '')
+
   useEffect(() => {
     setMediaLoaded(false)
   }, [index])
+
+  useEffect(() => {
+    for (const n of [index - 1, index + 1]) {
+      const p = items[n]
+      if (p && !isVideoFile(p.filename)) {
+        const img = new Image()
+        img.src = thumbSrc(p)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, items])
 
   useEffect(() => {
     lockScroll()
@@ -86,7 +101,7 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange })
         ) : (
           <img
             key={photo.photo_id}
-            src={fileUrl(photo.url)}
+            src={thumbSrc(photo)}
             alt={photo.filename}
             className="lightbox-image"
             draggable={false}
