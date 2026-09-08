@@ -4,7 +4,7 @@ import Cropper from 'react-easy-crop'
 import {
   Archive, ArchiveRestore, AlertTriangle, CalendarDays, Camera, CheckCircle2, ChevronRight,
   Circle, Clock, Image, Lock, MapPin, Pencil, Rocket, Search, Send, Share2,
-  Upload, UserPlus, Users, Zap,
+  Trash2, Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -96,47 +96,77 @@ export default function Overview() {
           </div>
         )}
 
-        {/* ── Cover + event details ── */}
+        {/* ── Premium Event Hero Banner ── */}
         {event && (
-          <div className="card">
-            {event.cover_url && (
+          <div className="event-hero-banner">
+            {event.cover_url ? (
               <img
                 src={fileUrl(event.cover_url)}
-                alt=""
-                className="event-overview-cover"
+                alt={event.name || 'Event cover'}
+                className="event-hero-img"
                 draggable={false}
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
+            ) : (
+              <div className="event-hero-placeholder">
+                <div className="event-hero-placeholder-pattern" />
+              </div>
             )}
-            <div className="guest-link-label">Event details</div>
-            {(event.event_date || event.event_venue || event.description) && (
-              <p className="hint" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {event.event_date && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <CalendarDays size={13} /> {new Date(event.event_date).toLocaleDateString()}
-                  </span>
-                )}
-                {event.event_venue && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <MapPin size={13} /> {event.event_venue}
-                  </span>
-                )}
-                {event.description && <span>{event.description}</span>}
-              </p>
-            )}
-            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <button className="btn secondary" type="button" onClick={openEditDetails}>
-                <Pencil size={14} /> Edit details
-              </button>
-              <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                {event.cover_url ? 'Change cover' : 'Add cover (16:9)'}
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
-              </label>
-              {event.cover_url && (
-                <button className="btn secondary" type="button" onClick={handleRemoveCover}>
-                  Remove cover
-                </button>
-              )}
+
+            {/* Gradient Scrim */}
+            <div className="event-hero-overlay" />
+
+            {/* Content Overlaid onto Hero */}
+            <div className="event-hero-content">
+              <div className="event-hero-top-actions">
+                <div className="event-hero-status-pill">
+                  {event.started ? (
+                    <span className="pill-live"><span className="pulse-dot" /> Live Event</span>
+                  ) : (
+                    <span className="pill-draft"><Clock size={12} /> Setup Mode</span>
+                  )}
+                </div>
+                <div className="event-hero-action-group">
+                  <label className="hero-glass-btn" title={event.cover_url ? 'Change cover photo' : 'Upload cover photo'}>
+                    <Camera size={14} />
+                    <span>{event.cover_url ? 'Change Cover' : 'Add Cover'}</span>
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
+                  </label>
+                  <button className="hero-glass-btn" type="button" onClick={openEditDetails} title="Edit event title, date, venue, description">
+                    <Pencil size={14} />
+                    <span>Edit Details</span>
+                  </button>
+                  {event.cover_url && (
+                    <button className="hero-glass-btn danger" type="button" onClick={handleRemoveCover} title="Remove cover photo">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="event-hero-bottom-info">
+                <h1 className="event-hero-title">{event.name}</h1>
+                
+                <div className="event-hero-meta-row">
+                  {event.event_date && (
+                    <div className="event-hero-meta-pill">
+                      <CalendarDays size={13} />
+                      <span>{new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  )}
+                  {event.event_venue && (
+                    <div className="event-hero-meta-pill">
+                      <MapPin size={13} />
+                      <span>{event.event_venue}</span>
+                    </div>
+                  )}
+                  {event.description && (
+                    <div className="event-hero-desc" title={event.description}>
+                      {event.description}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -279,22 +309,22 @@ export default function Overview() {
 
       {/* ── Cover crop modal ── */}
       {event && (
-        <Modal open={showCoverModal} onClose={() => { setShowCoverModal(false); setCoverSrc('') }} title="Cover photo (16:9)">
+        <Modal open={showCoverModal} onClose={() => { setShowCoverModal(false); setCoverSrc('') }} title="Cover photo (Hero Banner)">
           {coverSrc ? (
             <>
-              <div style={{ position: 'relative', width: '100%', height: 320, background: '#111' }}>
+              <div style={{ position: 'relative', width: '100%', height: 320, background: '#111', borderRadius: 10, overflow: 'hidden' }}>
                 <Cropper
                   image={coverSrc}
                   crop={coverCrop}
                   zoom={coverZoom}
-                  aspect={16 / 9}
+                  aspect={21 / 9}
                   onCropChange={setCoverCrop}
                   onZoomChange={setCoverZoom}
                   onCropComplete={(_, pixels) => setCoverPixels(pixels)}
                 />
               </div>
-              <label className="field-label" htmlFor="cover-zoom">Zoom</label>
-              <input id="cover-zoom" type="range" min="1" max="3" step="0.1" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} style={{ width: '100%' }} />
+              <label className="field-label" htmlFor="cover-zoom" style={{ marginTop: 14 }}>Zoom</label>
+              <input id="cover-zoom" type="range" min="1" max="3" step="0.05" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} style={{ width: '100%' }} />
               <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
                 <button className="btn secondary" type="button" onClick={() => { setShowCoverModal(false); setCoverSrc('') }}>Cancel</button>
                 <button className="btn" type="button" onClick={handleSaveCover} disabled={uploadingCover || !coverPixels}>
@@ -303,7 +333,7 @@ export default function Overview() {
               </div>
             </>
           ) : (
-            <p className="hint">Pick an image file to crop it to 16:9 for this event&apos;s cover.</p>
+            <p className="hint">Pick an image file to crop it for this event&apos;s cover.</p>
           )}
         </Modal>
       )}
