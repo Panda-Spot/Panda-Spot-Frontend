@@ -1,7 +1,28 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, ArchiveRestore, Trash2, AlertTriangle } from 'lucide-react'
+import { Archive, ArchiveRestore, Camera, Images, Search, Trash2 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
+
+const FEATURE_CARDS = [
+  {
+    key: 'faceSearch',
+    icon: Search,
+    title: 'Face Search',
+    desc: 'Guests find their own photos with a selfie',
+  },
+  {
+    key: 'photoSelection',
+    icon: Images,
+    title: 'Photo Selection',
+    desc: 'Clients log in to browse, favourite, and submit picks',
+  },
+  {
+    key: 'pandashoots',
+    icon: Camera,
+    title: 'PandaShoots',
+    desc: 'Camera-to-cloud capture over FTP while shooting',
+  },
+]
 
 export default function Danger() {
   const {
@@ -20,80 +41,76 @@ export default function Danger() {
         <div className="card">
           <div className="guest-link-label">Features</div>
           <p className="hint">
-            Turn on either or both — they run independently on this same event and gallery. Switching a feature off
+            Turn features on or off — they run independently on this same event and gallery. Switching one off
             hides its workspace immediately (nothing is deleted).
           </p>
           <p className="hint">
             AI indexed photos: {event?.ai_indexed_photo_count ?? 0}. Currently searchable: {event?.face_search_searchable_photo_count ?? 0}.
           </p>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={!!event?.face_search_enabled}
-              disabled={togglingFeature === 'faceSearch'}
-              onChange={(e) => handleToggleFeature('faceSearch', e.target.checked)}
-            />
-            Face Search — guests find their own photos with a selfie
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={!!event?.photo_selection_enabled}
-              disabled={togglingFeature === 'photoSelection'}
-              onChange={(e) => handleToggleFeature('photoSelection', e.target.checked)}
-            />
-            Photo Selection — clients log in to browse, favourite, and submit picks
-          </label>
+          <div className="feature-grid">
+            {FEATURE_CARDS.map(({ key, icon: Icon, title, desc }) => {
+              const on = key === 'faceSearch'
+                ? !!event?.face_search_enabled
+                : key === 'photoSelection'
+                  ? !!event?.photo_selection_enabled
+                  : !!event?.pandashoots_enabled
+              const busy = togglingFeature === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`feature-card${on ? ' on' : ''}`}
+                  disabled={busy || !event}
+                  onClick={() => handleToggleFeature(key, !on)}
+                  aria-pressed={on}
+                >
+                  <span className="feature-card-icon"><Icon size={20} /></span>
+                  <span className="feature-card-text">
+                    <span className="feature-card-title">{title}</span>
+                    <span className="hint">{desc}</span>
+                  </span>
+                  <span className={`feature-card-pill${on ? ' on' : ''}`}>
+                    {busy ? '…' : on ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {event && (
-          <div className="card">
-            <div className="guest-link-label">Archive</div>
+          <div className={`card${event.archived_at ? ' danger-zone' : ''}`}>
+            <div className="guest-link-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {event.archived_at ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+              {event.archived_at ? 'Archived' : 'Archive & delete'}
+            </div>
             {event.archived_at ? (
-              <>
-                <p className="hint">
-                  Archived {new Date(event.archived_at).toLocaleDateString()} — hidden from guests and clients. Nothing is deleted.
-                </p>
+              <p className="hint">
+                Archived {new Date(event.archived_at).toLocaleDateString()} — hidden from guests and clients.
+                Nothing is deleted. Restore it, or delete everything permanently below.
+              </p>
+            ) : (
+              <p className="hint">
+                Archiving hides the event from guests and clients without deleting anything. Deleting permanently
+                removes the event, every photo, and the guest link — this cannot be undone.
+              </p>
+            )}
+            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+              {event.archived_at ? (
                 <button className="btn secondary" type="button" onClick={handleRestore} disabled={archiving}>
                   <ArchiveRestore size={14} /> {archiving ? 'Restoring…' : 'Restore event'}
                 </button>
-              </>
-            ) : (
-              <>
-                <p className="hint">Archiving hides the event from guests and clients without deleting anything.</p>
+              ) : (
                 <button className="btn secondary" type="button" onClick={handleArchive} disabled={archiving}>
                   <Archive size={14} /> {archiving ? 'Archiving…' : 'Archive event'}
                 </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {event?.role === 'owner' && (
-          <div className={`card ${event?.archived_at ? 'danger-zone' : ''}`}>
-            <div className="guest-link-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Trash2 size={14} /> Delete event
+              )}
+              {event.role === 'owner' && (
+                <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
+                  <Trash2 size={14} /> {deletingEvent ? 'Deleting…' : event.archived_at ? 'Delete permanently' : 'Archive & delete'}
+                </button>
+              )}
             </div>
-            {event?.archived_at ? (
-              <>
-                <p className="hint">
-                  Permanently deletes this event, every photo, and the guest link. This cannot be undone.
-                </p>
-                <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
-                  {deletingEvent ? 'Deleting…' : 'Delete permanently'}
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="hint">
-                  Archive this event first, then come back here to permanently delete it. Or delete directly — the event
-                  will be archived and immediately deleted in one step.
-                </p>
-                <button className="btn danger-btn" type="button" onClick={handleDeleteEvent} disabled={deletingEvent}>
-                  {deletingEvent ? 'Deleting…' : 'Archive & delete'}
-                </button>
-              </>
-            )}
           </div>
         )}
 

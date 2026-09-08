@@ -65,7 +65,7 @@ export default function Selection() {
           </div>
           <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>Photo Selection is off</h3>
           <p className="hint" style={{ maxWidth: 380, margin: '0 auto 16px', lineHeight: 1.5 }}>
-            Turn it on from <Link to={`/events/${eventId}/danger`} style={{ color: '#F59E0B' }}>Danger → Features</Link> to invite clients and collect picks.
+            Turn it on from <Link to={`/events/${eventId}/danger`} style={{ color: '#F59E0B' }}>Features in the Danger section</Link> to invite clients and collect picks.
           </p>
           <Link className="btn secondary" to={`/events/${eventId}/danger`}>
             <Lock size={14} /> Open Danger section

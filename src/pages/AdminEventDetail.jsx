@@ -449,8 +449,8 @@ export default function AdminEventDetail() {
                     </div>
                     {(p.client_favourites_count > 0 || p.likes_count > 0) && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
-                        {p.client_favourites_count > 0 && `★ ${p.client_favourites_count} client pick `}
-                        {p.likes_count > 0 && `♥ ${p.likes_count}`}
+                        {p.client_favourites_count > 0 && `${p.client_favourites_count} client pick${p.client_favourites_count === 1 ? '' : 's'} `}
+                        {p.likes_count > 0 && `${p.likes_count} like${p.likes_count === 1 ? '' : 's'}`}
                       </div>
                     )}
                   </div>

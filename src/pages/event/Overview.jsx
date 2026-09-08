@@ -103,7 +103,7 @@ export default function Overview() {
               <img
                 src={fileUrl(event.cover_url)}
                 alt=""
-                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
+                style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
                 draggable={false}
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
@@ -128,31 +128,24 @@ export default function Overview() {
               <button className="btn secondary" type="button" onClick={openEditDetails}>
                 <Pencil size={14} /> Edit details
               </button>
-              <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                {event.cover_url ? 'Change cover' : 'Add cover (16:9)'}
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
-              </label>
-              {event.cover_url && (
-                <button className="btn secondary" type="button" onClick={handleRemoveCover}>
-                  Remove cover
-                </button>
-              )}
             </div>
           </div>
         )}
 
-        {/* ── Stats cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
-          <StatCard label="Photos" value={photoCount} icon={Camera} />
-          <StatCard label="Face-indexed" value={indexedCount} icon={Search} />
-          <StatCard label="Searchable" value={searchableCount} icon={Zap} />
-          <StatCard label="Pending" value={pendingCount} icon={Clock} />
-          <StatCard label="Clients" value={clientCount} icon={Users} />
-          <StatCard label="Guest searches" value={guestSearches} icon={Image} />
-        </div>
+        {/* ── Stats cards — only meaningful once the event is started ── */}
+        {event?.started && (
+          <div className="stat-grid-6">
+            <StatCard label="Photos" value={photoCount} icon={Camera} />
+            <StatCard label="Face-indexed" value={indexedCount} icon={Search} />
+            <StatCard label="Searchable" value={searchableCount} icon={Zap} />
+            <StatCard label="Pending" value={pendingCount} icon={Clock} />
+            <StatCard label="Clients" value={clientCount} icon={Users} />
+            <StatCard label="Guest searches" value={guestSearches} icon={Image} />
+          </div>
+        )}
 
         {/* ── Photo breakdown mini-bar ── */}
-        {photoCount > 0 && (
+        {event?.started && photoCount > 0 && (
           <div className="card" style={{ padding: '14px 16px' }}>
             <div className="guest-link-label">Photo breakdown</div>
             <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-elevated)' }}>
@@ -181,6 +174,7 @@ export default function Overview() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <FeaturePill label="AI Face Search" active={event.face_search_enabled} icon={Search} />
               <FeaturePill label="Photo Selection" active={event.photo_selection_enabled} icon={Image} />
+              <FeaturePill label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
               <FeaturePill label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>
@@ -267,6 +261,34 @@ export default function Overview() {
             <input id="ev-venue" className="text-input" placeholder="e.g. Grand Palace Hall" value={editVenue} onChange={(e) => setEditVenue(e.target.value)} />
             <label className="field-label" htmlFor="ev-desc">Description</label>
             <input id="ev-desc" className="text-input" placeholder="Short note for your own reference" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+            <label className="field-label">Cover photo <span className="hint">(16:9 crop)</span></label>
+            {event.cover_url ? (
+              <>
+                <img
+                  src={fileUrl(event.cover_url)}
+                  alt=""
+                  style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
+                  draggable={false}
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+                <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                  <label className="btn secondary" style={{ cursor: 'pointer' }}>
+                    Change cover
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
+                  </label>
+                  <button className="btn secondary" type="button" onClick={handleRemoveCover}>
+                    Remove cover
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ marginBottom: 4 }}>
+                <label className="btn secondary" style={{ cursor: 'pointer' }}>
+                  Add cover
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
+                </label>
+              </div>
+            )}
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="btn secondary" type="button" onClick={() => setShowEditDetails(false)}>Cancel</button>
               <button className="btn" type="submit" disabled={savingDetails || !editName.trim()}>

@@ -151,7 +151,7 @@ export default function WorkflowInteractiveStepper() {
                 <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>#1E40AF (Custom)</span>
               </div>
               <div style={{ fontSize: 11, color: 'var(--accent-teal-dark)', background: 'var(--accent-teal-bg)', padding: '6px 10px', borderRadius: 6, fontWeight: 600 }}>
-                ✓ Generated Public Slug: /e/st-mary-gala-2026
+                Generated Public Slug: /e/st-mary-gala-2026
               </div>
             </div>
           )}
@@ -211,7 +211,7 @@ export default function WorkflowInteractiveStepper() {
                 </div>
               </div>
               <div style={{ background: 'var(--accent-teal-bg)', border: '1px solid rgba(20,184,166,0.2)', padding: '10px 12px', borderRadius: 8, fontSize: 12, color: 'var(--accent-teal-dark)', fontWeight: 600 }}>
-                ✓ 8 High-Confidence Matches Found (&gt; 0.36 threshold)
+                8 High-Confidence Matches Found (&gt; 0.36 threshold)
               </div>
             </div>
           )}

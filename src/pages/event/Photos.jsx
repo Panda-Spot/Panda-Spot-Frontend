@@ -103,7 +103,9 @@ export default function Photos() {
                   </div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Upload photos</div>
-                    <div className="hint">Drag & drop, import from Google Drive, or set up PandaShoots</div>
+                    <div className="hint">
+                      Drag &amp; drop{event?.pandashoots_enabled ? ', import from Google Drive, or set up PandaShoots' : ' or import from Google Drive'}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -125,13 +127,15 @@ export default function Photos() {
                 >
                   Import from Google Drive
                 </button>
-                <button
-                  type="button"
-                  className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
-                  onClick={() => setUploadTab('shoots')}
-                >
-                  PandaShoots
-                </button>
+                {event?.pandashoots_enabled && (
+                  <button
+                    type="button"
+                    className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
+                    onClick={() => setUploadTab('shoots')}
+                  >
+                    PandaShoots
+                  </button>
+                )}
               </div>
 
               {uploadTab === 'files' ? (
@@ -319,6 +323,11 @@ export default function Photos() {
           </div>
         )}
 
+        {/* Filters, tabs and the grid only make sense once photos can exist —
+            i.e. after the event is started. Pre-start the page shows the
+            start hero plus sub-gallery management above. */}
+        {event?.started && (
+        <>
         <div className="row source-filter-row">
           {[
             { key: 'active', label: 'Active' },
@@ -405,7 +414,7 @@ export default function Photos() {
               <label className="field-label" htmlFor="tf-rating">Min rating</label>
               <select id="tf-rating" className="text-input" value={toolsFilter.minRating} onChange={(e) => setToolsFilter((f) => ({ ...f, minRating: Number(e.target.value) }))}>
                 {[0, 1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n === 0 ? 'Any' : `${n}★+`}</option>
+                  <option key={n} value={n}>{n === 0 ? 'Any' : `${n}+ stars`}</option>
                 ))}
               </select>
             </div>
@@ -437,7 +446,12 @@ export default function Photos() {
           {[
             { key: 'all', label: 'All' },
             { key: 'upload', label: 'Uploaded' },
-            { key: 'shoots', label: 'PandaShoots' },
+            // PandaShoots source tab only makes sense while the feature is
+            // enabled — unless shoots photos already exist, which keeps the
+            // tab reachable for reviewing them.
+            ...((event?.pandashoots_enabled || photos.some((p) => p.approval_status !== 'pending' && (p.source || 'upload') === 'shoots'))
+              ? [{ key: 'shoots', label: 'PandaShoots' }]
+              : []),
             { key: 'drive_import', label: 'Drive import' },
             { key: 'guest', label: 'Guest uploads' },
           ].map((opt) => {
@@ -491,7 +505,14 @@ export default function Photos() {
                     ) : (
                       <>{p.face_count} face{p.face_count === 1 ? '' : 's'}{p.archived_at && <span className="hint"> · archived</span>}</>
                     )}
-                    {(p.rating || 0) > 0 && <span title={`${p.rating} stars`}> · {'★'.repeat(p.rating)}</span>}
+                    {(p.rating || 0) > 0 && (
+                      <span title={`${p.rating} stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                        {' · '}
+                        {Array.from({ length: p.rating }).map((_, i) => (
+                          <Star key={i} size={11} style={{ color: '#F59E0B' }} fill="#F59E0B" />
+                        ))}
+                      </span>
+                    )}
                     {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
                     {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
                   </span>
@@ -544,6 +565,7 @@ export default function Photos() {
             ))}
           </div>
         )}
+        </>)}
       </div>
 
       {event && (

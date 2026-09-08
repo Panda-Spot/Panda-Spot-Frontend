@@ -587,7 +587,7 @@ export default function AdminClientDetail() {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', padding: '2px 8px' }}>
                       {p.event_name && <span>{p.event_name}</span>}
-                      {p.client_favourites_count > 0 && <span> · ★ {p.client_favourites_count} client pick</span>}
+                      {p.client_favourites_count > 0 && <span> · {p.client_favourites_count} client pick{p.client_favourites_count === 1 ? '' : 's'}</span>}
                     </div>
                   </div>
                 ))}

@@ -5,7 +5,7 @@ import { useAuth } from './auth.jsx'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "603420654467-57ucc08fq5rujcmcc5cbljfc7jt6qre3.apps.googleusercontent.com"
 
-export default function GoogleSignInButton() {
+export default function GoogleSignInButton({ rememberMe = true }) {
   const divRef = useRef(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -20,7 +20,7 @@ export default function GoogleSignInButton() {
         client_id: CLIENT_ID,
         callback: async (response) => {
           try {
-            const user = await loginWithGoogle(response.credential)
+            const user = await loginWithGoogle(response.credential, rememberMe)
             setUserDirectly(user)
             navigate(searchParams.get('redirect') || '/dashboard')
           } catch {
@@ -38,7 +38,7 @@ export default function GoogleSignInButton() {
     script.async = true
     script.onload = init
     document.body.appendChild(script)
-  }, [navigate, searchParams, setUserDirectly])
+  }, [navigate, searchParams, setUserDirectly, rememberMe])
 
   if (!CLIENT_ID) return null
   return <div ref={divRef} className="google-signin-slot" />

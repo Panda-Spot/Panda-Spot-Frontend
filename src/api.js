@@ -1,4 +1,10 @@
-import { getToken, setToken, clearToken } from "./authToken.js"
+import { getToken, setToken, clearToken, updateTokenFromRefresh } from "./authToken.js"
+
+// In-flight request counter — the idle auto-logout defers itself while
+// uploads/exports are actively on the wire, so a long unattended upload
+// is never killed mid-flight; the session ends once things go quiet.
+let inflightRequests = 0
+export const getInflightCount = () => inflightRequests
 
 const BASE_URL =
   import.meta.env.VITE_API_URL ||
@@ -17,11 +23,17 @@ async function request(path, options) {
     if (galleryKey && !headers["x-gallery-key"]) headers["x-gallery-key"] = galleryKey
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: "include",
-    ...options,
-    headers,
-  })
+  inflightRequests += 1
+  let res
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      credentials: "include",
+      ...options,
+      headers,
+    })
+  } finally {
+    inflightRequests -= 1
+  }
   if (!res.ok) {
     let message = `Request failed (${res.status})`
     const err = new Error(message)
@@ -127,23 +139,23 @@ export async function downloadFile(path, filename) {
 
 // --- Auth ---
 
-export const register = async (email, password, name) => {
+export const register = async (email, password, name, rememberMe = true) => {
   const data = await request("/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, name }),
+    body: JSON.stringify({ email, password, name, remember_me: rememberMe }),
   })
-  setToken(data.token)
+  setToken(data.token, { remember: data.remember_me ?? rememberMe, expiresIn: data.expires_in })
   return data
 }
 
-export const login = async (email, password) => {
+export const login = async (email, password, rememberMe = false) => {
   const data = await request("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember_me: rememberMe }),
   })
-  setToken(data.token)
+  setToken(data.token, { remember: data.remember_me ?? rememberMe, expiresIn: data.expires_in })
   return data
 }
 
@@ -174,13 +186,23 @@ export const confirmPasswordReset = (token, password) =>
     body: JSON.stringify({ password }),
   })
 
-export const loginWithGoogle = async (idToken) => {
+export const loginWithGoogle = async (idToken, rememberMe = true) => {
   const data = await request("/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id_token: idToken }),
+    body: JSON.stringify({ id_token: idToken, remember_me: rememberMe }),
   })
-  setToken(data.token)
+  setToken(data.token, { remember: data.remember_me ?? rememberMe, expiresIn: data.expires_in })
+  return data
+}
+
+// Sliding renewal for default sessions — called proactively while the
+// user is active, before the 30-minute token dies. The server rotates the
+// token (old one blocklisted) and enforces the absolute cap (24 h default,
+// 7 days remember-me); a 401 here means the session is over.
+export const refreshSession = async () => {
+  const data = await request("/auth/refresh", { method: "POST" })
+  if (data?.token) updateTokenFromRefresh(data.token, data.expires_in)
   return data
 }
 
@@ -991,11 +1013,9 @@ export const acceptClientInvite = async (token, password, name) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password, name }),
   })
-  setToken(data.token)
+  setToken(data.token, { remember: data.remember_me ?? true, expiresIn: data.expires_in })
   return data
-}
-
-// --- Photo Selection: client-facing gallery (logged in as a USER-role client) ---
+}// --- Photo Selection: client-facing gallery (logged in as a USER-role client) ---
 
 export const listClientEvents = () => request(`/client/events`)
 

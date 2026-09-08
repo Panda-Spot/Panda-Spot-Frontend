@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { Camera } from 'lucide-react'
 import { createAlbum } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
@@ -40,7 +41,7 @@ export default function EventAlbums() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px',
             }}>
-              <span style={{ fontSize: 28 }}>📸</span>
+              <Camera size={28} style={{ color: '#F59E0B' }} />
             </div>
             <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700 }}>Event not started</h3>
             <p className="hint" style={{ maxWidth: 380, margin: '0 auto 16px', lineHeight: 1.5 }}>

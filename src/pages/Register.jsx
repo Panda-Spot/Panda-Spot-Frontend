@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
 import GoogleSignInButton from '../GoogleSignInButton.jsx'
 import PasswordStrength from '../components/ui/PasswordStrength.jsx'
@@ -61,7 +62,7 @@ export default function Register() {
         <div className="signup-steps" aria-label="Signup progress">
           {STEPS.map((label, i) => (
             <div key={label} className="signup-step" data-active={step === i + 1} data-done={step > i + 1}>
-              <span className="signup-step-dot">{step > i + 1 ? '✓' : i + 1}</span>
+              <span className="signup-step-dot">{step > i + 1 ? <Check size={14} /> : i + 1}</span>
               <span className="signup-step-label">{label}</span>
             </div>
           ))}
