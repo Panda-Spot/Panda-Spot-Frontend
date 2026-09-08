@@ -19,13 +19,13 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
     return () => window.removeEventListener('keydown', handler)
   }, [open, onClose])
 
-  const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl', '2xl': 'max-w-4xl' }
+  const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-xl', xl: 'max-w-2xl', '2xl': 'max-w-4xl' }
 
   return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex justify-center p-4 overflow-y-auto overscroll-contain modal-scrollable"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto overscroll-contain modal-scrollable"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -33,16 +33,16 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
         >
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
           <motion.div
-            className={`relative w-full ${widths[size]} rounded-2xl p-6 shadow-modal z-10 m-auto max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain modal-scrollable`}
+            className={`relative w-full ${widths[size] || widths.md} rounded-2xl p-6 sm:p-7 shadow-modal z-10 my-auto max-h-[calc(100vh-2.5rem)] overflow-y-auto overscroll-contain modal-scrollable`}
             data-modal-panel=""
             style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
-            initial={{ opacity: 0, scale: 0.94, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 20 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-5 flex-shrink-0">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
               <button
                 onClick={onClose}
@@ -50,7 +50,7 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
                   hover:bg-[var(--bg-elevated)] transition-colors"
                 aria-label="Close"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
             {children}

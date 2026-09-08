@@ -64,7 +64,7 @@ function TrialWelcomeModal({ subscription }) {
     : null
 
   return (
-    <Modal open={!dismissed} onClose={close} title={goalsStep ? 'What matters to you?' : 'Welcome to PandaSpot!'} size="lg">
+    <Modal open={!dismissed} onClose={close} title={goalsStep ? 'What matters to you?' : 'Welcome to PandaSpot!'} size="xl">
       {goalsStep ? (
         <>
           <p className="signup-pitch">
