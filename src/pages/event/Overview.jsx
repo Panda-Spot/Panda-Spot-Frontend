@@ -103,7 +103,7 @@ export default function Overview() {
               <img
                 src={fileUrl(event.cover_url)}
                 alt=""
-                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
+                className="event-overview-cover"
                 draggable={false}
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
@@ -221,7 +221,7 @@ export default function Overview() {
                       onClick={() => setShowStartConfirm(true)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                        border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)',
+                        border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg, #ffffff)',
                         cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
@@ -239,7 +239,7 @@ export default function Overview() {
                     to={s.to}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                      border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)',
+                      border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg, #ffffff)',
                       textDecoration: 'none', color: 'var(--text-primary)',
                       transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
