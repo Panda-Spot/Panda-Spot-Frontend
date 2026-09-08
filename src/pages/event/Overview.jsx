@@ -96,7 +96,8 @@ export default function Overview() {
           </div>
         )}
 
-        {/* ── Cover + event details ── */}
+        {/* ── Cover + event details (medium banner; cover itself is managed
+            inside Edit details, not via separate buttons) ── */}
         {event && (
           <div className="card">
             {event.cover_url && (
@@ -215,7 +216,7 @@ export default function Overview() {
                       onClick={() => setShowStartConfirm(true)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                        border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)',
+                        border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg, #ffffff)',
                         cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
@@ -233,7 +234,7 @@ export default function Overview() {
                     to={s.to}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                      border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)',
+                      border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card-bg, #ffffff)',
                       textDecoration: 'none', color: 'var(--text-primary)',
                       transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
@@ -304,7 +305,7 @@ export default function Overview() {
         <Modal open={showCoverModal} onClose={() => { setShowCoverModal(false); setCoverSrc('') }} title="Cover photo (16:9)">
           {coverSrc ? (
             <>
-              <div style={{ position: 'relative', width: '100%', height: 320, background: '#111' }}>
+              <div style={{ position: 'relative', width: '100%', height: 320, background: '#111', borderRadius: 10, overflow: 'hidden' }}>
                 <Cropper
                   image={coverSrc}
                   crop={coverCrop}
@@ -315,8 +316,8 @@ export default function Overview() {
                   onCropComplete={(_, pixels) => setCoverPixels(pixels)}
                 />
               </div>
-              <label className="field-label" htmlFor="cover-zoom">Zoom</label>
-              <input id="cover-zoom" type="range" min="1" max="3" step="0.1" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} style={{ width: '100%' }} />
+              <label className="field-label" htmlFor="cover-zoom" style={{ marginTop: 14 }}>Zoom</label>
+              <input id="cover-zoom" type="range" min="1" max="3" step="0.05" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} style={{ width: '100%' }} />
               <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
                 <button className="btn secondary" type="button" onClick={() => { setShowCoverModal(false); setCoverSrc('') }}>Cancel</button>
                 <button className="btn" type="button" onClick={handleSaveCover} disabled={uploadingCover || !coverPixels}>

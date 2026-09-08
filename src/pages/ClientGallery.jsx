@@ -326,8 +326,7 @@ export default function ClientGallery() {
         <img
           src={fileUrl(event.cover_url)}
           alt=""
-          className="w-full object-cover rounded-xl mb-4"
-          style={{ aspectRatio: '16 / 9' }}
+          className="w-full h-48 sm:h-56 max-h-60 object-cover rounded-xl mb-4"
           draggable={false}
           onError={(e) => { e.currentTarget.style.display = 'none' }}
         />

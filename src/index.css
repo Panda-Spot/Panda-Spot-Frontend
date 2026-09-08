@@ -45,6 +45,7 @@
   --bg: var(--bg-base);
   --border: var(--border-default);
   --card-bg: var(--bg-surface);
+  --card: var(--bg-surface);
   --accent: var(--accent-primary);
   --accent-2: #F59E0B;
   --accent-bg: var(--accent-muted);

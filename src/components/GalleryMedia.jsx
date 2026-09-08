@@ -24,7 +24,7 @@ export default function GalleryMedia({
       <video
         src={src}
         className={className}
-        style={style}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...style }}
         controls={controls}
         preload={preload}
         playsInline
@@ -40,7 +40,7 @@ export default function GalleryMedia({
       src={src}
       alt={alt || filename || ''}
       className={className}
-      style={style}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...style }}
       draggable={false}
       onClick={onClick}
       onError={onError}
