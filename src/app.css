@@ -306,6 +306,27 @@
   color: #38BDF8;
 }
 
+/* Collapsible section toggle (e.g. Advanced & privacy concerns). */
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.collapse-toggle svg:last-child {
+  margin-left: auto;
+  color: var(--text-tertiary);
+}
+
 @media (hover: hover) {
   .photo-card .meta-actions {
     opacity: 0;

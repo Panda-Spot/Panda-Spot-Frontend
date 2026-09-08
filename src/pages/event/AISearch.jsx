@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckSquare, Flag, Images, ScanFace, Search, Target, Trash2, Upload, Users } from 'lucide-react'
+import { CheckSquare, ChevronDown, Flag, Images, ScanFace, Search, ShieldAlert, Target, Trash2, Upload, Users } from 'lucide-react'
 import { updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
@@ -31,6 +31,8 @@ export default function AISearch() {
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSort, setMemberSort] = useState('newest')
   const shownAiMembers = useGalleryItems(aiMembers(), { query: memberQuery, sort: memberSort })
+  // Privacy section lives collapsed at the end of the tab.
+  const [privacyOpen, setPrivacyOpen] = useState(false)
 
   const handlePrivacySave = async () => {
     if (!privacyDraft) return
@@ -275,13 +277,29 @@ export default function AISearch() {
         )}
 
         {event && (event.role === 'owner' || event.role === 'collaborator') && (
-          <PrivacySettingsCard
-            event={event}
-            draft={privacyDraft}
-            setDraft={setPrivacyDraft}
-            saving={savingPrivacy}
-            onSave={handlePrivacySave}
-          />
+          <div className="card" style={{ padding: '10px 14px' }}>
+            <button
+              type="button"
+              className="collapse-toggle"
+              aria-expanded={privacyOpen}
+              onClick={() => setPrivacyOpen((v) => !v)}
+            >
+              <ShieldAlert size={16} style={{ color: '#F59E0B' }} />
+              <span>Advanced & privacy concerns</span>
+              <ChevronDown size={16} style={{ transform: privacyOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+            {privacyOpen && (
+              <div style={{ marginTop: 12 }}>
+                <PrivacySettingsCard
+                  event={event}
+                  draft={privacyDraft}
+                  setDraft={setPrivacyDraft}
+                  saving={savingPrivacy}
+                  onSave={handlePrivacySave}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
