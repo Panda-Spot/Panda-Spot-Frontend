@@ -395,22 +395,26 @@ export default function Photos() {
             start hero plus sub-gallery management above. */}
         {event?.started && (
         <>
-        <div className="row source-filter-row">
-          {[
-            { key: 'active', label: 'Active' },
-            { key: 'archived', label: 'Archived' },
-            { key: 'all', label: 'All' },
-          ].map((opt) => (
-            <button
-              key={`status-${opt.key}`}
-              type="button"
-              className={photoStatusFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-              onClick={() => setPhotoStatusFilter(opt.key)}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <div className="card filter-bar">
+          <div className="filter-group">
+            <span className="filter-label">Status</span>
+            <div className="row source-filter-row">
+              {[
+                { key: 'active', label: 'Active' },
+                { key: 'archived', label: 'Archived' },
+                { key: 'all', label: 'All' },
+              ].map((opt) => (
+                <button
+                  key={`status-${opt.key}`}
+                  type="button"
+                  className={photoStatusFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
+                  onClick={() => setPhotoStatusFilter(opt.key)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
         {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
           <div className="card" style={{ padding: '10px 14px' }}>
@@ -513,7 +517,9 @@ export default function Photos() {
           </div>
         </div>
         )}
-        <div className="row source-filter-row">
+        <div className="filter-group">
+          <span className="filter-label">Source</span>
+          <div className="row source-filter-row">
           {[
             { key: 'all', label: 'All' },
             { key: 'upload', label: 'Uploaded' },
@@ -540,8 +546,10 @@ export default function Photos() {
               </button>
             )
           })}
+          </div>
         </div>
-        <div className="card gallery-toolbar">
+        <div className="filter-group">
+          <span className="filter-label">Layout</span>
           <div className="view-switcher" aria-label="Gallery layout">
             {[
               { key: 'grid', icon: LayoutGrid, label: 'Grid' },
@@ -568,6 +576,9 @@ export default function Photos() {
               />
             </label>
           )}
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Find</span>
           <input
             className="text-input gallery-search"
             type="search"
@@ -600,6 +611,7 @@ export default function Photos() {
               {selectMode ? 'Done' : 'Select'}
             </button>
           )}
+        </div>
         </div>
         {searchedPhotos.length === 0 ? (
           <GalleryEmpty
