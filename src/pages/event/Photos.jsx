@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Search, Star, Trash2, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Search, Star, Trash2, Upload, XCircle, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { drivePermissionLabel } from './EventWorkspace.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
@@ -456,12 +456,13 @@ export default function Photos() {
               ))}
             </div>
             {galleryView !== 'list' && (
-              <label className="per-row-slider" title="Photos per row">
-                {perRow}
+              <label className="per-row-slider" title="Photos per row — slide for fewer, bigger photos or more, smaller ones">
+                <ZoomIn size={14} />
                 <input
                   type="range" min={2} max={10} step={1} value={perRow}
                   onChange={(e) => setPerRow(Number(e.target.value))}
                 />
+                <ZoomOut size={14} />
               </label>
             )}
             <input
