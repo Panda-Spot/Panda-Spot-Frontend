@@ -443,3 +443,29 @@ input, button {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+/* ── Global Scroll Lock for Modals & Lightboxes ── */
+html.modal-open-scroll-locked,
+body.modal-open-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  touch-action: none !important;
+}
+
+/* ── Hide popup/modal native scrollbars cleanly across all browsers ── */
+.modal-panel,
+.modal-body,
+.modal-scrollable,
+[data-modal-panel] {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+.modal-panel::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
+.modal-scrollable::-webkit-scrollbar,
+[data-modal-panel]::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}

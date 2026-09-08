@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, CheckCircle, Sparkles, Send } from 'lucide-react'
+import { lockScroll, unlockScroll } from '../../utils/scrollLock.js'
 
 export default function EarlyAccessModal({ open, onClose }) {
   const [formData, setFormData] = useState({
@@ -12,6 +14,20 @@ export default function EarlyAccessModal({ open, onClose }) {
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      lockScroll()
+      return () => unlockScroll()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -38,9 +54,9 @@ export default function EarlyAccessModal({ open, onClose }) {
     onClose()
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel modal-scrollable" data-modal-panel="" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Sparkles size={18} color="#1E40AF" />
@@ -172,6 +188,7 @@ export default function EarlyAccessModal({ open, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

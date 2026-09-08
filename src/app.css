@@ -344,10 +344,21 @@
   max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
-  background: var(--bg);
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: var(--card-bg, #ffffff);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   animation: modal-scale-in var(--transition) ease-out;
+}
+.modal-panel::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
+.modal-scrollable::-webkit-scrollbar,
+[data-modal-panel]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 @keyframes modal-scale-in {
   from { opacity: 0; transform: scale(0.96) translateY(8px); }

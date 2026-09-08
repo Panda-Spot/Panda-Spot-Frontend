@@ -32,6 +32,7 @@ import AlbumFlipbook from '../components/AlbumFlipbook.jsx'
 import AlbumComments from '../components/AlbumComments.jsx'
 import { ALBUM_STATUS_META } from '../components/albumMeta.js'
 import useGalleryTheme from '../hooks/useGalleryTheme.js'
+import Modal from '../components/Modal.jsx'
 
 // Studio album workspace (Phase 23): stage sources (favourites picker or
 // any event photos), upload spread versions or a print PDF, send/reopen,
@@ -475,53 +476,48 @@ export default function StudioAlbum() {
         </div>
       )}
 
-      {pickerOpen && (
-        <div className="modal-backdrop" onClick={() => setPickerOpen(false)}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
-            <h3>Stage source photos</h3>
-            <p className="hint">Client favourites first — or the whole event pool when nobody has picked yet. Already-staged photos are ticked.</p>
-            {!pickerPhotos ? (
-              <p className="hint">Loading…</p>
-            ) : pickerPhotos.length === 0 ? (
-              <p className="hint">No photos available to stage.</p>
-            ) : (
-              <div className="photo-grid" style={{ maxHeight: '50vh', overflow: 'auto' }}>
-                {pickerPhotos.map((p) => {
-                  const staged = stagedIds.has(p.photo_id)
-                  const checked = staged || picked.has(p.photo_id)
-                  return (
-                    <div
-                      key={p.photo_id} className="photo-card"
-                      style={{ opacity: staged ? 0.55 : 1, cursor: staged ? undefined : 'pointer' }}
-                      onClick={() => {
-                        if (staged) return
-                        setPicked((prev) => {
-                          const next = new Set(prev)
-                          if (next.has(p.photo_id)) next.delete(p.photo_id)
-                          else next.add(p.photo_id)
-                          return next
-                        })
-                      }}
-                    >
-                      <img src={fileUrl(p.thumbnail_url)} alt={p.filename} style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 6 }} loading="lazy" />
-                      <div className="meta" style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
-                        <span className="hint" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.from}</span>
-                        <input type="checkbox" checked={checked} disabled={staged} readOnly />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-              <button type="button" className="btn secondary" onClick={() => setPickerOpen(false)}>Close</button>
-              <GoldButton size="sm" loading={busy} disabled={picked.size === 0} onClick={handleStagePicked}>
-                Stage {picked.size} photo{picked.size === 1 ? '' : 's'}
-              </GoldButton>
-            </div>
+      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Stage source photos">
+        <p className="hint">Client favourites first — or the whole event pool when nobody has picked yet. Already-staged photos are ticked.</p>
+        {!pickerPhotos ? (
+          <p className="hint">Loading…</p>
+        ) : pickerPhotos.length === 0 ? (
+          <p className="hint">No photos available to stage.</p>
+        ) : (
+          <div className="photo-grid modal-scrollable" style={{ maxHeight: '50vh', overflow: 'auto', marginTop: 10 }}>
+            {pickerPhotos.map((p) => {
+              const staged = stagedIds.has(p.photo_id)
+              const checked = staged || picked.has(p.photo_id)
+              return (
+                <div
+                  key={p.photo_id} className="photo-card"
+                  style={{ opacity: staged ? 0.55 : 1, cursor: staged ? undefined : 'pointer' }}
+                  onClick={() => {
+                    if (staged) return
+                    setPicked((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(p.photo_id)) next.delete(p.photo_id)
+                      else next.add(p.photo_id)
+                      return next
+                    })
+                  }}
+                >
+                  <img src={fileUrl(p.thumbnail_url)} alt={p.filename} style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 6 }} loading="lazy" />
+                  <div className="meta" style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                    <span className="hint" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.from}</span>
+                    <input type="checkbox" checked={checked} disabled={staged} readOnly />
+                  </div>
+                </div>
+              )
+            })}
           </div>
+        )}
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button type="button" className="btn secondary" onClick={() => setPickerOpen(false)}>Close</button>
+          <GoldButton size="sm" loading={busy} disabled={picked.size === 0} onClick={handleStagePicked}>
+            Stage {picked.size} photo{picked.size === 1 ? '' : 's'}
+          </GoldButton>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

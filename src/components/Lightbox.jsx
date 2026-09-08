@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react'
 import { addPhotoComment, fileUrl, getPhotoComments } from '../api.js'
 import { getGuestClientId, getGuestName, setGuestName } from '../guestId.js'
+import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 import ReactionBar from './ReactionBar.jsx'
 
 const SWIPE_THRESHOLD_PX = 50
@@ -52,16 +54,16 @@ export default function Lightbox({ slug, matches, index, onClose, onIndexChange,
   }
 
   useEffect(() => {
+    lockScroll()
     const onKey = (e) => {
       if (e.key === 'Escape') onClose()
       else if (e.key === 'ArrowLeft') onIndexChange((i) => (i > 0 ? i - 1 : i))
       else if (e.key === 'ArrowRight') onIndexChange((i) => (i < matches.length - 1 ? i + 1 : i))
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      unlockScroll()
     }
   }, [matches.length, onClose, onIndexChange])
 

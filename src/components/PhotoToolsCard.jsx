@@ -11,6 +11,7 @@ import {
 import { useToast } from '../toast.jsx';
 import { useConfirm } from '../confirm.jsx';
 import GalleryMedia from './GalleryMedia.jsx';
+import Modal from './Modal.jsx';
 
 // Photography tools pack panel (Phase 9) — runs on existing uploaded
 // media, never blocks uploads: async analyze job (hash/blur/EXIF) with
@@ -229,30 +230,25 @@ export default function PhotoToolsCard({ eventId, photos, onAnalyzed, dupIds: _d
         </div>
       )}
 
-      {renameOpen && (
-        <div className="modal-backdrop" onClick={() => setRenameOpen(false)}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <h3>Batch rename ({photos.length} photos)</h3>
-            <p className="hint">Renames display filenames in upload order: prefix-001.ext, prefix-002.ext… Extensions never change.</p>
-            <div className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <div>
-                <label className="field-label" htmlFor="rename-prefix">Prefix</label>
-                <input id="rename-prefix" className="text-input" value={renamePrefix} onChange={(e) => setRenamePrefix(e.target.value)} placeholder="e.g. Sharma-Wedding" maxLength={80} />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="rename-start">Start at</label>
-                <input id="rename-start" className="text-input" type="number" min="1" value={renameStart} onChange={(e) => setRenameStart(e.target.value)} style={{ maxWidth: 100 }} />
-              </div>
-              <button className="btn" type="button" disabled={renaming || !renamePrefix.trim()} onClick={handleRename}>
-                {renaming ? 'Renaming…' : 'Rename'}
-              </button>
-            </div>
-            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" className="btn secondary" onClick={() => setRenameOpen(false)}>Close</button>
-            </div>
+      <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title={`Batch rename (${photos.length} photos)`}>
+        <p className="hint">Renames display filenames in upload order: prefix-001.ext, prefix-002.ext… Extensions never change.</p>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div>
+            <label className="field-label" htmlFor="rename-prefix">Prefix</label>
+            <input id="rename-prefix" className="text-input" value={renamePrefix} onChange={(e) => setRenamePrefix(e.target.value)} placeholder="e.g. Sharma-Wedding" maxLength={80} />
           </div>
+          <div>
+            <label className="field-label" htmlFor="rename-start">Start at</label>
+            <input id="rename-start" className="text-input" type="number" min="1" value={renameStart} onChange={(e) => setRenameStart(e.target.value)} style={{ maxWidth: 100 }} />
+          </div>
+          <button className="btn" type="button" disabled={renaming || !renamePrefix.trim()} onClick={handleRename}>
+            {renaming ? 'Renaming…' : 'Rename'}
+          </button>
         </div>
-      )}
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+          <button type="button" className="btn secondary" onClick={() => setRenameOpen(false)}>Close</button>
+        </div>
+      </Modal>
     </div>
   );
 }
