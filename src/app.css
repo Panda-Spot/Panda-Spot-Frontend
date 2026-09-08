@@ -379,13 +379,23 @@
 /* --- Masonry + list layouts (same .photo-card markup) --- */
 
 .masonry-grid {
-  column-gap: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
   margin-top: 20px;
 }
 
+.masonry-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .masonry-item {
-  break-inside: avoid;
-  margin-bottom: 14px;
+  min-width: 0;
 }
 
 .masonry-grid .photo-card > div:first-child {
