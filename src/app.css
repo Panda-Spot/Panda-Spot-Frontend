@@ -297,6 +297,15 @@
   color: #EF4444;
 }
 
+.icon-btn.info {
+  color: #38BDF8;
+}
+
+.icon-btn.info:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38BDF8;
+}
+
 @media (hover: hover) {
   .photo-card .meta-actions {
     opacity: 0;

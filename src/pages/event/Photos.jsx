@@ -712,7 +712,7 @@ export default function Photos() {
                       <Trash2 size={15} />
                     </button>
                     <button
-                      className="icon-btn"
+                      className="icon-btn info"
                       type="button"
                       title="Details, archive, rating, downloads, cover"
                       onClick={() => setMetaPhotoId(p.photo_id)}

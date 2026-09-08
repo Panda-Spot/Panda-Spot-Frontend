@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Flag, Search, Target, Trash2, Users } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CheckSquare, Flag, Images, ScanFace, Search, Target, Trash2, Upload, Users } from 'lucide-react'
 import { updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
@@ -14,8 +15,9 @@ import TrendChart from '../../components/TrendChart.jsx'
 
 export default function AISearch() {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const {
-    eventId, event, analytics, load,
+    eventId, event, photos, analytics, load,
     aiMembers, aiView, setAiView,
     faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer,
     handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
@@ -76,6 +78,50 @@ export default function AISearch() {
         ) : (
           <p className="hint">Only the event owner can start the event.</p>
         )}
+      </div>
+    )
+  }
+
+  // Face Search on but not a single photo in the event yet — hide the
+  // analytics, members, and privacy sections entirely and show one big
+  // guided empty state instead.
+  if (event?.face_search_enabled && photos.length === 0) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '64px 24px' }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: 24,
+          background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <ScanFace size={48} style={{ color: '#F59E0B' }} />
+        </div>
+        <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}>No photos to search yet</h2>
+        <p className="hint" style={{ maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.6 }}>
+          AI Face Search is on, but this event has no photos. Add some to AI Search in three steps:
+        </p>
+        <div style={{
+          display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
+          maxWidth: 640, margin: '0 auto 28px',
+        }}>
+          {[
+            { icon: Upload, title: '1. Upload', desc: 'Add photos on Photos & Imports' },
+            { icon: CheckSquare, title: '2. Select', desc: 'Tap Select, tick photos' },
+            { icon: Images, title: '3. Add to AI Search', desc: 'Faces index in the background' },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} style={{
+              flex: '1 1 160px', maxWidth: 200, padding: '16px 12px',
+              border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)',
+            }}>
+              <Icon size={26} style={{ color: '#F59E0B', marginBottom: 8 }} />
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{title}</div>
+              <div className="hint" style={{ fontSize: 12, lineHeight: 1.45 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        <Link className="btn" to={`/events/${eventId}/photos`} style={{ fontSize: 15, padding: '10px 28px' }}>
+          <Upload size={16} /> Open Photos & Imports
+        </Link>
       </div>
     )
   }
@@ -141,7 +187,10 @@ export default function AISearch() {
               />
             ) : (
               <>
-                <div className="row" style={{ marginBottom: 8 }}>
+                <div className="row" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                  <Link className="btn secondary" to={`/events/${eventId}/photos`}>
+                    <Images size={14} /> Add photos from Photos & Imports
+                  </Link>
                   <button
                     className="btn secondary"
                     type="button"
@@ -154,7 +203,8 @@ export default function AISearch() {
                 {aiMembers().length === 0 ? (
                   <GalleryEmpty
                     title="Nothing in AI Search yet"
-                    hint="Select photos in Photos & Imports and add them."
+                    hint="Head to Photos & Imports, tap Select, tick photos, and add them to AI Search."
+                    action={{ label: 'Open Photos & Imports', onClick: () => navigate(`/events/${eventId}/photos`) }}
                   />
                 ) : (
                   <>
