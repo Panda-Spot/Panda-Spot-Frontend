@@ -1524,6 +1524,9 @@
   .landing-brand-badge {
     display: none;
   }
+  .landing-btn-signin {
+    display: none;
+  }
   .landing-hero {
     padding: 60px 0 40px;
   }
