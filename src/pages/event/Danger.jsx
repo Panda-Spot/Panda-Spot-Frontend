@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, ArchiveRestore, Camera, Images, Search, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Camera, Images, Layers, Search, Trash2 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 
 const FEATURE_CARDS = [
@@ -21,6 +21,12 @@ const FEATURE_CARDS = [
     icon: Camera,
     title: 'PandaShoots',
     desc: 'Camera-to-cloud capture over FTP while shooting',
+  },
+  {
+    key: 'subGalleries',
+    icon: Layers,
+    title: 'Sub-galleries',
+    desc: 'Split this event into galleries like Ceremony / Reception',
   },
 ]
 
@@ -53,7 +59,9 @@ export default function Danger() {
                 ? !!event?.face_search_enabled
                 : key === 'photoSelection'
                   ? !!event?.photo_selection_enabled
-                  : !!event?.pandashoots_enabled
+                  : key === 'pandashoots'
+                    ? !!event?.pandashoots_enabled
+                    : !!event?.sub_galleries_enabled
               const busy = togglingFeature === key
               return (
                 <button

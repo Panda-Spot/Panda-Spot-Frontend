@@ -368,7 +368,7 @@ export default function Photos() {
 
         {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
-        {event && !event.is_sub_gallery && (
+        {event && !event.is_sub_gallery && event.sub_galleries_enabled && (
           <div className="card">
             <div className="guest-link-label">Sub-galleries</div>
             <p className="hint">
