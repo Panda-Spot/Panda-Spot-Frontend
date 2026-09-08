@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import StudioLightbox from '../../components/StudioLightbox.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
 import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 
@@ -32,6 +33,8 @@ export default function Selection() {
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSort, setMemberSort] = useState('newest')
   const shownMembers = useGalleryItems(selectionMembers(), { query: memberQuery, sort: memberSort })
+  // Fullscreen preview: { items, index } — navigable with arrows/swipe.
+  const [preview, setPreview] = useState(null)
 
   const canView = event?.photo_selection_enabled && (event?.role === 'owner' || event?.role === 'collaborator')
 
@@ -159,9 +162,15 @@ export default function Selection() {
                   />
                 ) : (
               <div className="photo-grid">
-                {shownMembers.map((p) => (
+                {shownMembers.map((p, i) => (
                   <div className="photo-card" key={p.photo_id}>
-                    <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                    <div
+                      style={{ cursor: 'zoom-in' }}
+                      onClick={() => setPreview({ items: shownMembers, index: i })}
+                      title="Open fullscreen preview"
+                    >
+                      <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                    </div>
                     <div className="meta">
                       <span className="hint">{p.filename}</span>
                       <button
@@ -410,9 +419,15 @@ export default function Selection() {
                       <p className="hint">No picks yet.</p>
                     ) : (
                       <div className="photo-grid">
-                        {g.photos.map((p) => (
+                        {g.photos.map((p, i) => (
                           <div className="photo-card" key={p.photo_id}>
-                            <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                            <div
+                              style={{ cursor: 'zoom-in' }}
+                              onClick={() => setPreview({ items: g.photos, index: i })}
+                              title="Open fullscreen preview"
+                            >
+                              <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                            </div>
                             <div className="meta">
                               <span className="hint">{p.filename}</span>
                               <button
@@ -437,9 +452,15 @@ export default function Selection() {
               <p className="hint">No favourites yet — the merged view fills in once clients pick.</p>
             ) : (
               <div className="photo-grid">
-                {eventFavourites.merged.map((p) => (
+                {eventFavourites.merged.map((p, i) => (
                   <div className="photo-card" key={p.photo_id}>
-                    <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                    <div
+                      style={{ cursor: 'zoom-in' }}
+                      onClick={() => setPreview({ items: eventFavourites.merged, index: i })}
+                      title="Open fullscreen preview"
+                    >
+                      <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                    </div>
                     <div className="meta">
                       <span className="hint">
                         {p.favourited_by.map((u) => u.name || u.email).join(', ')}
@@ -461,6 +482,14 @@ export default function Selection() {
             )}
           </div>
         </div>
+      )}
+      {preview && (
+        <StudioLightbox
+          items={preview.items}
+          index={preview.index}
+          onClose={() => setPreview(null)}
+          onIndexChange={(fn) => setPreview((p) => (p ? { ...p, index: typeof fn === 'function' ? fn(p.index) : fn } : p))}
+        />
       )}
     </div>
   )

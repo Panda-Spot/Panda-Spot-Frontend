@@ -11,6 +11,7 @@ import Dropzone from '../../components/Dropzone.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import JobProgressLog from '../../components/JobProgressLog.jsx'
 import Modal from '../../components/Modal.jsx'
+import StudioLightbox from '../../components/StudioLightbox.jsx'
 import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
 import { isVideoFile } from '../../utils/media.js'
 
@@ -44,6 +45,8 @@ export default function Photos() {
 
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [teaserDragOver, setTeaserDragOver] = useState(false)
+  // Fullscreen preview: { items, index } — navigable with arrows/swipe.
+  const [preview, setPreview] = useState(null)
   const [editingExportFolder, setEditingExportFolder] = useState(false)
 
   // Whatever the server reports as the export target (explicit export
@@ -632,9 +635,13 @@ export default function Photos() {
               items={pagedPhotos}
               view={galleryView}
               perRow={perRow}
-              renderCard={(p) => (
+              renderCard={(p, i) => (
               <div className="photo-card" key={p.photo_id}>
-                <div style={{ position: 'relative' }}>
+                <div
+                  style={{ position: 'relative', cursor: 'zoom-in' }}
+                  onClick={() => setPreview({ items: pagedPhotos, index: i })}
+                  title="Open fullscreen preview"
+                >
                   <GalleryMedia
                     src={fileUrl(p.thumbnail_url || p.url)}
                     filename={p.filename}
@@ -744,6 +751,15 @@ export default function Photos() {
         )}
         </>)}
       </div>
+
+      {preview && (
+        <StudioLightbox
+          items={preview.items}
+          index={preview.index}
+          onClose={() => setPreview(null)}
+          onIndexChange={(fn) => setPreview((p) => (p ? { ...p, index: typeof fn === 'function' ? fn(p.index) : fn } : p))}
+        />
+      )}
 
       {event && (
         <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Export to Google Drive">
