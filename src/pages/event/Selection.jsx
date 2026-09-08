@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Heart, Lock, Search, Star } from 'lucide-react'
+import { Download, Heart, Lock, Search, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -173,24 +173,27 @@ export default function Selection() {
                     </div>
                     <div className="meta">
                       <span className="hint">{p.filename}</span>
-                      <button
-                        className="dismiss-btn"
-                        type="button"
-                        title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                        onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                        disabled={togglingPickId === p.photo_id}
-                        style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
-                      >
-                        <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
-                      </button>
-                      <button
-                        className="dismiss-btn"
-                        type="button"
-                        onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
-                        disabled={!!savingPhotoFeatures[p.photo_id]}
-                      >
-                        Remove
-                      </button>
+                      <div className="meta-actions">
+                        <button
+                          className="icon-btn"
+                          type="button"
+                          title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                          onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                          disabled={togglingPickId === p.photo_id}
+                          style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                        >
+                          <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                        </button>
+                        <button
+                          className="icon-btn danger"
+                          type="button"
+                          title="Remove from Photo Selection (stays in Photos & Imports)"
+                          onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
+                          disabled={!!savingPhotoFeatures[p.photo_id]}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -319,14 +322,14 @@ export default function Selection() {
 
           <div className="card team-card">
             <div className="guest-link-label">Favourites</div>
-            <p className="hint">What each client picked — and your own separate studio picks (star) over the same photos.</p>
+            <p className="hint">What each client picked — and your own separate studio picks (heart) over the same photos.</p>
             <div className="row" style={{ flexWrap: 'wrap' }}>
               <button
                 className="btn secondary"
                 type="button"
                 onClick={handlePicksZip}
                 disabled={zippingPicks || studioPicks.length === 0}
-                title={studioPicks.length === 0 ? 'Star some photos as studio picks first' : 'Download your studio picks as a zip'}
+                title={studioPicks.length === 0 ? 'Heart some photos as studio picks first' : 'Download your studio picks as a zip'}
               >
                 <Download size={14} /> {zippingPicks ? 'Preparing picks zip…' : `Download picks (${studioPicks.length})`}
               </button>
@@ -430,16 +433,18 @@ export default function Selection() {
                             </div>
                             <div className="meta">
                               <span className="hint">{p.filename}</span>
-                              <button
-                                className="dismiss-btn"
-                                type="button"
-                                title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                                onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                                disabled={togglingPickId === p.photo_id}
-                                style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
-                              >
-                                <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
-                              </button>
+                              <div className="meta-actions">
+                                <button
+                                  className="icon-btn"
+                                  type="button"
+                                  title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                                  onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                                  disabled={togglingPickId === p.photo_id}
+                                  style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                                >
+                                  <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -465,16 +470,18 @@ export default function Selection() {
                       <span className="hint">
                         {p.favourited_by.map((u) => u.name || u.email).join(', ')}
                       </span>
-                      <button
-                        className="dismiss-btn"
-                        type="button"
-                        title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                        onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                        disabled={togglingPickId === p.photo_id}
-                        style={{ color: studioPicks.includes(p.photo_id) ? '#F59E0B' : undefined }}
-                      >
-                        <Star size={15} fill={studioPicks.includes(p.photo_id) ? '#F59E0B' : 'none'} />
-                      </button>
+                      <div className="meta-actions">
+                        <button
+                          className="icon-btn"
+                          type="button"
+                          title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                          onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                          disabled={togglingPickId === p.photo_id}
+                          style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                        >
+                          <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

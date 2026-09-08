@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Star, X } from 'lucide-react';
-import { downloadFile, fileUrl, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
+import { Archive, ArchiveRestore, Download, Star, X } from 'lucide-react';
+import { archivePhoto, downloadFile, fileUrl, restorePhoto, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { useConfirm } from '../confirm.jsx';
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js';
@@ -103,6 +103,26 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     }
   };
 
+  // Archive lives here now that the grid cards show only Heart / Bin /
+  // Info — hides from guests and clients without deleting anything.
+  const handleArchiveToggle = async () => {
+    setBusy(true);
+    try {
+      if (photo.archived_at) {
+        await restorePhoto(eventId, photo.photo_id);
+        showToast('Photo restored — visible to guests and clients again.');
+      } else {
+        await archivePhoto(eventId, photo.photo_id);
+        showToast('Photo archived — hidden from guests and clients.');
+      }
+      onChanged?.();
+    } catch (e) {
+      showToast(e.message, { type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const exifRows = [
     ['Camera', photo.exif_camera],
     ['Lens', photo.exif_lens],
@@ -175,6 +195,9 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
           </button>
           <button className="btn secondary" type="button" disabled={busy} onClick={handleCover}>
             Use as cover
+          </button>
+          <button className="btn secondary" type="button" disabled={busy} onClick={handleArchiveToggle}>
+            {photo.archived_at ? <><ArchiveRestore size={13} /> Restore</> : <><Archive size={13} /> Archive</>}
           </button>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>

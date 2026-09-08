@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Flag, Search, Target, Users } from 'lucide-react'
+import { Flag, Search, Target, Trash2, Users } from 'lucide-react'
 import { updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
@@ -194,14 +194,17 @@ export default function AISearch() {
                               ? `${p.face_count} face${p.face_count === 1 ? '' : 's'} indexed`
                               : 'Indexing…'}
                           </span>
-                          <button
-                            className="dismiss-btn"
-                            type="button"
-                            onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
-                            disabled={!!savingPhotoFeatures[p.photo_id]}
-                          >
-                            Remove
-                          </button>
+                          <div className="meta-actions">
+                            <button
+                              className="icon-btn danger"
+                              type="button"
+                              title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
+                              onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
+                              disabled={!!savingPhotoFeatures[p.photo_id]}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

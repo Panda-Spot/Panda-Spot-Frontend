@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Columns3, ImageOff, LayoutGrid, List, Search, Star, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Search, Star, Trash2, Upload, XCircle } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { drivePermissionLabel } from './EventWorkspace.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
@@ -42,7 +42,7 @@ export default function Photos() {
     toolsFilter, setToolsFilter, dupIds, visibleManageablePhotos, selectedCount,
     managerSelected, setManagerSelected, toggleManagerSelect, toggleManagerSelectAllVisible,
     bulking, handleBulkMembership, handleBulkAddAllVisible,
-    visiblePhotos, handleArchivePhoto, handleRestorePhoto,
+    visiblePhotos,
     handleToggleHighlight, togglingHighlightId, handleDeletePhoto, deletingPhotoId,
     setMetaPhotoId, subGalleryName, setSubGalleryName, creatingSubGallery,
     handleCreateSubGallery, setActiveTab, formatBytes,
@@ -691,50 +691,35 @@ export default function Photos() {
                     {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
                     {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
                   </span>
-                  {p.archived_at ? (
+                  <div className="meta-actions">
                     <button
-                      className="dismiss-btn"
+                      className="icon-btn"
                       type="button"
-                      onClick={() => handleRestorePhoto(p.photo_id, p.filename)}
+                      title={p.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
+                      onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
+                      disabled={togglingHighlightId === p.photo_id}
+                      style={{ color: p.highlighted ? '#EF4444' : undefined }}
                     >
-                      Restore
+                      <Heart size={15} fill={p.highlighted ? '#EF4444' : 'none'} />
                     </button>
-                  ) : (
                     <button
-                      className="dismiss-btn"
+                      className="icon-btn danger"
                       type="button"
-                      title="Hide from guests and clients without deleting"
-                      onClick={() => handleArchivePhoto(p.photo_id, p.filename)}
+                      title="Delete permanently"
+                      onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
+                      disabled={deletingPhotoId === p.photo_id}
                     >
-                      Archive
+                      <Trash2 size={15} />
                     </button>
-                  )}
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    title={p.highlighted ? 'Remove TV highlight' : 'Star for TV highlights wall'}
-                    onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
-                    disabled={togglingHighlightId === p.photo_id}
-                    style={{ color: p.highlighted ? '#F59E0B' : undefined }}
-                  >
-                    <Star size={15} fill={p.highlighted ? '#F59E0B' : 'none'} />
-                  </button>
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
-                    disabled={deletingPhotoId === p.photo_id}
-                  >
-                    {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
-                  </button>
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    title="Metadata, rating, downloads, cover"
-                    onClick={() => setMetaPhotoId(p.photo_id)}
-                  >
-                    Info
-                  </button>
+                    <button
+                      className="icon-btn"
+                      type="button"
+                      title="Details, archive, rating, downloads, cover"
+                      onClick={() => setMetaPhotoId(p.photo_id)}
+                    >
+                      <Info size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

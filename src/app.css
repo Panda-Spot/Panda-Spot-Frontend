@@ -258,6 +258,55 @@
   justify-content: space-between;
 }
 
+/* Card action cluster: icon-only buttons, revealed on hover (always
+   visible on touch devices, which have no hover). Keeps grids clean. */
+.meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+@media (hover: hover) {
+  .photo-card .meta-actions {
+    opacity: 0;
+  }
+  .photo-card:hover .meta-actions,
+  .photo-card:focus-within .meta-actions {
+    opacity: 1;
+  }
+}
+
 /* --- Unified studio filter bar (status + source + layout + find) --- */
 
 .filter-bar {
