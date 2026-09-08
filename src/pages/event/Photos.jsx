@@ -405,26 +405,99 @@ export default function Photos() {
             start hero plus sub-gallery management above. */}
         {event?.started && (
         <>
-        <div className="card filter-bar">
-          <div className="filter-group">
-            <span className="filter-label">Status</span>
-            <div className="row source-filter-row">
+        <div className="photo-browser">
+          <div className="photo-browser-bar">
+            <select
+              className="text-input" value={photoStatusFilter}
+              onChange={(e) => setPhotoStatusFilter(e.target.value)}
+              title="Status"
+              style={{ width: 'auto' }}
+            >
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+              <option value="all">All</option>
+            </select>
+            <select
+              className="text-input" value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              title="Source"
+              style={{ width: 'auto' }}
+            >
               {[
-                { key: 'active', label: 'Active' },
-                { key: 'archived', label: 'Archived' },
                 { key: 'all', label: 'All' },
-              ].map((opt) => (
+                { key: 'upload', label: 'Uploaded' },
+                ...((event?.pandashoots_enabled || photos.some((p) => p.approval_status !== 'pending' && (p.source || 'upload') === 'shoots'))
+                  ? [{ key: 'shoots', label: 'PandaShoots' }]
+                  : []),
+                { key: 'drive_import', label: 'Drive import' },
+                { key: 'guest', label: 'Guest uploads' },
+              ].map((opt) => {
+                const count = opt.key === 'all'
+                  ? photos.filter((p) => p.approval_status !== 'pending').length
+                  : photos.filter((p) => p.approval_status !== 'pending' && (p.source || 'upload') === opt.key).length
+                return <option key={opt.key} value={opt.key}>{opt.label} ({count})</option>
+              })}
+            </select>
+            <div className="view-switcher" aria-label="Gallery layout">
+              {[
+                { key: 'grid', icon: LayoutGrid, label: 'Grid' },
+                { key: 'masonry', icon: Columns3, label: 'Masonry' },
+                { key: 'list', icon: List, label: 'List' },
+              ].map(({ key, icon: Icon, label }) => (
                 <button
-                  key={`status-${opt.key}`}
+                  key={key}
                   type="button"
-                  className={photoStatusFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-                  onClick={() => setPhotoStatusFilter(opt.key)}
+                  className={galleryView === key ? 'active' : ''}
+                  onClick={() => setGalleryView(key)}
+                  title={`${label} view`}
                 >
-                  {opt.label}
+                  <Icon size={14} />
                 </button>
               ))}
             </div>
+            {galleryView !== 'list' && (
+              <label className="per-row-slider" title="Photos per row">
+                {perRow}
+                <input
+                  type="range" min={2} max={10} step={1} value={perRow}
+                  onChange={(e) => setPerRow(Number(e.target.value))}
+                />
+              </label>
+            )}
+            <input
+              className="text-input gallery-search"
+              type="search"
+              placeholder="Search by image name…"
+              value={photoQuery}
+              onChange={(e) => setPhotoQuery(e.target.value)}
+            />
+            <select
+              className="text-input" value={photoSort}
+              onChange={(e) => setPhotoSort(e.target.value)}
+              title="Sort photos"
+              style={{ width: 'auto' }}
+            >
+              {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            <select
+              className="text-input" value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              title="Photos per page"
+              style={{ width: 'auto' }}
+            >
+              {[24, 48, 96].map((n) => <option key={n} value={n}>{n} / page</option>)}
+            </select>
+            {(event?.photo_selection_enabled || event?.face_search_enabled) && (
+              <button
+                className={selectMode ? 'btn' : 'btn secondary'}
+                type="button"
+                onClick={() => setSelectMode((v) => !v)}
+              >
+                {selectMode ? 'Done' : 'Select'}
+              </button>
+            )}
           </div>
+          <div className="photo-browser-body">
 
         {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
           <div className="card" style={{ padding: '10px 14px' }}>
@@ -527,102 +600,6 @@ export default function Photos() {
           </div>
         </div>
         )}
-        <div className="filter-group">
-          <span className="filter-label">Source</span>
-          <div className="row source-filter-row">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'upload', label: 'Uploaded' },
-            // PandaShoots source tab only makes sense while the feature is
-            // enabled — unless shoots photos already exist, which keeps the
-            // tab reachable for reviewing them.
-            ...((event?.pandashoots_enabled || photos.some((p) => p.approval_status !== 'pending' && (p.source || 'upload') === 'shoots'))
-              ? [{ key: 'shoots', label: 'PandaShoots' }]
-              : []),
-            { key: 'drive_import', label: 'Drive import' },
-            { key: 'guest', label: 'Guest uploads' },
-          ].map((opt) => {
-            const count = opt.key === 'all'
-              ? photos.filter((p) => p.approval_status !== 'pending').length
-              : photos.filter((p) => p.approval_status !== 'pending' && (p.source || 'upload') === opt.key).length
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-                onClick={() => setSourceFilter(opt.key)}
-              >
-                {opt.label} ({count})
-              </button>
-            )
-          })}
-          </div>
-        </div>
-        <div className="filter-group">
-          <span className="filter-label">Layout</span>
-          <div className="view-switcher" aria-label="Gallery layout">
-            {[
-              { key: 'grid', icon: LayoutGrid, label: 'Grid' },
-              { key: 'masonry', icon: Columns3, label: 'Masonry' },
-              { key: 'list', icon: List, label: 'List' },
-            ].map(({ key, icon: Icon, label }) => (
-              <button
-                key={key}
-                type="button"
-                className={galleryView === key ? 'active' : ''}
-                onClick={() => setGalleryView(key)}
-                title={`${label} view`}
-              >
-                <Icon size={14} /> {label}
-              </button>
-            ))}
-          </div>
-          {galleryView !== 'list' && (
-            <label className="per-row-slider" title="Photos per row">
-              {perRow} per row
-              <input
-                type="range" min={2} max={10} step={1} value={perRow}
-                onChange={(e) => setPerRow(Number(e.target.value))}
-              />
-            </label>
-          )}
-        </div>
-        <div className="filter-group">
-          <span className="filter-label">Find</span>
-          <input
-            className="text-input gallery-search"
-            type="search"
-            placeholder="Search by image name…"
-            value={photoQuery}
-            onChange={(e) => setPhotoQuery(e.target.value)}
-          />
-          <select
-            className="text-input" value={photoSort}
-            onChange={(e) => setPhotoSort(e.target.value)}
-            title="Sort photos"
-            style={{ width: 'auto' }}
-          >
-            {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-          <select
-            className="text-input" value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            title="Photos per page"
-            style={{ width: 'auto' }}
-          >
-            {[24, 48, 96].map((n) => <option key={n} value={n}>{n} / page</option>)}
-          </select>
-          {(event?.photo_selection_enabled || event?.face_search_enabled) && (
-            <button
-              className={selectMode ? 'btn' : 'btn secondary'}
-              type="button"
-              onClick={() => setSelectMode((v) => !v)}
-            >
-              {selectMode ? 'Done' : 'Select'}
-            </button>
-          )}
-        </div>
-        </div>
         {searchedPhotos.length === 0 ? (
           <GalleryEmpty
             icon={photoQuery ? Search : ImageOff}
@@ -750,6 +727,8 @@ export default function Photos() {
             </div>
           </>
         )}
+          </div>
+        </div>
         </>)}
       </div>
 

@@ -410,49 +410,46 @@
   }
 }
 
-/* --- Unified studio filter bar (status + source + layout + find) --- */
+/* --- Unified photo browser: compact bar attached to the grid --- */
 
-.filter-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
+.photo-browser {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
 }
 
-.filter-group {
+.photo-browser-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
 }
 
-.filter-group + .filter-group {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+.photo-browser-bar .text-input {
+  min-width: 0;
 }
 
-.filter-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  min-width: 52px;
-  flex-shrink: 0;
+.photo-browser-bar .gallery-search {
+  flex: 1;
+  min-width: 140px;
 }
 
-.filter-group .source-filter-row {
-  margin-bottom: 0;
+.photo-browser-body {
+  padding: 14px;
 }
 
-@media (max-width: 640px) {
-  .filter-label {
-    min-width: 0;
-    width: 100%;
-  }
-  .filter-group .gallery-search {
-    flex: 1 1 100%;
-  }
+.photo-browser-body > .card:first-child {
+  margin-top: 0;
+}
+
+.photo-browser-body > .photo-grid,
+.photo-browser-body > .masonry-grid,
+.photo-browser-body > .photo-list {
+  margin-top: 4px;
 }
 
 /* --- Studio gallery toolbar (Photos & Imports, Selection, AI Search) --- */
@@ -2735,6 +2732,89 @@
   object-fit: contain;
   border-radius: 6px;
   transition: opacity 0.15s ease;
+}
+
+/* --- Studio face viewer (Google Photos style): photo + bottom face strip --- */
+
+.face-viewer-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 0;
+}
+
+.face-viewer-photo {
+  position: relative;
+  display: inline-block;
+  max-width: min(1100px, 94vw);
+  line-height: 0;
+}
+
+.face-viewer-img {
+  max-width: min(1100px, 94vw);
+  max-height: 58vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #000;
+}
+
+.face-viewer-strip {
+  width: min(1100px, 94vw);
+  max-height: 30vh;
+  overflow-y: auto;
+  background: rgba(20, 20, 22, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.face-viewer-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.face-viewer-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.face-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-top: 10px;
+  padding-bottom: 4px;
+}
+
+.face-strip-item {
+  flex: 0 0 auto;
+  width: 76px;
+  text-align: center;
+}
+
+.face-strip-crop {
+  width: 76px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .lightbox-spinner {
   position: absolute;

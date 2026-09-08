@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckSquare, ChevronDown, Flag, Images, ScanFace, Search, ShieldAlert, Target, Trash2, Upload, Users } from 'lucide-react'
+import { BarChart3, CheckSquare, ChevronDown, Flag, Images, ScanFace, Search, ShieldAlert, Target, Trash2, Upload, Users } from 'lucide-react'
 import { updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import FaceGroupsView from '../../components/FaceGroupsView.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import Modal from '../../components/Modal.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
 import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
@@ -33,6 +34,8 @@ export default function AISearch() {
   const shownAiMembers = useGalleryItems(aiMembers(), { query: memberQuery, sort: memberSort })
   // Privacy section lives collapsed at the end of the tab.
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  // Analytics lives behind a button, in a fullscreen-style popup.
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
   const handlePrivacySave = async () => {
     if (!privacyDraft) return
@@ -131,26 +134,6 @@ export default function AISearch() {
   return (
     <div>
       <div className="event-stack">
-        {analytics && (
-          <div className="card analytics-card">
-            <div className="guest-link-label">Analytics</div>
-            <div className="stat-grid">
-              <StatTile icon={Search} value={analytics.total_searches} label="searches" />
-              <StatTile icon={Users} value={analytics.unique_guests} label="unique guests" />
-              <StatTile icon={Target} value={`${Math.round(analytics.match_rate * 100)}%`} label="match rate" />
-              <StatTile icon={Flag} value={analytics.feedback_count} label="flagged as wrong" />
-            </div>
-            {analytics.daily_searches && (
-              <TrendChart
-                series={[
-                  { key: 'searches', name: 'Searches', data: analytics.daily_searches },
-                  { key: 'matches', name: 'Matches', data: analytics.daily_matches },
-                ]}
-              />
-            )}
-          </div>
-        )}
-
         {event?.face_search_enabled && (
           <div className="card">
             <div className="guest-link-label">
@@ -193,6 +176,15 @@ export default function AISearch() {
                   <Link className="btn secondary" to={`/events/${eventId}/photos`}>
                     <Images size={14} /> Add photos from Photos & Imports
                   </Link>
+                  {analytics && (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => setAnalyticsOpen(true)}
+                    >
+                      <BarChart3 size={14} /> Analytics
+                    </button>
+                  )}
                   <button
                     className="btn secondary"
                     type="button"
@@ -302,6 +294,27 @@ export default function AISearch() {
           </div>
         )}
       </div>
+
+      <Modal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} title="Search analytics">
+        {analytics && (
+          <>
+            <div className="stat-grid">
+              <StatTile icon={Search} value={analytics.total_searches} label="searches" />
+              <StatTile icon={Users} value={analytics.unique_guests} label="unique guests" />
+              <StatTile icon={Target} value={`${Math.round(analytics.match_rate * 100)}%`} label="match rate" />
+              <StatTile icon={Flag} value={analytics.feedback_count} label="flagged as wrong" />
+            </div>
+            {analytics.daily_searches && (
+              <TrendChart
+                series={[
+                  { key: 'searches', name: 'Searches', data: analytics.daily_searches },
+                  { key: 'matches', name: 'Matches', data: analytics.daily_matches },
+                ]}
+              />
+            )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }
