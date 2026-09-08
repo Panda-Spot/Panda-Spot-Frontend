@@ -443,7 +443,7 @@ export default function AdminEventDetail() {
                         {isVideoFile(p.filename) ? 'Video' : p.source === 'guest' ? 'Client upload' : p.source === 'shoots' ? 'PandaShoots' : p.source === 'drive_import' ? 'Drive' : 'Upload'}
                       </span>
                       <span>
-                        {!isVideoFile(p.filename) && <>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>}
+                        {!isVideoFile(p.filename) && p.face_indexed_at && <>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>}
                         {p.archived_at && <span className="hint"> · archived</span>}
                       </span>
                     </div>

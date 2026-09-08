@@ -655,7 +655,7 @@ export default function Photos() {
                     {isVideoFile(p.filename) ? (
                       <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
                     ) : (
-                      <>{p.face_count} face{p.face_count === 1 ? '' : 's'}{p.archived_at && <span className="hint"> · archived</span>}</>
+                      <>{p.face_indexed_at && (<>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>)}{p.archived_at && <span className="hint"> · archived</span>}</>
                     )}
                     {(p.rating || 0) > 0 && (
                       <span title={`${p.rating} stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
