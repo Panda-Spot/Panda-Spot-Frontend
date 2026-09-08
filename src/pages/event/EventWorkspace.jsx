@@ -47,6 +47,7 @@ import {
   restorePhoto,
   revokeClient,
   saveExportFolder,
+  setAlbumClient,
   setDriveAutoSync,
   setEventAllowDownload,
   setEventDriveBackup,
@@ -357,6 +358,22 @@ export default function EventWorkspace() {
     if (activeTab !== 'albums' || albums !== null) return
     loadAlbums()
   }, [activeTab, albums, loadAlbums])
+
+  // Assigns (or clears) an album's review client — assigned albums are
+  // visible only to that client, unassigned to every event client.
+  const [assigningAlbumId, setAssigningAlbumId] = useState(null)
+  const handleAssignAlbumClient = async (albumId, clientId) => {
+    setAssigningAlbumId(albumId)
+    try {
+      await setAlbumClient(eventId, clientId)
+      showToast(clientId ? 'Album client updated.' : 'Album opened to all event clients.')
+      loadAlbums()
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+    } finally {
+      setAssigningAlbumId(null)
+    }
+  }
   // Load face groups on first opening the Faces sub-tab (and refresh
   // whenever the photo list changes, since new faces alter clusters).
   useEffect(() => {
@@ -422,8 +439,10 @@ export default function EventWorkspace() {
       .then((ev) => {
         setEvent(ev)
         if (ev.role === 'owner') loadTeam()
-        if (ev.photo_selection_enabled) {
+        if (ev.photo_selection_enabled || ev.albums_enabled) {
           loadClients()
+        }
+        if (ev.photo_selection_enabled) {
           loadFavourites()
           loadPicks()
         }
@@ -1738,6 +1757,7 @@ export default function EventWorkspace() {
     liveNotice, startingEvent, sourceFilter, setSourceFilter,
     photoStatusFilter, setPhotoStatusFilter, activeTab, setActiveTab,
     albums, albumsError, newAlbumName, setNewAlbumName, creatingAlbum, setCreatingAlbum,
+    assigningAlbumId, handleAssignAlbumClient,
     exportClient, setExportClient, exportFormat, setExportFormat, exporting,
     privacyDraft, setPrivacyDraft,
     accessDraft, setAccessDraft,

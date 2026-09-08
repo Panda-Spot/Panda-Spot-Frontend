@@ -24,6 +24,10 @@ const COPY = {
     on: 'You can split this event into sub-galleries like Ceremony / Reception, with a picker on the guest link.',
     off: 'The sub-galleries section and the guest picker hide everywhere. Existing sub-galleries and their photos are kept.',
   },
+  albums: {
+    on: 'Albums proofing opens up — stage favourites, upload designed spreads or a print PDF, and send versions for pinned client review.',
+    off: 'The Albums workspace hides immediately. Already-sent albums stay reviewable by their clients (nothing is deleted).',
+  },
 }
 
 // Confirmation for feature toggles. Turning ON is a plain confirm.

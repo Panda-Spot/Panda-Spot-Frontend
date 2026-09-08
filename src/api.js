@@ -1321,6 +1321,16 @@ export const renameAlbum = (eventId, albumId, name) =>
     body: JSON.stringify({ name }),
   })
 
+// Assigns (or clears, with null) the review client on an album. Assigned
+// albums are visible only to that client; unassigned albums stay visible
+// to every event client.
+export const setAlbumClient = (eventId, albumId, clientId) =>
+  request(`/events/${eventId}/albums/${albumId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: clientId }),
+  })
+
 export const deleteAlbum = (eventId, albumId) =>
   request(`/events/${eventId}/albums/${albumId}`, { method: "DELETE" })
 

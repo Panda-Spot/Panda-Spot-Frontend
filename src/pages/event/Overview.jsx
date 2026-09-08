@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Cropper from 'react-easy-crop'
 import {
-  Archive, ArchiveRestore, CalendarDays, Camera, CheckCircle2, ChevronRight,
+  Archive, ArchiveRestore, BookOpen, CalendarDays, Camera, CheckCircle2, ChevronRight,
   Circle, Clock, Image, Layers, MapPin, Pencil, Rocket, Search, Send, Share2,
   SlidersHorizontal, Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
@@ -181,6 +181,7 @@ export default function Overview() {
               <FeaturePill label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
               <FeaturePill label="Advanced tools" active={event.advanced_tools_enabled} icon={SlidersHorizontal} />
               <FeaturePill label="Sub-galleries" active={event.sub_galleries_enabled} icon={Layers} />
+              <FeaturePill label="Albums" active={event.albums_enabled} icon={BookOpen} />
               <FeaturePill label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>

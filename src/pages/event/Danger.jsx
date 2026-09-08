@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, ArchiveRestore, Camera, Images, Layers, Search, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, BookOpen, Camera, Images, Layers, Search, Trash2 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import FeatureToggleConfirm from './FeatureToggleConfirm.jsx'
 
@@ -28,6 +28,12 @@ const FEATURE_CARDS = [
     icon: Layers,
     title: 'Sub-galleries',
     desc: 'Split this event into galleries like Ceremony / Reception',
+  },
+  {
+    key: 'albums',
+    icon: BookOpen,
+    title: 'Albums',
+    desc: 'Proofing projects with versions for client review',
   },
 ]
 
@@ -66,7 +72,9 @@ export default function Danger() {
                   ? !!event?.photo_selection_enabled
                   : key === 'pandashoots'
                     ? !!event?.pandashoots_enabled
-                    : !!event?.sub_galleries_enabled
+                    : key === 'subGalleries'
+                      ? !!event?.sub_galleries_enabled
+                      : !!event?.albums_enabled
               const busy = togglingFeature === key
               return (
                 <button

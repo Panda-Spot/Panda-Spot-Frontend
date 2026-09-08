@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock, Heart, Lock, Send, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock, Heart, Images, LifeBuoy, Lock, Send, X } from 'lucide-react'
 import {
   fileUrl,
   getClientEvent,
@@ -22,6 +22,7 @@ import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 import GalleryMedia from '../components/GalleryMedia.jsx'
 import FavouritesDrawer from '../components/gallery/FavouritesDrawer.jsx'
+import Support from './Support.jsx'
 import { formatDate } from '../utils/formatters.js'
 import { isVideoFile } from '../utils/media.js'
 
@@ -49,6 +50,8 @@ export default function ClientGallery() {
   // Lightbox index into `photos` (null = closed). Grid heart and lightbox
   // heart share handleToggleFavourite so counter stays in sync.
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  // Portal tabs: Photos (favourites) | Albums (proofing) | Support.
+  const [clientTab, setClientTab] = useState('photos')
 
   const load = (silent) => {
     if (!silent) {
@@ -333,7 +336,27 @@ export default function ClientGallery() {
         />
       )}
 
-      {albums.length > 0 && (
+      <div className="row source-filter-row" style={{ marginBottom: 16 }}>
+        {[
+          { key: 'photos', icon: Images, label: 'Photos' },
+          { key: 'albums', icon: BookOpen, label: `Albums${albums.length > 0 ? ` (${albums.length})` : ''}` },
+          { key: 'support', icon: LifeBuoy, label: 'Support' },
+        ].map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            className={clientTab === key ? 'upload-tab active' : 'upload-tab'}
+            onClick={() => setClientTab(key)}
+          >
+            <Icon size={14} style={{ marginRight: 6, verticalAlign: -2 }} />{label}
+          </button>
+        ))}
+      </div>
+
+      {clientTab === 'support' ? (
+        <Support />
+      ) : clientTab === 'albums' ? (
+        albums.length > 0 ? (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="guest-link-label">Albums for review ({albums.length})</div>
           <p className="hint">Your studio shared these album designs — open one to flip through, pin feedback, and approve.</p>
@@ -353,8 +376,13 @@ export default function ClientGallery() {
             ))}
           </ul>
         </div>
-      )}
-
+        ) : (
+          <div className="card" style={{ textAlign: 'center', padding: '40px 20px', marginBottom: 16 }}>
+            <BookOpen size={28} style={{ color: 'var(--text-tertiary)', marginBottom: 10 }} />
+            <p className="hint" style={{ margin: 0 }}>No albums shared yet — your studio will add them here for review.</p>
+          </div>
+        )
+      ) : (
       <div
         className="protected-gallery"
         style={{ '--watermark-opacity': watermarkIntensity }}
@@ -408,6 +436,7 @@ export default function ClientGallery() {
           {photos.length === 0 && <p className="hint">No photos here yet — check back soon.</p>}
         </div>
       </div>
+      )}
 
       <FavouritesDrawer
         open={drawerOpen}
