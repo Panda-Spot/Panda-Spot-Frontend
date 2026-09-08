@@ -1001,6 +1001,11 @@ export const inviteClient = (eventId, email, favouriteCap, expiresAt) =>
 
 export const listClients = (eventId) => request(`/events/${eventId}/clients`)
 
+// Access Board console: every accessible event with its clients, pending
+// invites, and per-client favourite counts in ONE round trip (instead of
+// listEvents + one listClients per event).
+export const getAccessSummary = () => request(`/events/access-summary`)
+
 export const checkClientDuplicate = (eventId, email) =>
   request(`/events/${eventId}/clients/check?email=${encodeURIComponent(email)}`)
 

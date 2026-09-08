@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, UserPlus } from 'lucide-react'
 import {
+  createClientAccount,
+  getAccessSummary,
   inviteClient,
-  listClients,
-  listEvents,
   removeClient,
 } from '../api.js'
 import { useConfirm } from '../confirm.jsx'
@@ -34,29 +34,32 @@ export default function AccessBoard() {
   const [selectedEventId, setSelectedEventId] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [modalTab, setModalTab] = useState('invite') // invite | create
   const [inviteEventId, setInviteEventId] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteCap, setInviteCap] = useState('')
+  const [inviteExpiry, setInviteExpiry] = useState('')
   const [inviting, setInviting] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createPassword, setCreatePassword] = useState('')
+  const [createCap, setCreateCap] = useState('')
+  const [createExpiry, setCreateExpiry] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createdPassword, setCreatedPassword] = useState('')
+  const [modalMessage, setModalMessage] = useState('')
 
+  // One round trip for the whole board (events + clients + invites +
+  // favourite counts). Previously this fired 1 + N requests, which is what
+  // made /access lag with a busy studio.
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const evs = await listEvents()
+      const data = await getAccessSummary()
+      const evs = (data.events || []).map((e) => ({ id: e.id, name: e.name }))
       setEvents(evs)
       if (!selectedEventId && evs.length > 0) setSelectedEventId(evs[0].id)
-      const entries = await Promise.all(
-        evs.map(async (ev) => {
-          try {
-            const data = await listClients(ev.id)
-            return [ev.id, data]
-          } catch {
-            return [ev.id, { clients: [], pending_invites: [] }]
-          }
-        })
-      )
-      setByEvent(Object.fromEntries(entries))
+      setByEvent(Object.fromEntries((data.events || []).map((e) => [e.id, e])))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -90,6 +93,14 @@ export default function AccessBoard() {
     setInviteEventId(eventId)
     setInviteEmail(email)
     setInviteCap('')
+    setInviteExpiry('')
+    setCreateName('')
+    setCreatePassword('')
+    setCreateCap('')
+    setCreateExpiry('')
+    setCreatedPassword('')
+    setModalMessage('')
+    setModalTab('invite')
     setInviteOpen(true)
   }
 
@@ -99,16 +110,49 @@ export default function AccessBoard() {
     setInviting(true)
     try {
       const cap = inviteCap.trim() === '' ? undefined : Number(inviteCap)
-      await inviteClient(inviteEventId, inviteEmail.trim(), cap)
+      const expiresAt = inviteExpiry.trim() || undefined
+      await inviteClient(inviteEventId, inviteEmail.trim(), cap, expiresAt)
       showToast(`Invite sent to ${inviteEmail.trim()}`)
       setInviteOpen(false)
       setInviteEmail('')
       setInviteCap('')
+      setInviteExpiry('')
       load()
     } catch (err) {
       showToast(err.message, { type: 'error' })
     } finally {
       setInviting(false)
+    }
+  }
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    if (!inviteEventId || !inviteEmail.trim()) return
+    setCreating(true)
+    setCreatedPassword('')
+    setModalMessage('')
+    try {
+      const res = await createClientAccount(inviteEventId, {
+        email: inviteEmail.trim(),
+        name: createName.trim() || undefined,
+        password: createPassword || undefined,
+        favouriteCap: createCap.trim() === '' ? undefined : Number(createCap),
+        expiresAt: createExpiry.trim() || undefined,
+      })
+      if (res.status === 'created' && res.generated_password) {
+        setCreatedPassword(res.generated_password)
+        setModalMessage(`Login created — copy the one-time password now, it won't be shown again.`)
+      } else {
+        showToast(`Client ready — ${res.email}`)
+        setInviteOpen(false)
+        load()
+        return
+      }
+      load()
+    } catch (err) {
+      showToast(err.message, { type: 'error' })
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -196,6 +240,11 @@ export default function AccessBoard() {
                           {c.submitted_at
                             ? <Badge variant="gold">Submitted</Badge>
                             : <Badge>{c.favourite_cap ? `Cap ${c.favourite_cap}` : 'No cap'}</Badge>}
+                          {c.access_expires && (
+                            <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }} title={`Access expires ${new Date(c.access_expires).toLocaleString()}`}>
+                              until {new Date(c.access_expires).toLocaleDateString()}
+                            </span>
+                          )}
                           <button
                             type="button"
                             className="text-[11px] font-medium ml-auto"
@@ -284,22 +333,71 @@ export default function AccessBoard() {
         </div>
       )}
 
-      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite client" size="sm">
-        <form onSubmit={handleInvite}>
-          <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }} htmlFor="ab-event">Event</label>
-          <select
-            id="ab-event"
-            className="w-full mt-1 mb-4 rounded-lg px-3 py-2 text-sm"
-            style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
-            value={inviteEventId}
-            onChange={(e) => setInviteEventId(e.target.value)}
-          >
-            {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-          </select>
-          <GoldInput label="Client email" name="ab-email" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-          <GoldInput label="Favourite cap (optional, blank = unlimited)" name="ab-cap" type="number" value={inviteCap} onChange={(e) => setInviteCap(e.target.value)} />
-          <GoldButton type="submit" loading={inviting} className="w-full justify-center">Send invite</GoldButton>
-        </form>
+      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Client access" size="sm">
+        <div className="row source-filter-row" style={{ marginBottom: 12 }}>
+          {[
+            { key: 'invite', label: 'Invite by email' },
+            { key: 'create', label: 'Create login' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={modalTab === t.key ? 'upload-tab active' : 'upload-tab'}
+              onClick={() => { setModalTab(t.key); setModalMessage(''); setCreatedPassword('') }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }} htmlFor="ab-event">Event</label>
+        <select
+          id="ab-event"
+          className="w-full mt-1 mb-4 rounded-lg px-3 py-2 text-sm"
+          style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+          value={inviteEventId}
+          onChange={(e) => setInviteEventId(e.target.value)}
+        >
+          {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+        </select>
+        {modalTab === 'invite' ? (
+          <form onSubmit={handleInvite}>
+            <GoldInput
+              label="Client email (pick an existing client or type a new one)"
+              name="ab-email" type="email"
+              value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+              list="ab-client-emails"
+            />
+            <datalist id="ab-client-emails">
+              {allClients.map((c) => <option key={c.user_id} value={c.email}>{c.name || c.email}</option>)}
+            </datalist>
+            <GoldInput label="Favourite cap (optional, blank = unlimited)" name="ab-cap" type="number" value={inviteCap} onChange={(e) => setInviteCap(e.target.value)} />
+            <GoldInput label="Access expires (optional)" name="ab-expiry" type="date" value={inviteExpiry} onChange={(e) => setInviteExpiry(e.target.value)} />
+            <GoldButton type="submit" loading={inviting} className="w-full justify-center">Send invite</GoldButton>
+          </form>
+        ) : (
+          <form onSubmit={handleCreate}>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-tertiary)' }}>
+              You pick the password and share it yourself — they log straight in, no invite email.
+            </p>
+            <GoldInput
+              label="Client email (pick an existing client or type a new one)"
+              name="ab-cemail" type="email"
+              value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+              list="ab-client-emails"
+            />
+            <GoldInput label="Name (optional)" name="ab-cname" type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} />
+            <GoldInput label="Password (blank = auto-generate)" name="ab-cpass" type="text" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} autoComplete="new-password" />
+            <GoldInput label="Favourite cap (optional, blank = unlimited)" name="ab-ccap" type="number" value={createCap} onChange={(e) => setCreateCap(e.target.value)} />
+            <GoldInput label="Access expires (optional)" name="ab-cexpiry" type="date" value={createExpiry} onChange={(e) => setCreateExpiry(e.target.value)} />
+            {modalMessage && <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>{modalMessage}</p>}
+            {createdPassword && (
+              <p className="text-xs mb-2" style={{ color: 'var(--text-primary)', userSelect: 'all' }}>
+                One-time password (copy now — never shown again): <strong>{createdPassword}</strong>
+              </p>
+            )}
+            <GoldButton type="submit" loading={creating} className="w-full justify-center">Create login</GoldButton>
+          </form>
+        )}
       </Modal>
     </div>
   )
