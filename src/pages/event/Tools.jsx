@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SlidersHorizontal, Wrench } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import PhotoToolsCard from '../../components/PhotoToolsCard.jsx'
+import FeatureToggleConfirm from './FeatureToggleConfirm.jsx'
 
 export default function Tools() {
   const {
@@ -13,6 +14,10 @@ export default function Tools() {
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
+
+  // { key, title, enable } awaiting confirmation — same shared confirm as
+  // the Danger feature cards (owner-only OFF with typed event name).
+  const [pendingToggle, setPendingToggle] = useState(null)
 
   // Full analysis has run once at least one photo carries hash data —
   // the filters need that data to match anything.
@@ -71,7 +76,7 @@ export default function Tools() {
             className={event?.advanced_tools_enabled ? 'btn secondary' : 'btn'}
             type="button"
             disabled={togglingFeature === 'advancedTools' || !event}
-            onClick={() => handleToggleFeature('advancedTools', !event?.advanced_tools_enabled)}
+            onClick={() => setPendingToggle({ key: 'advancedTools', title: 'Advanced tools', enable: !event?.advanced_tools_enabled })}
           >
             {togglingFeature === 'advancedTools'
               ? 'Saving…'
@@ -93,6 +98,18 @@ export default function Tools() {
           </p>
         </div>
       </div>
+
+      <FeatureToggleConfirm
+        pending={pendingToggle}
+        eventName={event?.name}
+        isOwner={event?.role === 'owner'}
+        busy={!!togglingFeature}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => {
+          handleToggleFeature(pendingToggle.key, pendingToggle.enable)
+          setPendingToggle(null)
+        }}
+      />
     </div>
   )
 }

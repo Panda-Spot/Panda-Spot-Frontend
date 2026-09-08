@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Archive, ArchiveRestore, Camera, Images, Layers, Search, Trash2 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
+import FeatureToggleConfirm from './FeatureToggleConfirm.jsx'
 
 const FEATURE_CARDS = [
   {
@@ -41,6 +42,10 @@ export default function Danger() {
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
 
+  // { key, title, enable } awaiting confirmation — toggling itself only
+  // happens from the confirm modal (FeatureToggleConfirm).
+  const [pendingToggle, setPendingToggle] = useState(null)
+
   return (
     <div>
       <div className="event-stack">
@@ -69,7 +74,7 @@ export default function Danger() {
                   type="button"
                   className={`feature-card${on ? ' on' : ''}`}
                   disabled={busy || !event}
-                  onClick={() => handleToggleFeature(key, !on)}
+                  onClick={() => setPendingToggle({ key, title, enable: !on })}
                   aria-pressed={on}
                 >
                   <span className="feature-card-icon"><Icon size={20} /></span>
@@ -130,6 +135,18 @@ export default function Danger() {
           </Link>
         </div>
       </div>
+
+      <FeatureToggleConfirm
+        pending={pendingToggle}
+        eventName={event?.name}
+        isOwner={event?.role === 'owner'}
+        busy={!!togglingFeature}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => {
+          handleToggleFeature(pendingToggle.key, pendingToggle.enable)
+          setPendingToggle(null)
+        }}
+      />
     </div>
   )
 }
