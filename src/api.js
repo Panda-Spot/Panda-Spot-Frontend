@@ -315,17 +315,23 @@ export const updatePhotoFeatureMembership = (eventId, photoId, patch) =>
 
 // Bulk zero-copy membership: set flags across an id list or a
 // server-side `all` selector ({ source?, status?, approval? }). Adding to
-// Face Search may return a job_id for background face-indexing — watch it
+// Face Search may return a job_id for background face-indexing - watch it
 // like an upload job.
-export const bulkSetMembership = (eventId, { photoIds, all, faceSearchVisible, photoSelectionVisible }) =>
+//
+// NOTE: membership flags pass through in snake_case (face_search_visible,
+// photo_selection_visible) exactly like updatePhotoFeatureMembership above
+// — the server speaks snake_case, and every caller already sends it that
+// way. (Destructuring camelCase names here once silently dropped the flags,
+// since JSON.stringify omits undefined, and every bulk call 400'd with
+// "No feature membership change provided".)
+export const bulkSetMembership = (eventId, { photoIds, all, ...flags }) =>
   request(`/events/${eventId}/photos/bulk-features`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       photo_ids: photoIds,
       all,
-      face_search_visible: faceSearchVisible,
-      photo_selection_visible: photoSelectionVisible,
+      ...flags,
     }),
   })
 
