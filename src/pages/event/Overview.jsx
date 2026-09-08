@@ -4,7 +4,7 @@ import Cropper from 'react-easy-crop'
 import {
   Archive, ArchiveRestore, CalendarDays, Camera, CheckCircle2, ChevronRight,
   Circle, Clock, Image, MapPin, Pencil, Rocket, Search, Send, Share2,
-  Upload, UserPlus, Users, Zap,
+  SlidersHorizontal, Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -179,6 +179,7 @@ export default function Overview() {
               <FeaturePill label="AI Face Search" active={event.face_search_enabled} icon={Search} />
               <FeaturePill label="Photo Selection" active={event.photo_selection_enabled} icon={Image} />
               <FeaturePill label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
+              <FeaturePill label="Advanced tools" active={event.advanced_tools_enabled} icon={SlidersHorizontal} />
               <FeaturePill label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>

@@ -456,6 +456,9 @@ export default function Photos() {
           </div>
         )}
 
+        {/* Tool filters appear only after the studio enables Advanced
+            photographic tools on the Tools page (post full analysis). */}
+        {event?.advanced_tools_enabled && (
         <div className="card" style={{ padding: '10px 14px' }}>
           <div className="guest-link-label">Tool filters</div>
           <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
@@ -509,6 +512,7 @@ export default function Photos() {
             </button>
           </div>
         </div>
+        )}
         <div className="row source-filter-row">
           {[
             { key: 'all', label: 'All' },
