@@ -33,19 +33,124 @@ import {
   Award,
   ChevronRight,
   Check,
-  Cpu
+  Cpu,
+  Eye,
+  SlidersHorizontal,
+  ExternalLink
 } from 'lucide-react'
 
 import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
 
+// Curated high-resolution editorial event & wedding photography
+const GUEST_PRESETS = [
+  {
+    id: 0,
+    name: 'Elena Rostova',
+    role: 'Bride / VIP Host',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    matches: [
+      {
+        title: 'Ceremony Walkway Spotlight',
+        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
+        score: '99.8%',
+        exif: '85mm f/1.4 • 1/800s'
+      },
+      {
+        title: 'Golden Hour Sunset Vows',
+        image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=800&q=80',
+        score: '99.4%',
+        exif: '50mm f/1.2 • 1/1250s'
+      },
+      {
+        title: 'Grand Ballroom Toast',
+        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
+        score: '98.9%',
+        exif: '35mm f/1.4 • 1/250s'
+      },
+      {
+        title: 'First Dance Spotlight',
+        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
+        score: '97.5%',
+        exif: '70mm f/2.0 • 1/400s'
+      }
+    ]
+  },
+  {
+    id: 1,
+    name: 'Marcus Sterling',
+    role: 'Groom / Gala Speaker',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    matches: [
+      {
+        title: 'Grand Entrance Applause',
+        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
+        score: '99.6%',
+        exif: '35mm f/1.4 • 1/320s'
+      },
+      {
+        title: 'Champagne Toast Laugh',
+        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
+        score: '99.1%',
+        exif: '85mm f/1.4 • 1/640s'
+      },
+      {
+        title: 'Evening Terrace Gathering',
+        image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
+        score: '98.2%',
+        exif: '24mm f/2.8 • 1/160s'
+      },
+      {
+        title: 'Candlelight Speeches',
+        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
+        score: '97.4%',
+        exif: '50mm f/1.4 • 1/200s'
+      }
+    ]
+  },
+  {
+    id: 2,
+    name: 'Aria Chen',
+    role: 'VIP Guest / Table 4',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+    matches: [
+      {
+        title: 'Cocktail Hour Candid',
+        image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
+        score: '99.7%',
+        exif: '85mm f/1.4 • 1/500s'
+      },
+      {
+        title: 'Banquet Table Laugh',
+        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
+        score: '98.8%',
+        exif: '50mm f/1.8 • 1/250s'
+      },
+      {
+        title: 'Reception Dance Floor',
+        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
+        score: '98.3%',
+        exif: '35mm f/1.4 • 1/400s'
+      },
+      {
+        title: 'Outdoor Farewell Sparklers',
+        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
+        score: '96.8%',
+        exif: '28mm f/2.0 • 1/125s'
+      }
+    ]
+  }
+]
+
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [scrollProgress, setScrollProgress] = useState(0)
   const [activeShowcaseTab, setActiveShowcaseTab] = useState('ai-search') // 'ai-search' | 'tvwall' | 'selection' | 'crm'
-  const [selectedSelfie, setSelectedSelfie] = useState(0)
+  const [guestIndex, setGuestIndex] = useState(0)
   const [isScanning, setIsScanning] = useState(false)
+  const [selectedPicks, setSelectedPicks] = useState([true, true, true, false])
   const [activeFaq, setActiveFaq] = useState(null)
+
+  const progressRef = useRef(null)
+  const navRef = useRef(null)
 
   const [inlineForm, setInlineForm] = useState({
     name: '',
@@ -57,18 +162,28 @@ export default function Home() {
   const [inlineSubmitted, setInlineSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  // Initialize Lenis smooth scroll specifically for the landing page
+  // Hardware-accelerated Lenis smooth scrolling with 0 React re-renders during scroll
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.15,
+      duration: 0.9,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      wheelMultiplier: 1.05,
+      touchMultiplier: 1.5,
     })
 
     lenis.on('scroll', (e) => {
-      setScrollProgress(e.progress)
-      setScrolled(e.scroll > 20)
+      // Direct DOM update for zero React render overhead
+      if (progressRef.current) {
+        progressRef.current.style.transform = `scaleX(${e.progress})`
+      }
+      const isPast = e.scroll > 20
+      if (navRef.current) {
+        if (isPast && !navRef.current.classList.contains('scrolled')) {
+          navRef.current.classList.add('scrolled')
+        } else if (!isPast && navRef.current.classList.contains('scrolled')) {
+          navRef.current.classList.remove('scrolled')
+        }
+      }
     })
 
     let rafId
@@ -78,7 +193,7 @@ export default function Home() {
     }
     rafId = requestAnimationFrame(raf)
 
-    // Scroll reveal observer for elements with .scroll-reveal
+    // Hardware-accelerated intersection observer for reveal elements
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -87,7 +202,7 @@ export default function Home() {
           }
         })
       },
-      { rootMargin: '0px 0px -60px 0px', threshold: 0.12 }
+      { rootMargin: '0px 0px -40px 0px', threshold: 0.1 }
     )
 
     const revealElements = document.querySelectorAll('.scroll-reveal')
@@ -100,12 +215,20 @@ export default function Home() {
     }
   }, [])
 
-  const triggerScan = (index) => {
-    setSelectedSelfie(index)
+  const switchGuest = (idx) => {
+    setGuestIndex(idx)
     setIsScanning(true)
     setTimeout(() => {
       setIsScanning(false)
-    }, 700)
+    }, 600)
+  }
+
+  const togglePick = (idx) => {
+    setSelectedPicks((prev) => {
+      const copy = [...prev]
+      copy[idx] = !copy[idx]
+      return copy
+    })
   }
 
   const openEarlyAccess = () => setModalOpen(true)
@@ -117,20 +240,20 @@ export default function Home() {
     setTimeout(() => {
       setSubmitting(false)
       setInlineSubmitted(true)
-    }, 700)
+    }, 600)
   }
 
   const toggleFaq = (index) => {
     setActiveFaq((prev) => (prev === index ? null : index))
   }
 
+  const currentGuest = GUEST_PRESETS[guestIndex]
+  const pickedCount = 46 + selectedPicks.filter(Boolean).length
+
   return (
     <div className="landing-page">
-      {/* Scroll Progress Bar */}
-      <div
-        className="landing-scroll-progress"
-        style={{ transform: `scaleX(${scrollProgress})` }}
-      />
+      {/* Direct DOM Progress Bar (Zero React lag) */}
+      <div ref={progressRef} className="landing-scroll-progress" />
 
       {/* Ambient background lighting */}
       <div className="landing-bg-layer">
@@ -142,20 +265,20 @@ export default function Home() {
 
       {/* Floating Island Navbar */}
       <div className="landing-nav-wrapper">
-        <header className={`landing-nav ${scrolled ? 'scrolled' : ''}`}>
+        <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand">
             <div className="landing-brand-logo">
               <Camera size={18} strokeWidth={2.4} />
             </div>
             <div className="landing-brand-name">
               <span>PandaSpot</span>
-              <span className="landing-brand-badge">SaaS OS</span>
+              <span className="landing-brand-badge">Studio OS</span>
             </div>
           </Link>
 
           <nav className="landing-nav-links">
             <a href="#ai-search" className="landing-nav-link">AI Face Search</a>
-            <a href="#live-shoots" className="landing-nav-link">Live TV Wall</a>
+            <a href="#live-shoots" className="landing-nav-link">PandaShoots™ Live</a>
             <a href="#client-proofing" className="landing-nav-link">Client Proofing</a>
             <a href="#studio-suite" className="landing-nav-link">Studio CRM</a>
             <a href="#security" className="landing-nav-link">Security & Privacy</a>
@@ -176,25 +299,25 @@ export default function Home() {
       </div>
 
       {/* ===================================================================
-          1. HERO SECTION
+          1. HERO SECTION (EDITORIAL LUXURY)
           =================================================================== */}
       <section className="landing-hero">
         <div className="landing-container">
           <div className="landing-pill scroll-reveal">
             <span className="landing-pill-pulse" />
             <Sparkles size={14} style={{ color: '#fbbf24' }} />
-            <span>Next-Gen Event Photo Delivery & Studio Operating System</span>
+            <span>Handcrafted Operating System for Elite Event Photographers & Studios</span>
           </div>
 
           <h1 className="landing-hero-title scroll-reveal delay-1">
             Thousands of event photos.<br />
-            <span className="gradient-gold">Spot yourself in seconds.</span><br />
-            <span className="gradient-cyan">Deliver without the chaos.</span>
+            <span className="editorial-italic">Deliver in seconds.</span><br />
+            <span className="gradient-cyan">Elevate your studio.</span>
           </h1>
 
           <p className="landing-hero-subtitle scroll-reveal delay-2">
-            The all-in-one studio platform that replaces messy Google Drive folders and WhatsApp chase-downs.
-            Empower guests to find their personal photos via instant AI selfie search, broadcast live camera shots to venue TV walls, and manage client proofing, contracts, and billing under your own studio brand.
+            Stop dumping unindexed galleries onto Google Drive and chasing clients over WhatsApp.
+            PandaSpot empowers wedding studios, event teams, and galas to deliver instant 512-D AI selfie face search, stream live camera captures to venue TV walls, and manage client contracts, proofing, and invoicing in one unified brand experience.
           </p>
 
           <div className="landing-hero-ctas scroll-reveal delay-3">
@@ -208,19 +331,19 @@ export default function Home() {
             </button>
 
             <a href="#interactive-tour" className="landing-btn-hero-secondary">
-              <Sparkles size={16} style={{ color: '#38bdf8' }} />
-              <span>Interactive Platform Tour</span>
+              <Camera size={16} style={{ color: '#38bdf8' }} />
+              <span>Explore Interactive Studio</span>
             </a>
           </div>
 
           <div className="landing-hero-trust scroll-reveal delay-4">
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
-              <span>Zero Guest App Download Required</span>
+              <span>Zero Guest App Downloads</span>
             </div>
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
-              <span>Event-Scoped 512-D ArcFace Biometrics</span>
+              <span>Native Camera Tethering (Sony • Canon • Nikon)</span>
             </div>
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
@@ -229,11 +352,11 @@ export default function Home() {
           </div>
 
           {/* ===================================================================
-              INTERACTIVE HERO SHOWCASE CANVAS
+              LIVING INTERACTIVE STUDIO SHOWCASE (REAL PHOTOS)
               =================================================================== */}
           <div id="interactive-tour" className="landing-showcase-wrap scroll-reveal">
             <div className="landing-showcase-card">
-              {/* Top Window Bar */}
+              {/* Top Window Chrome */}
               <div className="landing-showcase-topbar">
                 <div className="showcase-window-controls">
                   <span className="showcase-dot red" />
@@ -242,11 +365,11 @@ export default function Home() {
                 </div>
                 <div className="showcase-address-bar">
                   <Lock size={12} style={{ color: '#10b981' }} />
-                  <span>aurora-studio.pandaspot.com/events/royal-palace-gala</span>
+                  <span>aurorastudio.pandaspot.com/events/vogue-gala-2026</span>
                 </div>
                 <div className="showcase-live-tag">
                   <span className="landing-pill-pulse" />
-                  <span>Live Studio Suite</span>
+                  <span>Studio Engine Active</span>
                 </div>
               </div>
 
@@ -258,7 +381,7 @@ export default function Home() {
                   onClick={() => setActiveShowcaseTab('ai-search')}
                 >
                   <ScanFace size={15} />
-                  <span>AI Guest Face Search</span>
+                  <span>AI Guest Face Matcher</span>
                 </button>
 
                 <button
@@ -276,7 +399,7 @@ export default function Home() {
                   onClick={() => setActiveShowcaseTab('selection')}
                 >
                   <Heart size={15} />
-                  <span>Client Proofing & Selection</span>
+                  <span>Client Proofing & Album Selection</span>
                 </button>
 
                 <button
@@ -291,45 +414,50 @@ export default function Home() {
 
               {/* Showcase Body */}
               <div className="showcase-content-area">
+                {/* TAB 1: AI FACE MATCHER WITH REAL GUESTS */}
                 {activeShowcaseTab === 'ai-search' && (
                   <div className="pane-guest-grid">
-                    {/* Left: Selfie Input Simulator */}
+                    {/* Left: Guest Selfie Scanner */}
                     <div className="guest-selfie-card">
-                      <div className="guest-selfie-circle">
-                        <ScanFace size={44} style={{ color: isScanning ? '#10b981' : '#fbbf24', transition: 'color 0.3s' }} />
-                        {isScanning && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.4) 50%, transparent 100%)',
-                            animation: 'pulse-dot 0.6s infinite alternate'
-                          }} />
-                        )}
+                      <div className="guest-selfie-avatar-wrap">
+                        <img
+                          src={currentGuest.avatar}
+                          alt={currentGuest.name}
+                          className="guest-selfie-avatar-img"
+                        />
+                        {isScanning && <div className="scan-beam" />}
                       </div>
-                      <h4 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#fff' }}>
-                        Guest Face Matcher
+
+                      <h4 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: '#fff' }}>
+                        {currentGuest.name}
                       </h4>
-                      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--l-text-secondary)', lineHeight: 1.4 }}>
-                        Attendees take a 2-second selfie with their phone. ArcFace maps 512 facial embedding vectors in milliseconds.
+                      <p style={{ margin: '0 0 16px', fontSize: 12, color: '#fbbf24', fontWeight: 600 }}>
+                        {currentGuest.role}
                       </p>
 
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
-                        {['Selfie 1 (Bride)', 'Selfie 2 (VIP)', 'Selfie 3 (Family)'].map((label, idx) => (
+                      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--p-text-secondary)', lineHeight: 1.45 }}>
+                        Guests upload 1–3 phone selfies. ArcFace calculates 512-dimension mathematical embeddings to match hundreds of photos in 0.18s.
+                      </p>
+
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 16 }}>
+                        {GUEST_PRESETS.map((g, idx) => (
                           <button
-                            key={label}
+                            key={g.id}
                             type="button"
-                            onClick={() => triggerScan(idx)}
+                            onClick={() => switchGuest(idx)}
                             style={{
-                              padding: '5px 10px',
-                              fontSize: 11,
+                              padding: '6px 12px',
+                              fontSize: 11.5,
+                              fontWeight: 600,
                               borderRadius: 6,
-                              border: selectedSelfie === idx ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
-                              background: selectedSelfie === idx ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
-                              color: selectedSelfie === idx ? '#fbbf24' : 'var(--l-text-secondary)',
-                              cursor: 'pointer'
+                              border: guestIndex === idx ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
+                              background: guestIndex === idx ? 'rgba(245,158,11,0.16)' : 'rgba(255,255,255,0.03)',
+                              color: guestIndex === idx ? '#fbbf24' : 'var(--p-text-secondary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            {label}
+                            Guest {idx + 1}
                           </button>
                         ))}
                       </div>
@@ -338,7 +466,7 @@ export default function Home() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 8,
-                        padding: '6px 14px',
+                        padding: '7px 16px',
                         background: 'rgba(16, 185, 129, 0.1)',
                         border: '1px solid rgba(16, 185, 129, 0.25)',
                         borderRadius: 8,
@@ -346,48 +474,43 @@ export default function Home() {
                         color: '#34d399'
                       }}>
                         <Check size={14} />
-                        <span>Cosine Match Confidence: <strong>99.4%</strong></span>
+                        <span>Vector Cosine Match: <strong>{currentGuest.matches[0].score}</strong></span>
                       </div>
                     </div>
 
-                    {/* Right: Instant Results Grid */}
+                    {/* Right: Real High-Res Matching Gallery */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                         <div>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Matching Photos Found</span>
-                          <span style={{ fontSize: 12, color: 'var(--l-text-muted)', marginLeft: 8 }}>(4 shots out of 2,840)</span>
+                          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#fff' }}>Instant Matching Photos</span>
+                          <span style={{ fontSize: 12, color: 'var(--p-text-muted)', marginLeft: 8 }}>
+                            (Found {currentGuest.matches.length} shots from 3,120 indexed RAW files)
+                          </span>
                         </div>
                         <button
                           type="button"
                           className="landing-btn-signin"
                           style={{ fontSize: 12, padding: '4px 12px', background: 'rgba(255,255,255,0.06)' }}
-                          onClick={() => triggerScan(selectedSelfie)}
+                          onClick={() => switchGuest(guestIndex)}
                         >
-                          Re-scan Vector
+                          Re-scan Face Vector
                         </button>
                       </div>
 
                       <div className="guest-matches-grid">
-                        {[
-                          { title: 'Reception Grand Entrance', match: '99.4%', time: '0.14s' },
-                          { title: 'Cake Cutting Ceremony', match: '98.8%', time: '0.16s' },
-                          { title: 'First Dance Spotlight', match: '97.6%', time: '0.18s' },
-                          { title: 'Table 4 Champagne Toast', match: '96.9%', time: '0.15s' }
-                        ].map((photo, i) => (
-                          <div key={photo.title} className="guest-match-photo">
-                            <span className="match-badge">{photo.match} Match</span>
-                            <div style={{ position: 'relative', zIndex: 2 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{photo.title}</div>
-                              <div style={{ fontSize: 10.5, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                <Clock size={11} />
-                                <span>Indexed in {photo.time}</span>
+                        {currentGuest.matches.map((photo) => (
+                          <div key={photo.title} className="photo-match-card">
+                            <img src={photo.image} alt={photo.title} className="photo-match-img" />
+                            <div className="photo-match-overlay">
+                              <span className="photo-match-badge">{photo.score} Match</span>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{photo.title}</div>
+                                <div style={{ fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                  <Camera size={11} />
+                                  <span>{photo.exif}</span>
+                                </div>
                               </div>
                             </div>
-                            <div style={{
-                              position: 'absolute',
-                              inset: 0,
-                              background: `radial-gradient(circle at 50% 30%, rgba(${i % 2 === 0 ? '245,158,11' : '6,182,212'}, 0.22) 0%, rgba(15,23,42,0.92) 80%)`
-                            }} />
                           </div>
                         ))}
                       </div>
@@ -395,39 +518,51 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* TAB 2: PANDASHOOTS LIVE TV WALL WITH REAL PHOTOS */}
                 {activeShowcaseTab === 'tvwall' && (
                   <div className="pane-tvwall">
                     <div className="tvwall-banner">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981' }} />
                         <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>PandaShoots™ Live Venue Stream</div>
-                          <div style={{ fontSize: 11.5, color: 'var(--l-text-secondary)' }}>Tethered to Sony A7 IV • 12ms Camera-to-Cloud Latency • Real-Time TV Wall Projection</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>PandaShoots™ Live Venue Broadcaster</div>
+                          <div style={{ fontSize: 12, color: 'var(--p-text-secondary)' }}>
+                            Tethered to Sony α7 IV • Real-Time SSE Ingestion • Projected Live to Venue LED Wall
+                          </div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: 6, color: '#fff' }}>
-                          Display Mode: 4K Projection
-                        </span>
-                      </div>
+                      <span style={{ fontSize: 11.5, background: 'rgba(255,255,255,0.08)', padding: '5px 12px', borderRadius: 6, color: '#fbbf24', fontWeight: 600 }}>
+                        4K TV Wall Active
+                      </span>
                     </div>
 
                     <div className="tvwall-stream-grid">
                       {[
-                        { caption: 'Live Shot #842 — Banquet Hall', tag: 'Ingested 2s ago' },
-                        { caption: 'Live Shot #841 — Stage Award', tag: 'Ingested 6s ago' },
-                        { caption: 'Live Shot #840 — Guest Entry QR', tag: 'Ingested 11s ago' }
-                      ].map((item, idx) => (
-                        <div key={item.caption} className="tvwall-tile">
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'radial-gradient(circle at center, rgba(6,182,212,0.2) 0%, rgba(14,19,32,0.95) 75%)'
-                          }} />
-                          <Camera size={28} style={{ color: 'rgba(255,255,255,0.2)', position: 'relative', zIndex: 1 }} />
-                          <div className="tvwall-overlay-info">
+                        {
+                          img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
+                          caption: 'Live Shot #942 — Vows Exchange',
+                          time: 'Ingested 2s ago'
+                        },
+                        {
+                          img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
+                          caption: 'Live Shot #941 — Grand Hall Cheers',
+                          time: 'Ingested 6s ago'
+                        },
+                        {
+                          img: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
+                          caption: 'Live Shot #940 — Table Toast',
+                          time: 'Ingested 10s ago'
+                        }
+                      ].map((item) => (
+                        <div key={item.caption} className="tvwall-photo-card">
+                          <img src={item.img} alt={item.caption} className="tvwall-photo-img" />
+                          <div className="tvwall-live-badge">
+                            <Flame size={10} />
+                            <span>LIVE TETHER</span>
+                          </div>
+                          <div className="tvwall-photo-info">
                             <span>{item.caption}</span>
-                            <span style={{ color: '#10b981', fontWeight: 600 }}>{item.tag}</span>
+                            <span style={{ color: '#10b981', fontWeight: 600 }}>{item.time}</span>
                           </div>
                         </div>
                       ))}
@@ -435,77 +570,111 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* TAB 3: CLIENT PROOFING & ALBUM SELECTION */}
                 {activeShowcaseTab === 'selection' && (
                   <div className="pane-selection">
                     <div className="selection-quota-bar">
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Client Album Proofing Portal</div>
-                        <div style={{ fontSize: 12, color: 'var(--l-text-secondary)' }}>Couple: Sophia & Alexander • Final Album Quota</div>
+                        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#fff' }}>Client Album Curation Portal</div>
+                        <div style={{ fontSize: 12, color: 'var(--p-text-secondary)' }}>Event: Alexander & Sophia Wedding • Album Selection Quota</div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: '#fbbf24' }}>48 / 50</span>
-                          <span style={{ fontSize: 11.5, color: 'var(--l-text-muted)', marginLeft: 6 }}>Selections Chosen</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#fbbf24' }}>{pickedCount} / 50</span>
+                          <span style={{ fontSize: 12, color: 'var(--p-text-muted)', marginLeft: 6 }}>Selections Chosen</span>
                         </div>
-                        <button type="button" className="landing-btn-cta" style={{ fontSize: 12, padding: '6px 14px' }}>
+                        <button type="button" className="landing-btn-cta" style={{ fontSize: 12, padding: '7px 16px' }}>
                           <Lock size={12} />
-                          <span>Lock & Submit Picks</span>
+                          <span>Lock & Submit Final 50</span>
                         </button>
                       </div>
                     </div>
 
                     <div className="selection-tiles-grid">
                       {[
-                        { title: 'IMG_4210.RAW', status: 'Approved', star: true },
-                        { title: 'IMG_4215.RAW', status: 'Approved', star: true },
-                        { title: 'IMG_4228.RAW', status: 'Approved', star: true },
-                        { title: 'IMG_4240.RAW', status: 'Staged', star: false }
-                      ].map((item) => (
-                        <div key={item.title} className={`selection-tile ${item.star ? 'selected' : ''}`}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 11, fontFamily: 'var(--l-font-mono)', color: 'var(--l-text-secondary)' }}>{item.title}</span>
-                            {item.star && <Heart size={14} fill="#f59e0b" color="#f59e0b" />}
+                        {
+                          img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
+                          title: 'Wedding_042.RAW'
+                        },
+                        {
+                          img: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=600&q=80',
+                          title: 'Wedding_088.RAW'
+                        },
+                        {
+                          img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
+                          title: 'Wedding_104.RAW'
+                        },
+                        {
+                          img: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=600&q=80',
+                          title: 'Wedding_182.RAW'
+                        }
+                      ].map((item, idx) => (
+                        <div
+                          key={item.title}
+                          className={`selection-tile ${selectedPicks[idx] ? 'selected' : ''}`}
+                          onClick={() => togglePick(idx)}
+                        >
+                          <img src={item.img} alt={item.title} className="selection-tile-img" />
+                          <div className="selection-tile-heart">
+                            <Heart size={14} fill={selectedPicks[idx] ? '#06080d' : 'none'} />
                           </div>
-                          <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                            <Layers size={22} style={{ color: item.star ? '#fbbf24' : 'rgba(255,255,255,0.2)', margin: '0 auto' }} />
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                            <span style={{ color: item.star ? '#34d399' : 'var(--l-text-muted)' }}>{item.status}</span>
-                            <span style={{ color: '#38bdf8' }}>Retouch: Yes</span>
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            padding: '6px 10px',
+                            background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
+                            fontSize: 11,
+                            fontFamily: 'var(--p-font-mono)',
+                            color: '#fff'
+                          }}>
+                            {item.title}
                           </div>
                         </div>
                       ))}
                     </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, color: 'var(--p-text-secondary)', padding: '0 4px' }}>
+                      <span>Tip: Click hearts to toggle client favorite selections in real-time.</span>
+                      <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Download size={13} />
+                        <span>Sync Selections directly to Adobe Lightroom Catalog (.xmp)</span>
+                      </span>
+                    </div>
                   </div>
                 )}
 
+                {/* TAB 4: STUDIO CRM & BILLING */}
                 {activeShowcaseTab === 'crm' && (
                   <div className="pane-crm">
                     <div className="crm-card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>Active Client Contracts & E-Signatures</span>
-                        <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 9999 }}>Legally Binding</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Active Studio Contracts & E-Signatures</span>
+                        <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 9px', borderRadius: 9999 }}>
+                          Legally Binding
+                        </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {[
-                          { client: 'Rachel & Ethan Wedding', amount: '₹2,40,000', status: 'Signed & Deposited' },
-                          { client: 'TechSummit 2026 Keynote', amount: '₹1,75,000', status: 'Pending Signature' },
-                          { client: 'Vogue Fashion Gala Shoot', amount: '₹3,20,000', status: 'Paid in Full' }
+                          { client: 'Sonia & Liam Wedding', amount: '₹2,40,000', status: 'Signed & Deposit Paid' },
+                          { client: 'Global FinTech Summit 2026', amount: '₹1,85,000', status: 'Contract Pending Signature' },
+                          { client: 'Vogue Fashion Gala', amount: '₹3,50,000', status: 'Paid in Full (GST Invoiced)' }
                         ].map((deal) => (
                           <div key={deal.client} style={{
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            padding: '10px 14px',
+                            padding: '12px 14px',
                             background: 'rgba(255,255,255,0.03)',
                             borderRadius: 8,
-                            fontSize: 12.5
+                            fontSize: 13
                           }}>
                             <div>
                               <div style={{ fontWeight: 600, color: '#fff' }}>{deal.client}</div>
-                              <div style={{ color: '#f59e0b', fontSize: 11 }}>{deal.amount}</div>
+                              <div style={{ color: '#f59e0b', fontSize: 11.5 }}>{deal.amount}</div>
                             </div>
-                            <span style={{ fontSize: 11, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: 4 }}>
+                            <span style={{ fontSize: 11, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 4 }}>
                               {deal.status}
                             </span>
                           </div>
@@ -514,25 +683,31 @@ export default function Home() {
                     </div>
 
                     <div className="crm-card">
-                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', display: 'block', marginBottom: 14 }}>
-                        Automated GST Invoicing & Quotations
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', display: 'block', marginBottom: 12 }}>
+                        Automated GST Tax Invoicing & Questionnaires
                       </span>
-                      <div style={{ fontSize: 12.5, color: 'var(--l-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
-                        Generate branded PDF quotations, track 50% milestone deposits, itemize drone & second-shooter add-ons, and record studio expenses in one place.
-                      </div>
+                      <p style={{ fontSize: 13, color: 'var(--p-text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+                        Send branded PDF quotations, collect 50% milestone deposits, manage pre-wedding briefs, and itemize gear expenses in one studio dashboard.
+                      </p>
                       <div style={{
-                        padding: '12px',
+                        padding: '14px',
                         borderRadius: 8,
                         background: 'rgba(245,158,11,0.08)',
-                        border: '1px solid rgba(245,158,11,0.2)',
-                        fontSize: 12,
+                        border: '1px solid rgba(245,158,11,0.22)',
+                        fontSize: 12.5,
                         color: '#fbbf24',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between'
                       }}>
-                        <span>Invoice #INV-2026-089 (Sent)</span>
-                        <Download size={14} style={{ cursor: 'pointer' }} />
+                        <div>
+                          <div style={{ fontWeight: 700 }}>Invoice #INV-2026-092</div>
+                          <div style={{ fontSize: 11, color: 'var(--p-text-muted)' }}>Aurora Photography Studio (GSTIN: 27AABCP1234F1Z5)</div>
+                        </div>
+                        <button type="button" className="landing-btn-cta" style={{ fontSize: 11.5, padding: '5px 12px' }}>
+                          <Download size={13} />
+                          <span>PDF</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -544,50 +719,50 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          2. METRICS TELEMETRY BAR
+          2. METRICS RIBBON
           =================================================================== */}
       <section className="landing-metrics-section">
         <div className="landing-container">
           <div className="landing-metrics-grid">
             <div className="metric-card scroll-reveal">
               <div className="metric-number gold">4.8M+</div>
-              <div className="metric-label">Photos Delivered</div>
+              <div className="metric-label">Photos Delivered Worldwide</div>
               <div className="metric-sub">Across weddings, summits & galas</div>
             </div>
 
             <div className="metric-card scroll-reveal delay-1">
               <div className="metric-number cyan">&lt; 180ms</div>
-              <div className="metric-label">AI Face Search Latency</div>
-              <div className="metric-sub">512-D ArcFace vector cosine query</div>
+              <div className="metric-label">AI Face Vector Match Latency</div>
+              <div className="metric-sub">512-D ArcFace HNSW cosine query</div>
             </div>
 
             <div className="metric-card scroll-reveal delay-2">
               <div className="metric-number gold">99.4%</div>
-              <div className="metric-label">Guest Match Accuracy</div>
-              <div className="metric-sub">Multi-selfie normalized embeddings</div>
+              <div className="metric-label">True Positive Accuracy</div>
+              <div className="metric-sub">Multi-selfie normalized vectors</div>
             </div>
 
             <div className="metric-card scroll-reveal delay-3">
               <div className="metric-number cyan">0</div>
               <div className="metric-label">Guest Apps Required</div>
-              <div className="metric-sub">Frictionless QR scan from any browser</div>
+              <div className="metric-sub">Instant QR scan from any browser</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ===================================================================
-          3. PROBLEM & REVOLUTION: THE OLD WAY VS PANDASPOT
+          3. THE PARADIGM SHIFT: THE OLD WAY VS PANDASPOT
           =================================================================== */}
       <section className="landing-section">
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag">The Delivery Shift</div>
+            <div className="landing-tag">The Studio Transformation</div>
             <h2 className="landing-section-title">
               Shooting is art. Delivery used to be a logistical nightmare.
             </h2>
             <p className="landing-section-desc">
-              A single wedding or corporate conference produces 3,000+ raw captures. Generic file storage creates friction for guests and buries your studio in repetitive support.
+              A single wedding or corporate conference produces 3,000+ raw captures. Generic cloud storage creates frustration for guests and buries your studio in repetitive WhatsApp messages.
             </p>
           </div>
 
@@ -595,19 +770,19 @@ export default function Home() {
             {/* The Old Way */}
             <div className="comp-card comp-card-old">
               <div className="comp-header">
-                <span className="comp-tag comp-tag-old">The Legacy Workflow</span>
+                <span className="comp-tag comp-tag-old">The Legacy Chaos</span>
                 <XCircle size={22} className="comp-icon-bad" />
               </div>
-              <h3 className="comp-title">Storage Dumps & Lost Hours</h3>
-              <div className="comp-subtitle">High friction for guests, zero brand retention</div>
+              <h3 className="comp-title">Chaotic Folders & Lost Referrals</h3>
+              <div className="comp-subtitle">Friction for guests, zero brand retention for your studio</div>
               <ul className="comp-list">
                 <li className="comp-item">
                   <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>The 3,000-Photo Wall:</strong> Guests scroll through thousands of strangers’ photos trying to spot themselves.</span>
+                  <span><strong>The 3,000-Photo Dump:</strong> Guests scroll through thousands of strangers' photos trying to spot themselves.</span>
                 </li>
                 <li className="comp-item">
                   <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>WhatsApp Screenshot Chaos:</strong> Clients text messy phone screenshots with numbers to pick album photos.</span>
+                  <span><strong>WhatsApp Screenshot Chaos:</strong> Clients text messy phone screenshots with numbers to pick album spreads.</span>
                 </li>
                 <li className="comp-item">
                   <XCircle size={18} className="comp-icon-bad" />
@@ -627,7 +802,7 @@ export default function Home() {
                 <CheckCircle2 size={22} className="comp-icon-good" />
               </div>
               <h3 className="comp-title">AI Discovery & Unified Studio SaaS</h3>
-              <div className="comp-subtitle">Instant gratification for attendees, enterprise efficiency for studios</div>
+              <div className="comp-subtitle">Instant gratification for attendees, total efficiency for studios</div>
               <ul className="comp-list">
                 <li className="comp-item">
                   <CheckCircle2 size={18} className="comp-icon-good" />
@@ -652,17 +827,17 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          4. SIX ENTERPRISE PILLARS (CORE PLATFORM CAPABILITIES)
+          4. SIX CORE ARCHITECTURAL PILLARS
           =================================================================== */}
-      <section id="ai-search" className="landing-section" style={{ background: 'rgba(10, 14, 24, 0.5)' }}>
+      <section id="ai-search" className="landing-section" style={{ background: 'rgba(8, 12, 20, 0.5)' }}>
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
             <div className="landing-tag cyan">Engine Architecture</div>
             <h2 className="landing-section-title">
-              Built for high-volume studios, agency teams, and live events.
+              Engineered for high-volume studios, agency teams, and live events.
             </h2>
             <p className="landing-section-desc">
-              Every feature is engineered for high performance, uncompromising security, and brand authority.
+              Every feature is built for high speed, absolute privacy, and luxury brand authority.
             </p>
           </div>
 
@@ -819,7 +994,7 @@ export default function Home() {
               From camera shutter to client delivery in four effortless steps.
             </h2>
             <p className="landing-section-desc">
-              Automate the repetitive busywork and deliver an unforgettable experience.
+              Automate the repetitive busywork and deliver an unforgettable client experience.
             </p>
           </div>
 
@@ -872,14 +1047,14 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          6. AUDIENCE SOLUTIONS
+          6. AUDIENCE SOLUTIONS MATRIX
           =================================================================== */}
       <section className="landing-section">
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
             <div className="landing-tag">Tailored Solutions</div>
             <h2 className="landing-section-title">
-              Built for every tier of the event ecosystem.
+              Built for every tier of the professional event ecosystem.
             </h2>
             <p className="landing-section-desc">
               Whether you are a solo luxury wedding photographer or an enterprise conference producer.
@@ -960,10 +1135,10 @@ export default function Home() {
                 <span style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#38bdf8', display: 'block', marginBottom: 12 }}>
                   Privacy & Data Governance
                 </span>
-                <h3 style={{ fontFamily: 'var(--l-font-heading)', fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 14px', lineHeight: 1.25 }}>
+                <h3 style={{ fontFamily: 'var(--p-font-heading)', fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 14px', lineHeight: 1.25 }}>
                   Event-Scoped Biometrics. Ethical Privacy by Architecture.
                 </h3>
-                <p style={{ fontSize: 14, color: 'var(--l-text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
+                <p style={{ fontSize: 14, color: 'var(--p-text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
                   We believe guest discovery must be transparent, bounded, and private. Face vectors never cross event boundaries, are never used for third-party AI training, and are automatically archived.
                 </p>
                 <Link to="/privacy" className="landing-btn-hero-secondary" style={{ fontSize: 13, padding: '9px 18px' }}>
@@ -1019,9 +1194,9 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          8. FREQUENTLY ASKED QUESTIONS
+          8. FREQUENTLY ASKED QUESTIONS (BUTTER-SMOOTH ACCORDION)
           =================================================================== */}
-      <section className="landing-section" style={{ background: 'rgba(10, 14, 24, 0.4)' }}>
+      <section className="landing-section" style={{ background: 'rgba(8, 12, 20, 0.4)' }}>
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
             <div className="landing-tag">Knowledge Base</div>
@@ -1120,10 +1295,10 @@ export default function Home() {
                 }}>
                   <CheckCircle2 size={28} />
                 </div>
-                <h3 style={{ fontFamily: 'var(--l-font-heading)', fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>
+                <h3 style={{ fontFamily: 'var(--p-font-heading)', fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>
                   Thank you! Your inquiry is received.
                 </h3>
-                <p style={{ color: 'var(--l-text-secondary)', fontSize: 14.5, maxWidth: 500, margin: '0 auto 20px' }}>
+                <p style={{ color: 'var(--p-text-secondary)', fontSize: 14.5, maxWidth: 500, margin: '0 auto 20px' }}>
                   Our team will reach out with your studio onboarding credentials and guided demo access within 24 hours.
                 </p>
                 <button
@@ -1138,7 +1313,7 @@ export default function Home() {
               <form onSubmit={handleInlineSubmit} style={{ maxWidth: 640, margin: '0 auto', textAlign: 'left' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--l-text-secondary)', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
                       Full Name *
                     </label>
                     <input
@@ -1159,7 +1334,7 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--l-text-secondary)', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
                       Work Email *
                     </label>
                     <input
@@ -1184,7 +1359,7 @@ export default function Home() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--l-text-secondary)', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
                       Studio / Company Name
                     </label>
                     <input
@@ -1204,7 +1379,7 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--l-text-secondary)', marginBottom: 6 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
                       Role
                     </label>
                     <select
@@ -1230,7 +1405,7 @@ export default function Home() {
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--l-text-secondary)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
                     Expected Event Volume / Details
                   </label>
                   <textarea
@@ -1268,7 +1443,7 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          10. FINAL DARK ENTERPRISE BRAND CALL TO ACTION
+          10. FINAL DARK ENTERPRISE CALL TO ACTION
           =================================================================== */}
       <section className="landing-final-cta">
         <div className="landing-container">
@@ -1297,7 +1472,7 @@ export default function Home() {
       </section>
 
       {/* ===================================================================
-          11. ENTERPRISE FOOTER
+          11. FOOTER
           =================================================================== */}
       <footer className="landing-footer">
         <div className="landing-container">
@@ -1312,11 +1487,11 @@ export default function Home() {
                 </div>
               </Link>
               <p>
-                The unified delivery and business operating system for event photographers, studios, and high-volume event teams.
+                The unified delivery and business operating system for professional event photographers, studios, and agencies.
               </p>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <span className="landing-brand-badge">Enterprise Edition</span>
-                <span style={{ fontSize: 12, color: 'var(--l-text-muted)' }}>v2.4.0 Live</span>
+                <span style={{ fontSize: 12, color: 'var(--p-text-muted)' }}>v2.4.0 Live</span>
               </div>
             </div>
 
@@ -1367,9 +1542,9 @@ export default function Home() {
               © {new Date().getFullYear()} PandaSpot, Inc. All rights reserved. Enterprise Event Photo SaaS.
             </div>
             <div style={{ display: 'flex', gap: 20 }}>
-              <Link to="/privacy" style={{ color: 'var(--l-text-muted)', textDecoration: 'none' }}>Privacy</Link>
-              <a href="#security" style={{ color: 'var(--l-text-muted)', textDecoration: 'none' }}>Data Governance</a>
-              <Link to="/contact" style={{ color: 'var(--l-text-muted)', textDecoration: 'none' }}>Contact</Link>
+              <Link to="/privacy" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Privacy</Link>
+              <a href="#security" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Data Governance</a>
+              <Link to="/contact" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Contact</Link>
             </div>
           </div>
         </div>
