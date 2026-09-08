@@ -99,13 +99,18 @@ export default function Overview() {
         {event && (
           <div className="card">
             {event.cover_url && (
-              <img
-                src={fileUrl(event.cover_url)}
-                alt=""
-                style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
-                draggable={false}
-                onError={(e) => { e.currentTarget.style.display = 'none' }}
-              />
+              <div style={{
+                maxHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--bg-elevated)', borderRadius: 12, marginBottom: 12, overflow: 'hidden',
+              }}>
+                <img
+                  src={fileUrl(event.cover_url)}
+                  alt=""
+                  style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
+                  draggable={false}
+                  onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
+                />
+              </div>
             )}
             <div className="guest-link-label">Event details</div>
             {(event.event_date || event.event_venue || event.description) && (
@@ -263,13 +268,18 @@ export default function Overview() {
             <label className="field-label">Cover photo <span className="hint">(16:9 crop)</span></label>
             {event.cover_url ? (
               <>
-                <img
-                  src={fileUrl(event.cover_url)}
-                  alt=""
-                  style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
-                  draggable={false}
-                  onError={(e) => { e.currentTarget.style.display = 'none' }}
-                />
+                <div style={{
+                  maxHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-elevated)', borderRadius: 8, marginBottom: 8, overflow: 'hidden',
+                }}>
+                  <img
+                    src={fileUrl(event.cover_url)}
+                    alt=""
+                    style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }}
+                    draggable={false}
+                    onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
+                  />
+                </div>
                 <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   <label className="btn secondary" style={{ cursor: 'pointer' }}>
                     Change cover
