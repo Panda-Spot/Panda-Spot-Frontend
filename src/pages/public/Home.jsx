@@ -6,7 +6,6 @@ import '../../styles/landing.css'
 
 import {
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   XCircle,
   Clock,
@@ -165,10 +164,12 @@ export default function Home() {
   // Hardware-accelerated Lenis smooth scrolling with 0 React re-renders during scroll
   useEffect(() => {
     const lenis = new Lenis({
-      lerp: 0.1,           // Consistent linear interpolation — no overshoot bounce
+      lerp: 0.08,            // Smooth but no overshoot/bounce
       smoothWheel: true,
-      syncTouch: false,    // Native touch scroll (no lag on mobile)
-      touchMultiplier: 2,
+      wheelMultiplier: 1,    // No scroll amplification (prevents overshoot)
+      touchMultiplier: 1,    // Native-feeling touch
+      infinite: false,       // No infinite scroll
+      overscroll: false,     // Disable overscroll bounce
     })
 
     lenis.on('scroll', (e) => {
@@ -303,13 +304,8 @@ export default function Home() {
           =================================================================== */}
       <section className="landing-hero">
         <div className="landing-container">
-          <div className="landing-pill scroll-reveal">
-            <span className="landing-pill-pulse" />
-            <Sparkles size={14} style={{ color: '#fbbf24' }} />
-            <span>Handcrafted Operating System for Elite Event Photographers & Studios</span>
-          </div>
 
-          <h1 className="landing-hero-title scroll-reveal delay-1">
+          <h1 className="landing-hero-title scroll-reveal">
             Thousands of event photos.<br />
             <span className="editorial-italic">Deliver in seconds.</span><br />
             <span className="gradient-cyan">Elevate your studio.</span>

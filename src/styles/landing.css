@@ -288,9 +288,20 @@
    HERO SECTION (LUXURY EDITORIAL)
    ========================================================================== */
 .landing-hero {
-  padding: 100px 0 60px;
+  padding: 90px 0 55px;
   position: relative;
   text-align: center;
+}
+
+.landing-hero-title {
+  font-family: var(--p-font-heading);
+  font-size: clamp(32px, 4.6vw, 58px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0 auto 28px;
+  max-width: 940px;
+  color: #ffffff;
 }
 
 .landing-pill {
