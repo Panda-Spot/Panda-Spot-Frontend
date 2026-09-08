@@ -15,6 +15,13 @@ import StudioLightbox from '../../components/StudioLightbox.jsx'
 import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
 import { isVideoFile } from '../../utils/media.js'
 
+function formatListDate(value) {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString()
+}
+
 export default function Photos() {
   const {
     event, photos,
@@ -38,7 +45,7 @@ export default function Photos() {
     visiblePhotos, handleArchivePhoto, handleRestorePhoto,
     handleToggleHighlight, togglingHighlightId, handleDeletePhoto, deletingPhotoId,
     setMetaPhotoId, subGalleryName, setSubGalleryName, creatingSubGallery,
-    handleCreateSubGallery, setActiveTab,
+    handleCreateSubGallery, setActiveTab, formatBytes,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
@@ -659,6 +666,15 @@ export default function Photos() {
                 </div>
                 <div className="meta">
                   <span>
+                    {galleryView === 'list' && (
+                      <span className="list-file">
+                        <span className="list-file-name" title={p.filename}>{p.filename}</span>
+                        <span className="hint">
+                          {[p.file_size != null && formatBytes(p.file_size), formatListDate(p.exif_captured_at || p.createdAt)]
+                            .filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    )}
                     {isVideoFile(p.filename) ? (
                       <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
                     ) : (

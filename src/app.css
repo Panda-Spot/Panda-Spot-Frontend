@@ -421,6 +421,28 @@
   align-items: center;
 }
 
+/* List-view file details: name + size/date above the flags. */
+.list-file {
+  display: block;
+  margin-bottom: 2px;
+  min-width: 0;
+}
+
+.list-file-name {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.photo-list .meta > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 /* --- Icon empty states (never bare text) --- */
 
 .gallery-empty {
