@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Heart, Info, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
 import { isVideoFile } from '../utils/media.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
@@ -13,7 +13,11 @@ const SWIPE_THRESHOLD_PX = 50
 // Deliberately plain — no comments, reactions or shares here. The AI Search
 // members grid keeps its own PhotoFaceViewer (face closeups), so it does
 // not use this.
-export default function StudioLightbox({ items, index, onClose, onIndexChange }) {
+//
+// Optional `actions` ({ onHeart, onArchive, onInfo }) renders an action
+// cluster in the footer, reading live flags off the current item. Only the
+// Photos lightbox passes actions today; Selection previews stay plain.
+export default function StudioLightbox({ items, index, onClose, onIndexChange, actions }) {
   const touchStartX = useRef(null)
   const [mediaLoaded, setMediaLoaded] = useState(false)
 
@@ -119,7 +123,41 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange })
 
       <div className="lightbox-footer" onClick={(e) => e.stopPropagation()}>
         <p className="lightbox-caption">{photo.filename}</p>
-        <span className="hint">{index + 1} of {items.length}</span>
+        <div className="lightbox-footer-row">
+          <span className="hint">{index + 1} of {items.length}</span>
+          {actions && (
+            <div className="lightbox-actions">
+              {actions.onHeart && (
+                <button
+                  className="icon-btn" type="button"
+                  title={photo.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
+                  onClick={() => actions.onHeart(photo)}
+                  style={{ color: photo.highlighted ? '#EF4444' : undefined }}
+                >
+                  <Heart size={16} fill={photo.highlighted ? '#EF4444' : 'none'} />
+                </button>
+              )}
+              {actions.onArchive && (
+                <button
+                  className="icon-btn" type="button"
+                  title={photo.archived_at ? 'Restore — show to guests and clients again' : 'Archive — hide from guests and clients without deleting'}
+                  onClick={() => actions.onArchive(photo)}
+                >
+                  {photo.archived_at ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+                </button>
+              )}
+              {actions.onInfo && (
+                <button
+                  className="icon-btn info" type="button"
+                  title="Details, rating, downloads, cover"
+                  onClick={() => actions.onInfo(photo)}
+                >
+                  <Info size={16} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>,
     document.body

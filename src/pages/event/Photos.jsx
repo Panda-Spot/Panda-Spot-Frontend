@@ -42,7 +42,7 @@ export default function Photos() {
     toolsFilter, setToolsFilter, dupIds, visibleManageablePhotos, selectedCount,
     managerSelected, setManagerSelected, toggleManagerSelect, toggleManagerSelectAllVisible,
     bulking, handleBulkMembership, handleBulkAddAllVisible,
-    visiblePhotos,
+    visiblePhotos, handleArchivePhoto, handleRestorePhoto,
     handleToggleHighlight, togglingHighlightId, handleDeletePhoto, deletingPhotoId,
     setMetaPhotoId, subGalleryName, setSubGalleryName, creatingSubGallery,
     handleCreateSubGallery, setActiveTab, formatBytes,
@@ -54,6 +54,34 @@ export default function Photos() {
   const [teaserDragOver, setTeaserDragOver] = useState(false)
   // Fullscreen preview: { items, index } — navigable with arrows/swipe.
   const [preview, setPreview] = useState(null)
+
+  // Patches the previewed item so footer actions (heart/archive) reflect
+  // instantly — the context handlers already toast + reload the grid.
+  const patchPreviewItem = (photoId, patch) => {
+    setPreview((p) => (p
+      ? { ...p, items: p.items.map((it) => (it.photo_id === photoId ? { ...it, ...patch } : it)) }
+      : p))
+  }
+
+  const previewActions = {
+    onHeart: async (p) => {
+      await handleToggleHighlight(p.photo_id, p.highlighted)
+      patchPreviewItem(p.photo_id, { highlighted: !p.highlighted })
+    },
+    onArchive: async (p) => {
+      if (p.archived_at) {
+        await handleRestorePhoto(p.photo_id, p.filename)
+        patchPreviewItem(p.photo_id, { archived_at: null })
+      } else {
+        await handleArchivePhoto(p.photo_id, p.filename)
+        patchPreviewItem(p.photo_id, { archived_at: new Date().toISOString() })
+      }
+    },
+    onInfo: (p) => {
+      setPreview(null)
+      setMetaPhotoId(p.photo_id)
+    },
+  }
   const [editingExportFolder, setEditingExportFolder] = useState(false)
 
   // Whatever the server reports as the export target (explicit export
@@ -739,6 +767,7 @@ export default function Photos() {
           index={preview.index}
           onClose={() => setPreview(null)}
           onIndexChange={(fn) => setPreview((p) => (p ? { ...p, index: typeof fn === 'function' ? fn(p.index) : fn } : p))}
+          actions={previewActions}
         />
       )}
 

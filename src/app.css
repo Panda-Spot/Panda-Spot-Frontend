@@ -2816,6 +2816,44 @@
   background: #000;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Studio lightbox footer actions (dark surface overrides). */
+.lightbox-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lightbox-actions .icon-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.lightbox-actions .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.lightbox-actions .icon-btn.info {
+  color: #38BDF8;
+}
+
+.lightbox-actions .icon-btn.info:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+}
+
+.lightbox-actions .icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
 .lightbox-spinner {
   position: absolute;
   width: 32px;
