@@ -5,6 +5,7 @@ import { fileUrl } from '../api.js'
 import { getToken } from '../authToken.js'
 import { isVideoFile } from '../utils/media.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
+import ZoomableImage from './gallery/ZoomableImage.jsx'
 
 const SWIPE_THRESHOLD_PX = 50
 
@@ -183,12 +184,11 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
           />
         ) : (
           <div className="preview-stack">
-            <img
+            <ZoomableImage
               key={showOriginal && origUrl ? `o-${photo.photo_id}` : `t-${photo.photo_id}`}
               src={showOriginal && origUrl ? origUrl : thumbSrc(photo)}
               alt={photo.filename}
               className="lightbox-image"
-              draggable={false}
               onLoad={() => setMediaLoaded(true)}
               style={{ opacity: mediaLoaded ? 1 : 0 }}
             />

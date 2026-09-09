@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
+import ZoomableImage from './gallery/ZoomableImage.jsx'
 
 function toRect(bbox, natural) {
   const [x1, y1, x2, y2] = bbox.map(Number)
@@ -42,6 +43,8 @@ function paddedSquare(rect) {
 export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemove, items, index = 0, onIndexChange }) {
   const [natural, setNatural] = useState(null)
   const [imgError, setImgError] = useState(false)
+  // Face boxes sit in unzoomed coordinates — hide them while zoomed.
+  const [zoomed, setZoomed] = useState(false)
   // Thumbnails only — originals may live on Drive (revocable) or be
   // expired; the cached thumbnail is always servable. Same rule as the
   // studio lightbox: never load the original in a preview.
@@ -106,16 +109,16 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
         )}
         <div className="face-viewer-photo">
           {!natural && !imgError && <div className="lightbox-spinner" />}
-          <img
+          <ZoomableImage
             src={src}
             alt={photo.filename}
             className="face-viewer-img"
-            draggable={false}
             onLoad={(e) => setNatural({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
             onError={() => setImgError(true)}
+            onZoomChange={(z) => setZoomed(z > 1)}
           />
           {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
-          {dims && faceList.map((f, i) => {
+          {dims && !zoomed && faceList.map((f, i) => {
             const r = toRect(f.bbox, dims)
             return (
               <div

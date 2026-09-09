@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react'
 import { addPhotoComment, fileUrl, getPhotoComments } from '../api.js'
+import ZoomableImage from './gallery/ZoomableImage.jsx'
 import { getGuestClientId, getGuestName, setGuestName } from '../guestId.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 import ReactionBar from './ReactionBar.jsx'
@@ -102,7 +103,7 @@ export default function Lightbox({ slug, matches, index, onClose, onIndexChange,
         )}
 
         {!imgLoaded && <div className="lightbox-spinner" />}
-        <img
+        <ZoomableImage
           key={match.photo_id}
           src={fileUrl(match.thumbnail_url || match.url)}
           alt={match.filename}

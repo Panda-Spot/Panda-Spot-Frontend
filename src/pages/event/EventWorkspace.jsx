@@ -1023,13 +1023,17 @@ export default function EventWorkspace() {
   const toggleManagerSelectAllVisible = () => {
     const ids = visibleManageablePhotos.map((p) => p.photo_id)
     const allSelected = ids.length > 0 && ids.every((id) => managerSelected[id])
-    if (allSelected) {
-      setManagerSelected({})
-    } else {
-      const next = {}
-      for (const id of ids) next[id] = true
-      setManagerSelected(next)
-    }
+    // Merge-aware: never touch other pages' ticks — only add/remove the
+    // currently visible ids.
+    setManagerSelected((prev) => {
+      const next = { ...prev }
+      if (allSelected) {
+        for (const id of ids) delete next[id]
+      } else {
+        for (const id of ids) next[id] = true
+      }
+      return next
+    })
   }
 
   const selectedCount = Object.keys(managerSelected).length

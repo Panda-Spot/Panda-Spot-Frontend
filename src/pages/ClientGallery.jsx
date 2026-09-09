@@ -21,6 +21,7 @@ import GoldButton from '../components/ui/GoldButton.jsx'
 import SkeletonLoader from '../components/ui/SkeletonLoader.jsx'
 import { MiniLoader } from '../components/ui/StudioLoader.jsx'
 import GalleryMedia from '../components/GalleryMedia.jsx'
+import ZoomableImage from '../components/gallery/ZoomableImage.jsx'
 import FavouritesDrawer from '../components/gallery/FavouritesDrawer.jsx'
 import Support from './Support.jsx'
 import { formatDate } from '../utils/formatters.js'
@@ -468,12 +469,11 @@ export default function ClientGallery() {
                   <ChevronLeft size={28} />
                 </button>
               )}
-              <img
+              <ZoomableImage
                 key={current.photo_id}
                 src={fileUrl(current.protected_url || current.protected_thumbnail_url)}
                 alt={current.filename}
                 className="lightbox-image"
-                draggable={false}
               />
               {lightboxIndex < photos.length - 1 && (
                 <button className="lightbox-nav lightbox-nav-next" type="button" onClick={() => setLightboxIndex((i) => i + 1)} aria-label="Next photo">
