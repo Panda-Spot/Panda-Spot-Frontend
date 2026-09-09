@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Camera, CalendarDays, ChevronDown, Layers, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff } from 'lucide-react'
+import { AlertTriangle, Camera, CalendarDays, ChevronDown, Layers, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff, UserPlus } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -291,6 +291,11 @@ export default function Events() {
                 {pagedEvents.map((ev) => (
                   <div key={ev.id}>
                     <Link to={`/events/${ev.id}`} className="event-card">
+                      {ev.role !== 'owner' && (
+                        <span className="role-ribbon" title="Shared with you as a collaborator">
+                          <UserPlus size={11} /> Shared
+                        </span>
+                      )}
                     {ev.cover_url ? (
                       <img
                         src={fileUrl(ev.cover_url)}
@@ -312,7 +317,6 @@ export default function Events() {
                             {ev.event_type}
                           </span>
                         )}
-                        <span className="role-badge">{ev.role === 'owner' ? 'Owner' : 'Collaborator'}</span>
                       </p>
                       {ev.event_date && (
                         <p className="hint">{new Date(ev.event_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
