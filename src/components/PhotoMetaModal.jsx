@@ -148,31 +148,36 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
           <div className="meta-stat">
             <span className="meta-stat-icon"><Gauge size={16} /></span>
             <span className="meta-stat-text">
-              <span className="meta-stat-value">{photo.sharpness != null ? Math.round(photo.sharpness) : '—'}</span>
-              <span className="hint">Sharpness{photo.sharpness == null ? ' · not measured' : ''}</span>
+              <span className="meta-stat-label">Sharpness</span>
+              {photo.sharpness != null
+                ? <span className="meta-stat-value">{Math.round(photo.sharpness)}</span>
+                : <span className="meta-stat-missing">Not measured</span>}
             </span>
           </div>
           <div className="meta-stat">
             <span className="meta-stat-icon"><ScanFace size={16} /></span>
             <span className="meta-stat-text">
-              <span className="meta-stat-value">{photo.face_indexed_at ? (photo.face_count ?? 0) : '—'}</span>
-              <span className="hint">Faces{photo.face_indexed_at ? '' : ' · not indexed'}</span>
+              <span className="meta-stat-label">Faces</span>
+              {photo.face_indexed_at
+                ? <span className="meta-stat-value">{photo.face_count ?? 0}</span>
+                : <span className="meta-stat-missing">Not indexed</span>}
             </span>
           </div>
           <div className="meta-stat">
             <span className="meta-stat-icon"><Fingerprint size={16} /></span>
             <span className="meta-stat-text">
-              <span className="meta-stat-value">{photo.file_hash ? `${photo.file_hash.slice(0, 10)}…` : '—'}</span>
-              <span className="hint">Duplicate hash{photo.file_hash ? '' : ' · not analyzed'}</span>
+              <span className="meta-stat-label">Duplicate hash</span>
+              {photo.file_hash
+                ? <span className="meta-stat-value">{photo.file_hash.slice(0, 10)}…</span>
+                : <span className="meta-stat-missing">Not analyzed</span>}
             </span>
           </div>
         </div>
         <div className="guest-link-label" style={{ marginTop: 14 }}>Camera metadata</div>
         {exifRows.length === 0 ? (
-          <div className="meta-empty">
-            <CameraOff size={18} />
-            <p className="hint" style={{ margin: 0 }}>No camera metadata on this file — screenshots, exports, and some uploads carry none.</p>
-          </div>
+          <p className="hint meta-empty-inline">
+            <CameraOff size={14} /> No camera metadata on this file — screenshots, exports, and some uploads carry none.
+          </p>
         ) : (
           <ul className="team-list">
             {exifRows.map(([k, v]) => (
