@@ -430,7 +430,7 @@ export default function Studio() {
               {templates.map((t) => (
                 <li key={t.id} className="team-list-item">
                   <span style={{ flex: 1 }}><strong>{t.name}</strong> <span className="hint">· {(t.file_size / 1024).toFixed(0)} KB</span></span>
-                  <button type="button" className="btn secondary" onClick={() => deleteContractTemplate(t.id).then(reload).catch((e) => showToast(e.message, { type: 'error' }))}>Delete</button>
+                  <button type="button" className="btn secondary" onClick={async () => { const ok = await confirm(`Delete contract template “${t.name}”? This can’t be undone.`, { title: 'Delete template?', confirmLabel: 'Delete', danger: true }); if (ok) deleteContractTemplate(t.id).then(reload).catch((e) => showToast(e.message, { type: 'error' })) }}>Delete</button>
                 </li>
               ))}
             </ul>
@@ -461,7 +461,7 @@ export default function Studio() {
                     <strong>{c.client_email}</strong>
                     <span className="hint"> · {c.template_name || 'no file'} · {c.status}{c.signature_name ? ` · signed by ${c.signature_name}` : ''}</span>
                   </span>
-                  <button type="button" className="btn secondary" onClick={() => deleteContract(c.id).then(reload).catch((e) => showToast(e.message, { type: 'error' }))}>Delete</button>
+                  <button type="button" className="btn secondary" onClick={async () => { const ok = await confirm(`Delete the contract for ${c.client_email}? Signed records are lost.`, { title: 'Delete contract?', confirmLabel: 'Delete', danger: true }); if (ok) deleteContract(c.id).then(reload).catch((e) => showToast(e.message, { type: 'error' })) }}>Delete</button>
                 </li>
               ))}
             </ul>
@@ -511,7 +511,7 @@ export default function Studio() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ flex: 1 }}><strong>{q.title}</strong> <span className="hint">· {q.questions?.length || 0} questions · {q.assignment_count} assigned{q.active ? '' : ' · inactive'}</span></span>
                     <button type="button" className="btn secondary" onClick={() => openAssignments(q.id)}>Responses</button>
-                    <button type="button" className="btn secondary" onClick={() => deleteQuestionnaire(q.id).then(reload).catch((e) => showToast(e.message, { type: 'error' }))}>Delete</button>
+                    <button type="button" className="btn secondary" onClick={async () => { const ok = await confirm(`Delete questionnaire “${q.title}” and its assignments? This can’t be undone.`, { title: 'Delete questionnaire?', confirmLabel: 'Delete', danger: true }); if (ok) deleteQuestionnaire(q.id).then(reload).catch((e) => showToast(e.message, { type: 'error' })) }}>Delete</button>
                   </div>
                   {viewQ?.id === q.id && (
                     <div style={{ marginTop: 8 }}>

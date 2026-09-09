@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CreditCard, Receipt } from 'lucide-react'
 import { fileUrl, getBranding, getMySubscription, getStudioProfile, saveBranding, updateStudioProfile } from '../api.js'
+import { useConfirm } from '../confirm.jsx'
 import GlassCard from '../components/ui/GlassCard.jsx'
 import GoldButton from '../components/ui/GoldButton.jsx'
 import Badge from '../components/ui/Badge.jsx'
@@ -12,6 +13,7 @@ const DEFAULT_ACCENT = '#D97706'
 // watermark intensity with live preview, contact details, plus shortcuts
 // to the plan and the service catalog.
 export default function Branding() {
+  const confirm = useConfirm()
   const [studioName, setStudioName] = useState('')
   const [brandColor, setBrandColor] = useState(DEFAULT_ACCENT)
   const [watermarkIntensity, setWatermarkIntensity] = useState(0.75)
@@ -68,6 +70,8 @@ export default function Branding() {
   }
 
   const handleRemoveWatermark = async () => {
+    const ok = await confirm('Remove the watermark image? New exports will carry no watermark until you upload another.', { title: 'Remove watermark?', confirmLabel: 'Remove' })
+    if (!ok) return
     setSaving(true)
     setError('')
     try {

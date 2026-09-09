@@ -781,6 +781,11 @@ export default function EventWorkspace() {
   }
 
   const handleRemoveClient = async (userId) => {
+    const confirmed = await confirm(
+      'Remove this client from the event? They lose gallery access immediately — photos and favourites stay untouched.',
+      { title: 'Remove client?', confirmLabel: 'Remove' }
+    )
+    if (!confirmed) return
     setClientError('')
     try {
       await removeClient(eventId, userId)
@@ -1013,6 +1018,11 @@ export default function EventWorkspace() {
   }
 
   const handleArchivePhoto = async (photoId, filename) => {
+    const confirmed = await confirm(
+      `Remove "${filename}" from guests and clients? The file stays in the manager and you can restore it any time.`,
+      { title: 'Remove photo?', confirmLabel: 'Remove', danger: false }
+    )
+    if (!confirmed) return
     try {
       await archivePhoto(eventId, photoId)
       setPhotos((prev) => prev.map((p) => (p.photo_id === photoId ? { ...p, archived_at: new Date().toISOString() } : p)))
@@ -1749,6 +1759,11 @@ export default function EventWorkspace() {
   }
 
   const handleClearExportFolder = async () => {
+    const confirmed = await confirm(
+      'Clear the export folder? Exports fall back to the import folder afterwards.',
+      { title: 'Clear export folder?', confirmLabel: 'Clear', danger: false }
+    )
+    if (!confirmed) return
     try {
       await clearExportFolder(eventId)
       showToast('Export folder cleared — exports go to the import folder.')
@@ -1901,6 +1916,11 @@ export default function EventWorkspace() {
   }
 
   const handleRemoveCollaborator = async (userId) => {
+    const confirmed = await confirm(
+      'Remove this collaborator? They lose access to this event immediately.',
+      { title: 'Remove collaborator?', confirmLabel: 'Remove' }
+    )
+    if (!confirmed) return
     setTeamError('')
     try {
       await removeCollaborator(eventId, userId)
@@ -1911,6 +1931,11 @@ export default function EventWorkspace() {
   }
 
   const handleCancelInvite = async (inviteId) => {
+    const confirmed = await confirm(
+      'Cancel this pending invite? The recipient will no longer be able to join from it.',
+      { title: 'Cancel invite?', confirmLabel: 'Cancel invite' }
+    )
+    if (!confirmed) return
     setTeamError('')
     try {
       await cancelInvite(eventId, inviteId)
@@ -1936,6 +1961,21 @@ export default function EventWorkspace() {
   }
 
   const handlePhotoFeatureMembership = async (photoId, patch) => {
+    // Bin-button removals from AI Search / Selection land here — confirm
+    // first (the file itself stays in the manager). Returns whether the
+    // change was applied so callers (e.g. the fullscreen viewer) can hold
+    // their UI when the user cancels.
+    const removingAI = patch.face_search_visible === false
+    const removingSel = patch.photo_selection_visible === false
+    if (removingAI || removingSel) {
+      const name = (photos || []).find((p) => p.photo_id === photoId)?.filename || 'this photo'
+      const where = removingAI && removingSel ? 'AI Search and Photo Selection' : removingAI ? 'AI Search' : 'Photo Selection'
+      const confirmed = await confirm(
+        `Remove "${name}" from ${where}? The file stays in the manager — only membership changes.`,
+        { title: 'Remove photo?', confirmLabel: 'Remove', danger: false }
+      )
+      if (!confirmed) return false
+    }
     setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: true }))
     const previous = photos
     setPhotos((prev) => prev.map((p) => (
@@ -1968,9 +2008,11 @@ export default function EventWorkspace() {
     } catch (e) {
       setPhotos(previous)
       showToast(e.message, { type: 'error' })
+      return false
     } finally {
       setSavingPhotoFeatures((prev) => ({ ...prev, [photoId]: false }))
     }
+    return true
   }
 
   const handleDeleteEvent = async () => {
@@ -2088,8 +2130,9 @@ export default function EventWorkspace() {
         index={viewingIndex}
         onIndexChange={(dir) => stepFaceViewer(typeof dir === 'function' ? dir(0) : dir)}
         onClose={() => { setViewingPhoto(null); setViewingFaces([]); setViewingList([]); setViewingIndex(0) }}
-        onRemove={viewingPhoto ? () => {
-          handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
+        onRemove={viewingPhoto ? async () => {
+          const applied = await handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
+          if (!applied) return
           setViewingPhoto(null)
           setViewingFaces([])
           setViewingList([])

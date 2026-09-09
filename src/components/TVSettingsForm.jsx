@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { deleteSponsorLogo, updateEvent, uploadSponsorLogo } from '../api.js';
+import { useConfirm } from '../confirm.jsx';
 import { useToast } from '../toast.jsx';
 
 // Live TV wall settings (Phase 8) — on-air source selector, dwell time,
@@ -7,6 +8,7 @@ import { useToast } from '../toast.jsx';
 // patch; sponsor logo uploads immediately (single-file, like the cover).
 export default function TVSettingsForm({ event, onSaved }) {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -56,6 +58,8 @@ export default function TVSettingsForm({ event, onSaved }) {
   };
 
   const handleRemoveLogo = async () => {
+    const ok = await confirm('Remove the sponsor logo from the TV wall frame?', { title: 'Remove logo?', confirmLabel: 'Remove' });
+    if (!ok) return;
     setUploadingLogo(true);
     try {
       await deleteSponsorLogo(event.id);

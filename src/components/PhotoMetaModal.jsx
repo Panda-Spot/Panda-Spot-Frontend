@@ -106,6 +106,10 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
   // Archive lives here now that the grid cards show only Heart / Bin /
   // Info — hides from guests and clients without deleting anything.
   const handleArchiveToggle = async () => {
+    if (!photo.archived_at) {
+      const ok = await confirm(`Remove “${photo.filename}” from guests and clients? The file stays in the manager and you can restore it any time.`, { title: 'Remove photo?', confirmLabel: 'Remove' });
+      if (!ok) return;
+    }
     setBusy(true);
     try {
       if (photo.archived_at) {

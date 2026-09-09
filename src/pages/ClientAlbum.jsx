@@ -216,6 +216,8 @@ export default function ClientAlbum() {
               busy={busy}
               currentUserId={user?.id || null}
               onDeleteComment={async (id) => {
+                const ok = await confirm('Delete this comment and its replies? This can’t be undone.', { title: 'Delete comment?', confirmLabel: 'Delete', danger: true })
+                if (!ok) return
                 try { await deleteClientAlbumComment(eventId, albumId, id); await load() } catch (e) { showToast(e.message, { type: 'error' }) }
               }}
               pendingPin={pendingPin}

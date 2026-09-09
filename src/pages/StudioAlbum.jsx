@@ -295,7 +295,11 @@ export default function StudioAlbum() {
                   {!locked && (
                     <button
                       type="button" className="dismiss-btn" title="Remove source"
-                      onClick={async () => { try { await removeAlbumSource(eventId, albumId, s.photo_id); await load() } catch (e) { showToast(e.message, { type: 'error' }) } }}
+                      onClick={async () => {
+                        const ok = await confirm(`Remove “${s.filename}” from this album? The photo itself stays in the event.`, { title: 'Remove source?', confirmLabel: 'Remove' })
+                        if (!ok) return
+                        try { await removeAlbumSource(eventId, albumId, s.photo_id); await load() } catch (e) { showToast(e.message, { type: 'error' }) }
+                      }}
                     >
                       <Trash2 size={13} />
                     </button>
