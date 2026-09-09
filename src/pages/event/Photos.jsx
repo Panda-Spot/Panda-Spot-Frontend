@@ -760,7 +760,11 @@ export default function Photos() {
               </div>
             )}
             />
-            <div className="gallery-pagination">
+          </>
+        )}
+          </div>
+          {searchedPhotos.length > 0 && (
+            <div className="photo-browser-footer">
               <span>
                 Showing {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, searchedPhotos.length)} of {searchedPhotos.length}
               </span>
@@ -784,9 +788,7 @@ export default function Photos() {
                 </div>
               )}
             </div>
-          </>
-        )}
-          </div>
+          )}
         </div>
         </>)}
       </div>
