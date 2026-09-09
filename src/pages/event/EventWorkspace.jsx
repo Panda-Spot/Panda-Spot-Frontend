@@ -384,6 +384,8 @@ export default function EventWorkspace() {
   }, [photos, sourceFilter, toolsFilter, dupIds])
   // Phase 22 — face viewer modal state for the AI member grid.
   const [viewingPhoto, setViewingPhoto] = useState(null)
+  const [viewingList, setViewingList] = useState([])
+  const [viewingIndex, setViewingIndex] = useState(0)
   const [viewingFaces, setViewingFaces] = useState([])
   const [facesLoading, setFacesLoading] = useState(false)
   // Phase 22 — AI Faces sub-tab (auto face groups).
@@ -1041,18 +1043,30 @@ export default function EventWorkspace() {
     (p) => p.approval_status !== 'pending' && p.face_search_visible !== false
   )
 
-  const openFaceViewer = async (photo) => {
-    setViewingPhoto(photo)
+  const openFaceViewer = async (photo, list) => {
+    const items = Array.isArray(list) && list.length > 0 ? list : [photo]
+    const at = Math.max(0, items.findIndex((p) => p.photo_id === photo.photo_id))
+    const current = items[at] || photo
+    setViewingList(items)
+    setViewingIndex(at)
+    setViewingPhoto(current)
     setViewingFaces([])
     setFacesLoading(true)
     try {
-      const data = await getPhotoFaces(eventId, photo.photo_id)
+      const data = await getPhotoFaces(eventId, current.photo_id)
       setViewingFaces(data.faces || [])
     } catch (e) {
       showToast(e.message, { type: 'error' })
     } finally {
       setFacesLoading(false)
     }
+  }
+
+  const stepFaceViewer = (dir) => {
+    const items = Array.isArray(viewingList) && viewingList.length > 0 ? viewingList : []
+    if (items.length === 0) return
+    const next = Math.min(Math.max(viewingIndex + dir, 0), items.length - 1)
+    if (next !== viewingIndex) openFaceViewer(items[next], items)
   }
 
   const handleBulkRemoveVisible = async (feature) => {    const members = feature === 'selection' ? selectionMembers() : aiMembers()
@@ -2002,11 +2016,16 @@ export default function EventWorkspace() {
         photo={viewingPhoto}
         faces={viewingFaces}
         loading={facesLoading}
-        onClose={() => { setViewingPhoto(null); setViewingFaces([]) }}
+        items={viewingList}
+        index={viewingIndex}
+        onIndexChange={(dir) => stepFaceViewer(typeof dir === 'function' ? dir(0) : dir)}
+        onClose={() => { setViewingPhoto(null); setViewingFaces([]); setViewingList([]); setViewingIndex(0) }}
         onRemove={viewingPhoto ? () => {
           handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
           setViewingPhoto(null)
           setViewingFaces([])
+          setViewingList([])
+          setViewingIndex(0)
         } : undefined}
       />
       {metaPhotoId && (

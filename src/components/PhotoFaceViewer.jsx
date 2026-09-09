@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 
@@ -39,13 +39,16 @@ function paddedSquare(rect) {
  * original-image pixels, converted here against the loaded image's natural
  * size. Used only from the studio AI Search tab.
  */
-export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemove }) {
+export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemove, items, index = 0, onIndexChange }) {
   const [natural, setNatural] = useState(null)
   const [imgError, setImgError] = useState(false)
   // Thumbnails only — originals may live on Drive (revocable) or be
   // expired; the cached thumbnail is always servable. Same rule as the
   // studio lightbox: never load the original in a preview.
   const src = photo ? fileUrl(photo.thumbnail_url || photo.url) : ''
+  const total = Array.isArray(items) && items.length > 0 ? items.length : 1
+  const canNav = typeof onIndexChange === 'function' && total > 1
+  const go = (dir) => { if (canNav) onIndexChange(dir) }
 
   useEffect(() => {
     setNatural(null)
@@ -55,13 +58,18 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
   useEffect(() => {
     if (!photo) return
     lockScroll()
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.()
+      else if (e.key === 'ArrowLeft') go(-1)
+      else if (e.key === 'ArrowRight') go(1)
+    }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
       unlockScroll()
     }
-  }, [photo, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo, onClose, onIndexChange, total])
 
   if (!photo) return null
 
@@ -91,6 +99,11 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
       </button>
 
       <div className="face-viewer-stage" onClick={(e) => e.stopPropagation()}>
+        {canNav && index > 0 && (
+          <button className="lightbox-nav lightbox-nav-prev" type="button" onClick={() => go(-1)} aria-label="Previous photo">
+            <ChevronLeft size={28} />
+          </button>
+        )}
         <div className="face-viewer-photo">
           {!natural && !imgError && <div className="lightbox-spinner" />}
           <img
@@ -102,8 +115,8 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
             onError={() => setImgError(true)}
           />
           {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
-          {dims && natural && faceList.map((f, i) => {
-            const r = toRect(f.bbox, natural)
+          {dims && faceList.map((f, i) => {
+            const r = toRect(f.bbox, dims)
             return (
               <div
                 key={f.id || i}
@@ -147,6 +160,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
           <div className="face-viewer-strip-head">
             <span className="face-viewer-title">{photo.filename}</span>
             <span className="hint">
+              {canNav ? `${index + 1} of ${total} · ` : ''}
               {loading ? 'Loading faces…' : `${faceList.length} face${faceList.length === 1 ? '' : 's'} captured`}
             </span>
           </div>
@@ -199,6 +213,11 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
             </div>
           )}
         </div>
+        {canNav && index < total - 1 && (
+          <button className="lightbox-nav lightbox-nav-next" type="button" onClick={() => go(1)} aria-label="Next photo">
+            <ChevronRight size={28} />
+          </button>
+        )}
       </div>
     </div>,
     document.body

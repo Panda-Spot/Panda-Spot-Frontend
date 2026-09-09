@@ -229,7 +229,7 @@ export default function AISearch() {
                   <div className="photo-grid">
                     {shownAiMembers.map((p) => (
                       <div className="photo-card" key={p.photo_id}>
-                        <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => openFaceViewer(p)} title="Open fullscreen + face closeups">
+                        <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => openFaceViewer(p, shownAiMembers)} title="Open fullscreen + face closeups">
                           <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
                           {!p.face_indexed_at && (
                             <div className="card-indexing-overlay">

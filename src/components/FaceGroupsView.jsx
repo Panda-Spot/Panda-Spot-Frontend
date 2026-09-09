@@ -119,17 +119,23 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
               </div>
               {open && (
                 <div className="photo-grid" style={{ padding: 12, paddingTop: 0 }}>
-                  {(g.photos || g.photo_ids.map((photoId) => ({ photo_id: photoId, filename: `${photoId}.jpg` }))).map((p) => (
+                  {(g.photos || g.photo_ids.map((photoId) => ({ photo_id: photoId, filename: `${photoId}.jpg` }))).map((p, i) => (
                     <div
                       key={p.photo_id}
                       style={{ cursor: 'zoom-in' }}
-                      onClick={() => onOpenPhoto({
-                        photo_id: p.photo_id,
-                        filename: p.filename,
-                        ...(p.width && p.height ? { width: p.width, height: p.height } : {}),
-                        url: `/files/events/${eventId}/photos/${p.photo_id}`,
-                        thumbnail_url: `/files/events/${eventId}/photos/${p.photo_id}/thumb`,
-                      })}
+                      onClick={() => {
+                        const list = (g.photos || g.photo_ids.map((photoId) => ({ photo_id: photoId, filename: `${photoId}.jpg` }))).map((q) => ({
+                          photo_id: q.photo_id,
+                          filename: q.filename,
+                          ...(q.width && q.height ? { width: q.width, height: q.height } : {}),
+                          url: `/files/events/${eventId}/photos/${q.photo_id}`,
+                          thumbnail_url: `/files/events/${eventId}/photos/${q.photo_id}/thumb`,
+                        }))
+                        onOpenPhoto(
+                          list[Math.max(0, list.findIndex((q) => q.photo_id === p.photo_id))],
+                          list,
+                        )
+                      }}
                       title="Open fullscreen + face closeups"
                     >
                       <GalleryMedia
