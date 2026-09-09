@@ -3136,6 +3136,27 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Studio preview: thumbnail instantly, full-res fades in on top (blur-up).
+   Fills the screen with ~5% side margins. Scoped here so the guest
+   lightbox keeps its own sizing. */
+.preview-stack {
+  display: grid;
+  max-width: 95vw;
+}
+
+.preview-stack > img {
+  grid-area: 1 / 1;
+  width: auto;
+  max-width: 95vw;
+  max-height: 86vh;
+  object-fit: contain;
+  justify-self: center;
+}
+
+.preview-stack > img.preview-full {
+  transition: opacity 0.25s ease;
+}
+
 /* Studio lightbox footer actions (dark surface overrides). */
 .lightbox-footer-row {
   display: flex;

@@ -27,9 +27,11 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
   // Instant preview: thumbnails only, never the full original — plus the
   // neighbours preloaded so arrow/swipe navigation has zero delay.
   const thumbSrc = (p) => (p ? fileUrl(p.thumbnail_url || p.url) : '')
+  const [fullLoaded, setFullLoaded] = useState(false)
 
   useEffect(() => {
     setMediaLoaded(false)
+    setFullLoaded(false)
   }, [index])
 
   useEffect(() => {
@@ -103,15 +105,28 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
             style={{ opacity: mediaLoaded ? 1 : 0 }}
           />
         ) : (
-          <img
-            key={photo.photo_id}
-            src={thumbSrc(photo)}
-            alt={photo.filename}
-            className="lightbox-image"
-            draggable={false}
-            onLoad={() => setMediaLoaded(true)}
-            style={{ opacity: mediaLoaded ? 1 : 0 }}
-          />
+          <div className="preview-stack">
+            <img
+              key={`t-${photo.photo_id}`}
+              src={thumbSrc(photo)}
+              alt={photo.filename}
+              className="lightbox-image"
+              draggable={false}
+              onLoad={() => setMediaLoaded(true)}
+              style={{ opacity: mediaLoaded ? 1 : 0 }}
+            />
+            <img
+              key={`f-${photo.photo_id}`}
+              src={fileUrl(photo.url)}
+              alt=""
+              aria-hidden
+              className="lightbox-image preview-full"
+              draggable={false}
+              onLoad={() => setFullLoaded(true)}
+              onError={() => setFullLoaded(false)}
+              style={{ opacity: fullLoaded ? 1 : 0 }}
+            />
+          </div>
         )}
 
         {index < items.length - 1 && (
