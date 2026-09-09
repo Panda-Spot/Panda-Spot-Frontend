@@ -99,29 +99,31 @@ export default function Overview() {
           </div>
         )}
 
-        {/* ── Cover banner with details overlaid (cover itself is managed
-            inside Edit details, not via separate buttons) ── */}
+        {/* ── Event details: cover | info | features (cover itself is
+            managed inside Edit details, not via separate buttons) ── */}
         {event && (
-          <div className="card event-cover-card">
-            <div className="event-cover-media">
-              {event.cover_url && !coverFailed ? (
-                <img
-                  key={event.cover_url}
-                  src={fileUrl(event.cover_url)}
-                  alt=""
-                  draggable={false}
-                  onError={() => setCoverFailed(true)}
-                />
-              ) : (
-                <div className="event-cover-placeholder" aria-hidden="true">
-                  <Image size={40} strokeWidth={1.5} />
-                  <span>Add a cover from Edit details</span>
-                </div>
-              )}
-              <div className="event-cover-scrim" aria-hidden="true" />
+          <div className="event-details-grid">
+            <div className="card event-col-cover">
+              <div className="event-col-media">
+                {event.cover_url && !coverFailed ? (
+                  <img
+                    key={event.cover_url}
+                    src={fileUrl(event.cover_url)}
+                    alt=""
+                    draggable={false}
+                    onError={() => setCoverFailed(true)}
+                  />
+                ) : (
+                  <div className="event-cover-placeholder" aria-hidden="true">
+                    <Image size={36} strokeWidth={1.5} />
+                    <span>Add a cover from Edit details</span>
+                  </div>
+                )}
+              </div>
+              <h2 className="event-col-name" title={event.name}>{event.name}</h2>
             </div>
-            <div className="event-cover-body">
-              <h2 className="event-cover-title" title={event.name}>{event.name}</h2>
+            <div className="card">
+              <div className="guest-link-label">Event details</div>
               {(event.event_date || event.event_venue || event.description) ? (
                 <div className="event-details-list">
                   {event.event_date && (
@@ -137,7 +139,7 @@ export default function Overview() {
                     </span>
                   )}
                   {event.description && (
-                    <span className="hint event-cover-desc" style={{ lineHeight: 1.5 }}>{event.description}</span>
+                    <span className="hint" style={{ lineHeight: 1.5 }}>{event.description}</span>
                   )}
                 </div>
               ) : (
@@ -148,6 +150,22 @@ export default function Overview() {
                   <Pencil size={14} /> Edit details
                 </button>
               </div>
+            </div>
+            <div className="card event-col-features">
+              <div className="guest-link-label">Features enabled</div>
+              <div className="feature-rows">
+                <FeatureRow label="AI Face Search" active={event.face_search_enabled} icon={Search} />
+                <FeatureRow label="Photo Selection" active={event.photo_selection_enabled} icon={Image} />
+                <FeatureRow label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
+                <FeatureRow label="Advanced tools" active={event.advanced_tools_enabled} icon={SlidersHorizontal} />
+                <FeatureRow label="Sub-galleries" active={event.sub_galleries_enabled} icon={Layers} />
+                <FeatureRow label="Albums" active={event.albums_enabled} icon={BookOpen} />
+                <FeatureRow label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
+              </div>
+              <p className="hint" style={{ margin: '10px 0 0', fontSize: 12 }}>
+                Features are set at creation. Change, archive or delete from the{' '}
+                <Link to={`/events/${eventId}/danger`}>Danger section</Link>.
+              </p>
             </div>
           </div>
         )}
@@ -184,26 +202,6 @@ export default function Overview() {
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#F59E0B', display: 'inline-block' }} /> Pending {pendingCount}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--border)', display: 'inline-block' }} /> Other {Math.max(0, photoCount - indexedCount - pendingCount)}</span>
             </div>
-          </div>
-        )}
-
-        {/* ── Features enabled ── */}
-        {event && (
-          <div className="card">
-            <div className="guest-link-label">Features enabled</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              <FeaturePill label="AI Face Search" active={event.face_search_enabled} icon={Search} />
-              <FeaturePill label="Photo Selection" active={event.photo_selection_enabled} icon={Image} />
-              <FeaturePill label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
-              <FeaturePill label="Advanced tools" active={event.advanced_tools_enabled} icon={SlidersHorizontal} />
-              <FeaturePill label="Sub-galleries" active={event.sub_galleries_enabled} icon={Layers} />
-              <FeaturePill label="Albums" active={event.albums_enabled} icon={BookOpen} />
-              <FeaturePill label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
-            </div>
-            <p className="hint" style={{ marginTop: 10 }}>
-              Features are set at creation. Change, archive or delete from the{' '}
-              <Link to={`/events/${eventId}/danger`}>Danger section</Link>.
-            </p>
           </div>
         )}
 
@@ -364,18 +362,12 @@ export default function Overview() {
   )
 }
 
-function FeaturePill({ label, active, icon: Icon }) {
+function FeatureRow({ label, active, icon: Icon }) {
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-      borderRadius: 8, fontSize: 13, fontWeight: 500,
-      background: active ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
-      color: active ? '#22C55E' : '#EF4444',
-      border: `1px solid ${active ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)'}`,
-    }}>
-      <Icon size={14} />
-      {label}
-      <span style={{ fontSize: 11, opacity: 0.7 }}>{active ? 'ON' : 'OFF'}</span>
+    <div className="feature-row">
+      <Icon size={15} style={{ color: active ? '#22C55E' : 'var(--text-tertiary)', flexShrink: 0 }} />
+      <span style={{ fontWeight: 500 }}>{label}</span>
+      <span className={`feature-row-pill${active ? ' on' : ''}`}>{active ? 'ON' : 'OFF'}</span>
     </div>
   )
 }
