@@ -229,26 +229,31 @@ export default function AISearch() {
                   <div className="photo-grid">
                     {shownAiMembers.map((p) => (
                       <div className="photo-card" key={p.photo_id}>
-                        <div style={{ cursor: 'zoom-in' }} onClick={() => openFaceViewer(p)} title="Open fullscreen + face closeups">
+                        <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => openFaceViewer(p)} title="Open fullscreen + face closeups">
                           <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                        </div>
-                        <div className="meta">
-                          <span className="hint">
-                            {p.face_indexed_at
-                              ? `${p.face_count} face${p.face_count === 1 ? '' : 's'} indexed`
-                              : 'Indexing…'}
-                          </span>
-                          <div className="meta-actions">
-                            <button
-                              className="icon-btn danger"
-                              type="button"
-                              title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
-                              onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
-                              disabled={!!savingPhotoFeatures[p.photo_id]}
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                          {!p.face_indexed_at && (
+                            <div className="card-indexing-overlay">
+                              <div className="card-spinner" />
+                            </div>
+                          )}
+                          <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                            <div className="meta-actions">
+                              <button
+                                className="icon-btn danger"
+                                type="button"
+                                title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
+                                onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
+                                disabled={!!savingPhotoFeatures[p.photo_id]}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </div>
+                          {p.face_indexed_at && (
+                            <div className="card-overlay-info">
+                              {p.face_count} face{p.face_count === 1 ? '' : 's'} indexed
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

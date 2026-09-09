@@ -414,6 +414,29 @@
   transition: opacity 0.15s;
 }
 
+/* Round indexing spinner overlaid on the image itself (AI members still
+   processing) — replaces the old "Indexing…" text row. */
+.card-indexing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 12, 0.55);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.card-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(245, 158, 11, 0.25);
+  border-top-color: #F59E0B;
+  border-radius: 50%;
+  animation: lightbox-spin 0.8s linear infinite;
+}
+
 /* --- Photo inspector modal (Info popup) --- */
 
 .meta-preview {
