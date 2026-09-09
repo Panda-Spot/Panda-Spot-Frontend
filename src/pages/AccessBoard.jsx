@@ -223,7 +223,7 @@ export default function AccessBoard() {
                     </Badge>
                   </div>
 
-                  <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                  <div className="space-y-2">
                     {(data.clients || []).map((c) => (
                       <div
                         key={c.user_id}
@@ -271,8 +271,8 @@ export default function AccessBoard() {
 
                   <button
                     type="button"
-                    className="w-full mt-3 text-xs font-medium rounded-lg py-2 flex items-center justify-center gap-1"
-                    style={{ color: 'var(--accent-primary)', border: '1px dashed var(--accent-primary)' }}
+                    className="w-full mt-3 text-xs font-medium rounded-lg py-2 flex items-center justify-center gap-1 sticky bottom-3"
+                    style={{ color: 'var(--accent-primary)', border: '1px dashed var(--accent-primary)', background: 'var(--bg-surface)' }}
                     onClick={(e) => { e.stopPropagation(); openInvite(ev.id) }}
                   >
                     <UserPlus size={12} /> Invite to this event
@@ -296,7 +296,9 @@ export default function AccessBoard() {
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
               />
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+              {/* Bounded + scroll-chained-off so wheel/touch inside the
+                  sidebar never jumps the page behind it. */}
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto overscroll-contain">
                 {unassigned.map((c) => (
                   <div key={c.user_id} className="flex items-center gap-2 rounded-lg px-2 py-1.5" style={{ background: 'var(--bg-elevated)' }}>
                     <span className="text-[11px] truncate flex-1" style={{ color: 'var(--text-primary)' }}>
