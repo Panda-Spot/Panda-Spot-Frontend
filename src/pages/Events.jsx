@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Camera, CalendarDays, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff } from 'lucide-react'
+import { AlertTriangle, Camera, CalendarDays, ChevronDown, Layers, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff } from 'lucide-react'
 import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
@@ -67,6 +67,9 @@ export default function Events() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [subscription, setSubscription] = useState(null)
+  // Expanded sub-gallery sections per event card (collapsed by default —
+  // sub-galleries never list flat on this page).
+  const [expandedSubs, setExpandedSubs] = useState({})
 
   const filters = { status: statusFilter, role: roleFilter, type: typeFilter, query: search }
 
@@ -286,7 +289,8 @@ export default function Events() {
             <>
               <div className="event-grid">
                 {pagedEvents.map((ev) => (
-                  <Link key={ev.id} to={`/events/${ev.id}`} className="event-card">
+                  <div key={ev.id}>
+                    <Link to={`/events/${ev.id}`} className="event-card">
                     {ev.cover_url ? (
                       <img
                         src={fileUrl(ev.cover_url)}
@@ -328,8 +332,41 @@ export default function Events() {
                           <span className="status-pill active">Guest Upload</span>
                         )}
                       </div>
-                    </div>
-                  </Link>
+                      </div>
+                    </Link>
+                    {ev.sub_galleries_enabled && (
+                      <div className="event-subs">
+                        <button
+                          type="button"
+                          className="event-subs-toggle"
+                          aria-expanded={!!expandedSubs[ev.id]}
+                          onClick={() => setExpandedSubs((prev) => ({ ...prev, [ev.id]: !prev[ev.id] }))}
+                        >
+                          <Layers size={13} />
+                          <span>Sub-galleries ({(ev.sub_galleries || []).length})</span>
+                          <ChevronDown size={14} style={{ transform: expandedSubs[ev.id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                        </button>
+                        {expandedSubs[ev.id] && (
+                          (ev.sub_galleries || []).length === 0 ? (
+                            <p className="hint" style={{ margin: '8px 2px 2px', fontSize: 12 }}>
+                              None yet — split this event from <Link to={`/events/${ev.id}/photos`} onClick={(e) => e.stopPropagation()}>Photos & Imports</Link>.
+                            </p>
+                          ) : (
+                            <ul className="event-subs-list">
+                              {(ev.sub_galleries || []).map((g) => (
+                                <li key={g.id}>
+                                  <Link to={`/events/${g.id}`} onClick={(e) => e.stopPropagation()}>
+                                    {g.name}
+                                  </Link>
+                                  <span className="hint">{g.photo_count} photo{g.photo_count === 1 ? '' : 's'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 

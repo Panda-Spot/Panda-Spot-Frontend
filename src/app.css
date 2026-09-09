@@ -597,6 +597,59 @@
   margin-top: 4px;
 }
 
+/* Sub-galleries expander under event cards (collapsed by default — never
+   listed flat on the Events page). */
+.event-subs {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: var(--card);
+}
+
+.event-subs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.event-subs-toggle svg:last-child {
+  margin-left: auto;
+  color: var(--text-tertiary);
+}
+
+.event-subs-list {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.event-subs-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.event-subs-list a {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- Event details card: cover left, details right --- */
 
 .event-details-row {
