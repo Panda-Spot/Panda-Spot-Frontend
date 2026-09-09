@@ -497,6 +497,54 @@ export default function Photos() {
         {event?.started && (
         <>
         <div className="photo-browser">
+          {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
+            <div className="photo-browser-select">
+              <label className="checkbox-row" style={{ margin: 0 }} title="Select or deselect every visible photo">
+                <input
+                  type="checkbox"
+                  checked={visibleManageablePhotos.length > 0 && visibleManageablePhotos.every((p) => managerSelected[p.photo_id])}
+                  onChange={toggleManagerSelectAllVisible}
+                />
+                Select all ({visibleManageablePhotos.length})
+              </label>
+              <span
+                className="select-count"
+                title="Zero-copy — files stay where they are, only membership flags change. Adding to AI Search face-indexes new photos in the background."
+              >
+                {selectedCount} selected
+              </span>
+              {event?.face_search_enabled && (
+                <div className="select-group">
+                  <span className="select-group-label">AI Search</span>
+                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
+                    {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount}`}
+                  </button>
+                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
+                    Add all visible
+                  </button>
+                </div>
+              )}
+              {event?.photo_selection_enabled && (
+                <div className="select-group">
+                  <span className="select-group-label">Selection</span>
+                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
+                    {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount}`}
+                  </button>
+                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
+                    Add all visible
+                  </button>
+                </div>
+              )}
+              {selectedCount > 0 && (
+                <button className="icon-btn" type="button" title="Clear selection" onClick={() => setManagerSelected({})}>
+                  <XCircle size={16} />
+                </button>
+              )}
+              <span className="hint" style={{ fontSize: 12, flexBasis: '100%' }}>
+                Zero-copy — files stay where they are, only membership flags change. Adding to AI Search face-indexes new photos in the background.
+              </span>
+            </div>
+          )}
           <div className="photo-browser-bar">
             <select
               className="text-input" value={photoStatusFilter}
@@ -589,51 +637,6 @@ export default function Photos() {
               </button>
             )}
           </div>
-          {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
-            <div className="photo-browser-select">
-              <label className="checkbox-row" style={{ margin: 0 }} title="Select or deselect every visible photo">
-                <input
-                  type="checkbox"
-                  checked={visibleManageablePhotos.length > 0 && visibleManageablePhotos.every((p) => managerSelected[p.photo_id])}
-                  onChange={toggleManagerSelectAllVisible}
-                />
-                All ({visibleManageablePhotos.length})
-              </label>
-              <span
-                className="select-count"
-                title="Zero-copy — files stay where they are, only membership flags change. Adding to AI Search face-indexes new photos in the background."
-              >
-                {selectedCount} selected
-              </span>
-              {event?.face_search_enabled && (
-                <div className="select-group">
-                  <span className="select-group-label">AI Search</span>
-                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
-                    {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount}`}
-                  </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
-                    Add all visible
-                  </button>
-                </div>
-              )}
-              {event?.photo_selection_enabled && (
-                <div className="select-group">
-                  <span className="select-group-label">Selection</span>
-                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
-                    {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount}`}
-                  </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
-                    Add all visible
-                  </button>
-                </div>
-              )}
-              {selectedCount > 0 && (
-                <button className="icon-btn" type="button" title="Clear selection" onClick={() => setManagerSelected({})}>
-                  <XCircle size={16} />
-                </button>
-              )}
-            </div>
-          )}
           <div className="photo-browser-body">
 
         {/* Tool filters appear only after the studio enables Advanced

@@ -808,9 +808,10 @@
   }
 }
 
-/* --- Selection action strip: fixed between the browser bar and the
-   scrolling grid, so it never scrolls away. Selection itself lives in
-   state keyed by photo id, so it persists across pages/filters. --- */
+/* --- Selection action strip: first inside the photo browser, sticky so
+    it stays visible while the grid (or the page) scrolls. Selection
+    itself lives in state keyed by photo id, so it persists across
+    pages/filters. --- */
 
 .photo-browser-select {
   display: flex;
@@ -822,6 +823,9 @@
   background: rgba(245, 158, 11, 0.04);
   flex-shrink: 0;
   font-size: 12.5px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .select-count {
