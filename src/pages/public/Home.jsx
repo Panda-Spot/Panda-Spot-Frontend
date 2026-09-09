@@ -322,7 +322,7 @@ export default function Home() {
         <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand">
             <div className="landing-brand-logo">
-              <Camera size={18} strokeWidth={2.4} />
+              <img src="/pandaspot-web-icon.svg" alt="PandaSpot logo" width="34" height="34" />
             </div>
             <div className="landing-brand-name">
               <span>PandaSpot</span>
@@ -349,6 +349,7 @@ export default function Home() {
       {/* ============== HERO ============== */}
       <section className="landing-hero">
         <div className="landing-hero-vignette" aria-hidden="true" />
+        <img className="landing-hero-watermark" src="/pandaspot-logo.svg" alt="" aria-hidden="true" loading="lazy" />
         <div className="landing-container">
           <div className="hero-slate">
             <span className="hero-rec" aria-hidden="true" />
@@ -910,7 +911,7 @@ export default function Home() {
           <div className="footer-top-grid">
             <div className="footer-brand-col">
               <Link to="/" className="landing-brand">
-                <div className="landing-brand-logo"><Camera size={18} strokeWidth={2.4} /></div>
+                <div className="landing-brand-logo"><img src="/pandaspot-web-icon.svg" alt="PandaSpot logo" width="34" height="34" /></div>
                 <div className="landing-brand-name"><span>PandaSpot</span></div>
               </Link>
               <p>The unified delivery platform for professional event photographers. Camera-to-cloud ingest, AI face search, TV wall, client proofing, album review, and a real Studio CRM — under your brand.</p>

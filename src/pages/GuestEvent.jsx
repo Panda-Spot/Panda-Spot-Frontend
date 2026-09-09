@@ -124,7 +124,7 @@ export default function GuestEvent() {
       background_color: '#ffffff',
       theme_color: event.brand_color || '#0e8a8a',
       icons: [
-        { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+        { src: '/pandaspot-web-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
       ],
     }
     const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })

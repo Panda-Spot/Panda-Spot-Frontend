@@ -206,12 +206,50 @@ html:has(.landing-page) body {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #06080d;
-  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.25);
+  flex-shrink: 0;
+}
+
+.landing-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Faint full-logo watermark behind the hero — brand presence without
+   competing with the headline. Static (no animation), hidden on small
+   screens where it would crowd the type. */
+.landing-hero {
+  position: relative;
+}
+
+.landing-hero-watermark {
+  position: absolute;
+  top: 50%;
+  right: -140px;
+  width: min(560px, 44vw);
+  transform: translateY(-50%);
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.landing-hero .landing-container {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 900px) {
+  .landing-hero-watermark {
+    display: none;
+  }
 }
 
 .landing-brand-name {
