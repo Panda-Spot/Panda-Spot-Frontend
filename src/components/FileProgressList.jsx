@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { CheckCircle2, AlertCircle, Loader2, Clock, UploadCloud, MinusCircle } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowUp, CheckCircle2, AlertCircle, Loader2, Clock, MinusCircle } from 'lucide-react'
 
 // One row per file the photographer selected, beneath the overall bar —
 // lets them see exactly which photo is being uploaded vs. processed vs.
@@ -10,14 +10,61 @@ import { CheckCircle2, AlertCircle, Loader2, Clock, UploadCloud, MinusCircle } f
 // `files` shape: [{ id, name, size, status, percent, facesFound, reason }]
 //   status: 'queued' | 'uploading' | 'processing' | 'done' | 'error' | 'skipped'
 //   percent: 0-100 — the fill width for this row
+//
+// Scroll contract (the important part): the list NEVER yanks the user's
+// scroll position on progress ticks. Live rows are partitioned to the
+// top so uploading photos stay visible, and the tail is followed only
+// while the user is deliberately parked at the bottom (chat-log
+// behaviour). A "jump to active" pill appears when live work is above
+// the viewport.
 export default function FileProgressList({ files }) {
   const scrollRef = useRef(null)
+  const stickRef = useRef(false)
+  const [showJump, setShowJump] = useState(false)
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+  // Stable partition: live rows first, then queued, then finished.
+  // Within a group the insertion order is preserved, so a row moves at
+  // most twice in its lifetime (queued → live → finished) instead of
+  // jittering on every tick.
+  const ordered = useMemo(() => {
+    const rank = (s) => (s === 'uploading' || s === 'processing' ? 0 : s === 'queued' ? 1 : 2)
+    return [...(files || [])].sort((a, b) => rank(a.status) - rank(b.status))
   }, [files])
+
+  const activeCount = useMemo(
+    () => (files || []).filter((f) => f.status === 'uploading' || f.status === 'processing').length,
+    [files]
+  )
+
+  // Follow the tail only while the user is parked at the bottom. The
+  // `files` array is a new identity on every progress tick, but this is
+  // a no-op unless sticky-follow is engaged — scrolling stays put.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el && stickRef.current) el.scrollTop = el.scrollHeight
+  }, [files])
+
+  const onListScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    stickRef.current = nearBottom
+    setShowJump(activeCount > 0 && el.scrollTop > 120)
+  }
+
+  // Re-evaluate the pill when live work starts/stops even if the user
+  // isn't scrolling (progress ticks don't fire scroll events).
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setShowJump(activeCount > 0 && el.scrollTop > 120)
+  }, [activeCount])
+
+  const jumpToActive = () => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = 0
+    setShowJump(false)
+  }
 
   if (!files || files.length === 0) return null
 
@@ -32,8 +79,14 @@ export default function FileProgressList({ files }) {
   return (
     <div className="card file-progress-card">
       <div className="file-progress-summary">{summary}</div>
-      <div className="file-progress-list" ref={scrollRef}>
-        {files.map((f) => (
+      {showJump && (
+        <button type="button" className="file-progress-jump" onClick={jumpToActive}>
+          <ArrowUp size={13} />
+          <span>{activeCount} uploading — back to top</span>
+        </button>
+      )}
+      <div className="file-progress-list" ref={scrollRef} onScroll={onListScroll}>
+        {ordered.map((f) => (
           <FileRow key={f.id} file={f} />
         ))}
       </div>

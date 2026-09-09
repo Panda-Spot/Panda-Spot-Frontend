@@ -1896,6 +1896,23 @@
   color: var(--text-muted);
   margin-bottom: 8px;
 }
+.file-progress-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border, rgba(245, 158, 11, 0.5));
+  background: var(--accent-bg, rgba(245, 158, 11, 0.1));
+  color: var(--accent, #d97706);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.file-progress-jump:hover {
+  background: var(--accent-bg, rgba(245, 158, 11, 0.18));
+}
 .file-progress-list {
   display: flex;
   flex-direction: column;
