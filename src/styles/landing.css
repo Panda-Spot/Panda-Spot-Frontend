@@ -222,11 +222,13 @@ html:has(.landing-page) body {
   display: block;
 }
 
-/* Medium-size brand mark in the nav bar (footer keeps the 34px mark). */
-.landing-brand-logo--nav {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+/* Full lockup logo in the nav bar — displayed whole, no cropping. */
+.landing-brand-lockup {
+  height: 52px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  display: block;
 }
 
 /* Faint full-logo watermark behind the hero — brand presence without

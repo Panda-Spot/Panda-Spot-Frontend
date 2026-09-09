@@ -321,13 +321,8 @@ export default function Home() {
       <div className="landing-nav-wrapper">
         <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand">
-            <div className="landing-brand-logo landing-brand-logo--nav">
-              <img src="/pandaspot-web-icon.svg" alt="PandaSpot logo" width="44" height="44" />
-            </div>
-            <div className="landing-brand-name">
-              <span>PandaSpot</span>
-              <span className="landing-brand-badge">STUDIO</span>
-            </div>
+            <img className="landing-brand-lockup" src="/pandaspot-logo.svg" alt="PandaSpot — Spot yourself. Get your photos." height="52" />
+            <span className="landing-brand-badge">STUDIO</span>
           </Link>
           <nav className="landing-nav-links">
             <a href="#wall" className="landing-nav-link">Live Wall</a>
