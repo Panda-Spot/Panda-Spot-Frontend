@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2, Camera, ChevronDown } from 'lucide-react'
+import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2, Camera, ChevronDown, ChevronLeft } from 'lucide-react'
 import SelfieCameraModal from '../components/SelfieCameraModal.jsx'
 import {
   downloadMatches,
@@ -80,6 +80,10 @@ export default function GuestEvent() {
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState('')
   const [unlocked, setUnlocked] = useState(false)
+  // Guest picked "Main gallery" from the sub-gallery picker: show the
+  // normal search flow scoped to the parent's own photos (uploads made
+  // outside any sub-gallery) instead of the picker.
+  const [pickedMain, setPickedMain] = useState(false)
   // Holds { key, promise } for a search already kicked off the instant the
   // guest finished picking selfies — before they've even tapped "Find My
   // Photos". By the time they do tap it, the upload + face-detect + match
@@ -451,7 +455,15 @@ export default function GuestEvent() {
         {event?.logo_url && !event?.theme?.hide_pandaspot_brand && <p className="guest-powered-by">Powered by PandaSpot</p>}
       </div>
 
-      {event?.sub_galleries_enabled && event?.sub_galleries?.length > 0 ? (
+      {pickedMain && (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <button className="btn secondary" type="button" onClick={() => setPickedMain(false)}>
+            <ChevronLeft size={14} /> All galleries
+          </button>
+          <span className="hint">Searching the main gallery — photos outside the sub-galleries.</span>
+        </div>
+      )}
+      {event?.sub_galleries_enabled && event?.sub_galleries?.length > 0 && !pickedMain ? (
         <div className="card">
           <p className="subtle">This event has separate galleries — pick one to search:</p>
           <div className="sub-gallery-picker">
@@ -465,6 +477,15 @@ export default function GuestEvent() {
                 {g.name}
               </button>
             ))}
+            {(event.own_photo_count || 0) > 0 && (
+              <button
+                type="button"
+                className="btn secondary sub-gallery-btn"
+                onClick={() => setPickedMain(true)}
+              >
+                Main gallery ({event.own_photo_count})
+              </button>
+            )}
           </div>
         </div>
       ) : event?.expired ? (
