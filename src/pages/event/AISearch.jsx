@@ -142,6 +142,14 @@ export default function AISearch() {
             <p className="hint">
               Only these photos are selfie-searchable by guests. Photos without face data index in the background once added.
             </p>
+            {(() => {
+              const pending = aiMembers().filter((p) => !p.face_indexed_at).length
+              return pending > 0 ? (
+                <p className="hint">
+                  {pending} photo{pending === 1 ? '' : 's'} still indexing — counts and face tiles fill in on their own, no refresh needed.
+                </p>
+              ) : null
+            })()}
             {event?.match_threshold != null && (
               <p className="hint">
                 Match strictness: {Math.round(event.match_threshold * 100)}% similarity — rises automatically when guests report wrong matches.
