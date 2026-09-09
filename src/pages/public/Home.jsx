@@ -9,7 +9,7 @@ import {
   TrendingUp, XCircle,
 } from 'lucide-react'
 import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
-import LogoReveal from '../../components/LogoReveal.jsx'
+
 import { getSmoothScroller, initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import '../../styles/landing.css'
 
@@ -363,8 +363,6 @@ export default function Home() {
           <p className="landing-hero-subtitle hero-fade hero-d4">
             The end-to-end platform for event photographers. Live camera FTP ingest, sub-200ms ArcFace selfie search, TV wall broadcasting, client proofing, album review, contracts, invoicing, and a real Studio CRM — under your own brand.
           </p>
-
-          <LogoReveal />
 
           <div className="landing-hero-ctas hero-fade hero-d5">
             <button type="button" className="landing-btn-hero-primary" onClick={() => setModalOpen(true)}>
