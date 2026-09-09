@@ -200,32 +200,38 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
             <ChevronRight size={28} />
           </button>
         )}
+
+        {(origProgress || origError) && (
+          <div className="orig-progress-float" onClick={(e) => e.stopPropagation()}>
+            {origProgress ? (
+              <>
+                <div className="orig-progress-bar">
+                  <div
+                    style={{
+                      width: origProgress.total ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%` : '35%',
+                      height: '100%',
+                      background: '#F59E0B',
+                      borderRadius: 3,
+                      transition: origProgress.total ? 'width 0.2s' : undefined,
+                    }}
+                    className={origProgress.total ? undefined : 'orig-progress-busy'}
+                  />
+                </div>
+                <span className="hint">
+                  Downloading original… {origProgress.total
+                    ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%`
+                    : `${(origProgress.loaded / 1048576).toFixed(1)} MB`}
+                </span>
+              </>
+            ) : (
+              <p className="error" style={{ margin: 0, fontSize: 12 }}>{origError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="lightbox-footer" onClick={(e) => e.stopPropagation()}>
         <p className="lightbox-caption">{photo.filename}</p>
-        {origProgress && (
-          <div className="orig-progress">
-            <div className="orig-progress-bar">
-              <div
-                style={{
-                  width: origProgress.total ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%` : '35%',
-                  height: '100%',
-                  background: '#F59E0B',
-                  borderRadius: 3,
-                  transition: origProgress.total ? 'width 0.2s' : undefined,
-                }}
-                className={origProgress.total ? undefined : 'orig-progress-busy'}
-              />
-            </div>
-            <span className="hint">
-              Downloading original… {origProgress.total
-                ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%`
-                : `${(origProgress.loaded / 1048576).toFixed(1)} MB`}
-            </span>
-          </div>
-        )}
-        {origError && <p className="error" style={{ margin: '4px 0 0', fontSize: 12 }}>{origError}</p>}
         <div className="lightbox-footer-row">
           <span className="hint">{index + 1} of {items.length}</span>
           <div className="lightbox-actions">

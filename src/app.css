@@ -3392,6 +3392,29 @@
   margin-top: 8px;
 }
 
+/* Floating variant: pinned over the image bottom so footer text (like
+   the filename) never shifts while downloading. */
+.orig-progress-float {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, 86vw);
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(10, 10, 12, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.orig-progress-float .orig-progress-bar {
+  width: 140px;
+}
+
 .orig-progress-bar {
   flex: 1;
   height: 6px;
