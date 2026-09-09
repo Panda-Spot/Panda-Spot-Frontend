@@ -1464,6 +1464,7 @@ export default function EventWorkspace() {
             setProgress({
               completed: 0,
               total: 1,
+              percent: pct,
               current_file: `${file.name} (${Math.round(pct)}% uploaded)`,
               eta_seconds: null,
               faces_found_so_far: 0,
@@ -1495,6 +1496,20 @@ export default function EventWorkspace() {
           chunkFiles,
           ({ loaded, total }) => {
             const overallPct = total ? (loaded / total) * 100 : 0
+            // Teaser bar reads progress.percent — without this the header
+            // sits at 0% for the whole byte phase (completed/total stay
+            // 0/1 until server processing starts).
+            setProgress({
+              completed: 0,
+              total: 1,
+              percent: overallPct,
+              current_file: batchCount > 1
+                ? `Batch ${batchNo} of ${batchCount} (${Math.round(overallPct)}% uploaded)`
+                : `Uploading ${chunk.length} file(s) (${Math.round(overallPct)}% uploaded)`,
+              eta_seconds: null,
+              faces_found_so_far: 0,
+              skipped_so_far: [],
+            })
             // Distribute the overall percent by each file's share of the
             // batch bytes — gives a smooth per-file fill that mirrors
             // the actual upload bytes going out.

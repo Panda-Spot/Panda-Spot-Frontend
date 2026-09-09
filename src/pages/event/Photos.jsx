@@ -96,9 +96,12 @@ export default function Photos() {
     if (customExportFolderUrl) setEditingExportFolder(false)
   }, [customExportFolderUrl])
 
-  // SSE progress carries { completed, total } but no percent — derive it.
-  const uploadPct = progress && progress.total > 0
-    ? Math.round((Math.min(progress.completed ?? 0, progress.total) / progress.total) * 100)
+  // SSE progress carries { completed, total } but the byte-upload phases
+  // carry an explicit percent instead (completed/total stay 0/1 there) —
+  // prefer it whenever present so the bar never sticks at 0%.
+  const uploadPct = progress
+    ? Math.round(typeof progress.percent === 'number' ? progress.percent
+      : progress.total > 0 ? (Math.min(progress.completed ?? 0, progress.total) / progress.total) * 100 : 0)
     : 0
 
   // Gallery presentation: layout views, per-row density, select mode (bulk
