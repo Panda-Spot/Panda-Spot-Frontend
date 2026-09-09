@@ -31,7 +31,7 @@ export default function Modal({ open, onClose, title, children, size = 'md' }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+          <div className="fixed inset-0 bg-black/70" onClick={onClose} />
           <motion.div
             className={`relative w-full ${widths[size] || widths.md} rounded-2xl p-6 sm:p-7 shadow-modal z-10 my-auto max-h-[calc(100vh-2.5rem)] overflow-y-auto overscroll-contain modal-scrollable`}
             data-modal-panel=""
