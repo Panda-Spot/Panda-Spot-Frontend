@@ -349,6 +349,70 @@ export const startPhotoUpload = (eventId, files) => {
   return request(`/events/${eventId}/photos`, { method: "POST", body: form })
 }
 
+// XHR-based variant of startPhotoUpload that exposes per-batch upload
+// progress (the browser fires progress events on the underlying XHR even
+// when the body is multipart/form-data, so the UI can show a real "X of Y
+// bytes uploaded" bar for the multipart POST itself, before the server
+// even starts face-indexing). Same 202 { job_id } response contract.
+export const startPhotoUploadWithProgress = (eventId, files, onUploadProgress) =>
+  new Promise((resolve, reject) => {
+    const token = getToken()
+    const xhr = new XMLHttpRequest()
+    const form = new FormData()
+    for (const file of files) form.append("files", file)
+    xhr.open("POST", `${BASE_URL}/events/${eventId}/photos`, true)
+    xhr.withCredentials = true
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+    if (typeof onUploadProgress === "function") {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) onUploadProgress({ loaded: e.loaded, total: e.total })
+      })
+    }
+    xhr.addEventListener("load", () => {
+      inflightRequests -= 1
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(xhr.status === 204 ? null : JSON.parse(xhr.responseText))
+        } catch (err) {
+          reject(err)
+        }
+      } else {
+        let message = `Upload failed (${xhr.status})`
+        try {
+          const body = JSON.parse(xhr.responseText)
+          message = body.detail || body.message || body.error || message
+        } catch {
+          // non-JSON body — keep generic
+        }
+        const err = new Error(message)
+        err.status = xhr.status
+        // Same 401-bounce as request() — a dead token in the middle of an
+        // upload shouldn't leave the user staring at a frozen progress bar.
+        if (xhr.status === 401 && token) {
+          try {
+            clearToken()
+          } catch {
+            // storage unavailable
+          }
+          if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+            window.location.href = "/login"
+          }
+        }
+        reject(err)
+      }
+    })
+    xhr.addEventListener("error", () => {
+      inflightRequests -= 1
+      reject(new Error("Network error during upload"))
+    })
+    xhr.addEventListener("abort", () => {
+      inflightRequests -= 1
+      reject(new Error("Upload aborted"))
+    })
+    inflightRequests += 1
+    xhr.send(form)
+  })
+
 // Connects a public Google Drive folder to an event and starts the initial
 // import job — responds immediately with { job_id, files_found }. Subscribe
 // to subscribeToUploadProgress() for progress and the final result, same as

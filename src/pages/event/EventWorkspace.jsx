@@ -55,6 +55,7 @@ import {
   setPhotoHighlight,
   startEvent,
   startPhotoUpload,
+  startPhotoUploadWithProgress,
   submitClientOnBehalf,
   subscribeToLiveEvents,
   subscribeToUploadProgress,
@@ -77,6 +78,7 @@ import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
 import PhotoMetaModal from '../../components/PhotoMetaModal.jsx'
 import PhotoFaceViewer from '../../components/PhotoFaceViewer.jsx'
 import StartEventConfirm from './StartEventConfirm.jsx'
+import FileProgressList from '../../components/FileProgressList.jsx'
 import { saveActiveJob, getActiveJob, clearActiveJob } from '../../jobPersistence.js'
 import { pop } from '../../lib/confetti.js'
 import { runInline, runInWorker } from '../../lib/workerTask.js'
@@ -91,6 +93,23 @@ function progressLine(data) {
   const eta = formatEta(data.eta_seconds)
   if (eta) line += ` (${eta})`
   return line
+}
+
+// Per-file helpers for the FileProgressList. We keep the filename-to-id
+// mapping in a ref so SSE callbacks (which only carry the filename being
+// processed) can find the right row, even when two files share a name.
+function fileProgress(updater) {
+  setUploadFiles((prev) => prev.map((f) => (updater ? updater(f) : f)))
+}
+function markFileByName(name, patch) {
+  fileProgress((f) => {
+    if (f.status === 'done' || f.status === 'error' || f.status === 'skipped') return f
+    if (f.name !== name) return f
+    return { ...f, ...patch }
+  })
+}
+function markFileById(id, patch) {
+  fileProgress((f) => (f.id === id ? { ...f, ...patch } : f))
 }
 
 function formatEta(seconds) {
@@ -242,6 +261,30 @@ export default function EventWorkspace() {
   const [uploadTab, setUploadTab] = useState('files')
   const [logLines, setLogLines] = useState([])
   const [skippedFiles, setSkippedFiles] = useState([])
+  // Per-file upload state: one entry per file the photographer has
+  // selected for upload, keyed by a stable id so progress updates can
+  // find the right row even if React reorders. Lives alongside the
+  // existing single-bar `progress` state which is still used for the
+  // overall percent (e.g. "5 of 12 done") and the bottom-line status.
+  const [uploadFiles, setUploadFiles] = useState([])
+  // Counter so SSE-driven file updates (which only carry a filename) can
+  // be matched to the right entry even when two files share a name.
+  const fileIdRef = useRef(0)
+  // Upload queue: picking more files while a batch is in flight appends
+  // rows and enqueues the File objects instead of clobbering the running
+  // batch's state (previously a second selection replaced uploadFiles,
+  // overwrote cleanupRef's SSE subscription, and hid the first batch).
+  const uploadQueueRef = useRef([])
+  const uploadBusyRef = useRef(false)
+  // Mirror of the `uploading` flag for async pump code (state reads go
+  // stale inside long-lived awaits; the ref is always current).
+  const uploadingRef = useRef(false)
+  useEffect(() => { uploadingRef.current = uploading }, [uploading])
+  // One multipart POST carries at most this many small files. The server
+  // itself accepts unlimited files, but a single giant POST risks timeouts
+  // and an all-or-nothing failure — sequential 100-file batches are safer
+  // and each gets its own job/progress.
+  const MAX_FILES_PER_BATCH = 100
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
@@ -550,10 +593,28 @@ export default function EventWorkspace() {
         setProgress(data)
         appendLog(progressLine(data))
         addPhotoFromProgress(data)
+        if (data.current_file) markFileByName(data.current_file, { status: 'processing' })
+        if (data.photo) {
+          markFileByName(data.photo.filename, {
+            status: 'done',
+            facesFound: data.photo.face_count ?? 0,
+          })
+        }
       },
       onDone: (data) => {
         setUploading(false)
         setProgress(null)
+        // Anything still in flight when the server says it's done is
+        // either done or skipped — the server's `skipped` list is the
+        // source of truth for which one, applied below.
+        setUploadFiles((prev) => {
+          const skippedSet = new Set(data.skipped || [])
+          return prev.map((f) => {
+            if (skippedSet.has(f.name)) return { ...f, status: 'skipped', reason: f.reason || 'Server skipped' }
+            if (f.status === 'processing' || f.status === 'uploading') return { ...f, status: 'done' }
+            return f
+          })
+        })
         let summary = `Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`
         if (data.removed_count > 0) summary += ` ${data.removed_count} photo(s) removed (no longer in Drive).`
         appendLog(summary)
@@ -567,6 +628,13 @@ export default function EventWorkspace() {
         setUploading(false)
         setProgress(null)
         const message = data.message || failedLabel
+        setUploadFiles((prev) =>
+          prev.map((f) =>
+            f.status === 'processing' || f.status === 'uploading'
+              ? { ...f, status: 'error', reason: message }
+              : f
+          )
+        )
         appendLog(`Failed — ${message}`)
         clearActiveJob(eventId)
         showToast(message, { type: 'error' })
@@ -810,10 +878,21 @@ export default function EventWorkspace() {
     setUploadingCover(true)
     try {
       const blob = await getCroppedImg(coverSrc, coverPixels)
-      await uploadEventCover(eventId, blob)
+      const result = await uploadEventCover(eventId, blob)
       setShowCoverModal(false)
       setCoverSrc('')
-      load()
+      // Patch the local event with the new cover URL immediately so the
+      // <img> tag re-fetches the bytes right away (otherwise a 60s
+      // browser cache window keeps the old cover visible even after
+      // the server has the new file). Falls back to reloading if the
+      // server response didn't include the URL.
+      if (result && result.cover_url) {
+        const separator = result.cover_url.includes('?') ? '&' : '?'
+        const versioned = `${result.cover_url}${separator}v=${Date.now()}`
+        setEvent((prev) => (prev ? { ...prev, cover_url: versioned } : prev))
+      } else {
+        load()
+      }
       showToast('Cover photo updated.')
     } catch (e) {
       showToast(e.message, { type: 'error' })
@@ -827,7 +906,7 @@ export default function EventWorkspace() {
     if (!confirmed) return
     try {
       await deleteEventCover(eventId)
-      load()
+      setEvent((prev) => (prev ? { ...prev, cover_url: null } : prev))
     } catch (e) {
       showToast(e.message, { type: 'error' })
     }
@@ -1230,58 +1309,154 @@ export default function EventWorkspace() {
     }
   }
 
-  const handleFiles = async (files) => {
+  // Entry point from the Dropzone: append rows + enqueue, then pump.
+  // Safe to call while another batch is running — the pump serializes.
+  const handleFiles = (files) => {
     if (!files || files.length === 0) return
+    // Build the per-file rows up front. Each row has a stable id so the
+    // FileProgressList can key on it across re-renders. Appended (never
+    // replaced) so a second selection while uploading keeps the first
+    // batch's rows visible.
+    const entries = files.map((f) => {
+      fileIdRef.current += 1
+      return {
+        id: `f${fileIdRef.current}`,
+        name: f.name,
+        size: f.size,
+        status: 'queued',
+        percent: 0,
+        facesFound: null,
+        reason: null,
+      }
+    })
+    setUploadFiles((prev) => [...prev, ...entries])
+    // Fresh run (nothing in flight): reset the log + skips so the new
+    // selection starts clean. While busy, just append — the running
+    // batch's state must not be wiped.
+    const wasIdle = uploadQueueRef.current.length === 0 && !uploadBusyRef.current
+    if (wasIdle) {
+      setLogLines([])
+      setSkippedFiles([])
+    }
+    uploadQueueRef.current.push({ files: [...files], entryIds: entries.map((e) => e.id) })
+    appendLog(`Queued ${files.length} file(s)`)
+    pumpUploadQueue().catch((e) => showToast(e.message, { type: 'error' }))
+  }
+
+  // Serializes queued selections: one batch at a time, large files first
+  // (chunked, one by one), then small files in <=100-file multipart POSTs.
+  const pumpUploadQueue = async () => {
+    if (uploadBusyRef.current) return
+    uploadBusyRef.current = true
     setUploading(true)
     setError('')
-    setProgress(null)
-    setLogLines([`Starting upload — ${files.length} file(s)`])
-    setSkippedFiles([])
     try {
-      // Files too big for one multipart POST go through the resumable
-      // chunked uploader first (8MB chunks, retried, resumable); each one
-      // still lands in the regular async processing job afterwards, so
-      // progress/result UI below is identical either way.
-      const LARGE_FILE_BYTES = 20 * 1024 * 1024
-      const small = files.filter((f) => f.size <= LARGE_FILE_BYTES)
-      const large = files.filter((f) => f.size > LARGE_FILE_BYTES)
-      for (const file of large) {
-        appendLog(`Large file — uploading "${file.name}" in chunks…`)
-        try {
-          const { job_id: jobId } = await uploadLargeFile(eventId, file, {
-            onProgress: ({ loaded, total }) =>
-              setProgress({
-                completed: 0,
-                total: 1,
-                current_file: `${file.name} (${Math.round((loaded / total) * 100)}% uploaded)`,
-                eta_seconds: null,
-                faces_found_so_far: 0,
-                skipped_so_far: [],
-              }),
-          })
-          appendLog(`"${file.name}" uploaded — processing…`)
-          await watchJobOnce(jobId)
-        } catch (e) {
-          appendLog(`"${file.name}" failed — ${e.message}`)
-        }
+      while (uploadQueueRef.current.length > 0) {
+        const { files, entryIds } = uploadQueueRef.current.shift()
+        // eslint-disable-next-line no-await-in-loop
+        await runUploadBatch(files, entryIds)
       }
-      if (small.length > 0) {
-        const { job_id: jobId } = await startPhotoUpload(eventId, small)
-        watchJob(jobId, { failedLabel: 'Upload failed' })
-      } else {
-        setUploading(false)
-        setProgress(null)
-        load()
-      }
-    } catch (e) {
-      showToast(e.message, { type: 'error' })
+    } finally {
+      uploadBusyRef.current = false
       setUploading(false)
+      setProgress(null)
+      load()
     }
   }
 
-  // One-shot promise wrapper around the SSE progress subscription, for the
-  // sequential large-file path above (the shared watchJob handles the
-  // single interactive batch instead).
+  // Runs one queued selection to completion (all of its batches).
+  const runUploadBatch = async (files, entryIds) => {
+    // Files too big for one multipart POST go through the resumable
+    // chunked uploader first (8MB chunks, retried, resumable); each one
+    // still lands in the regular async processing job afterwards, so
+    // progress/result UI below is identical either way.
+    const LARGE_FILE_BYTES = 20 * 1024 * 1024
+    // Pair files with their row ids by index (never by name — two files
+    // in one selection can share a name).
+    const pairs = files.map((file, i) => ({ file, id: entryIds[i] })).filter((p) => p.id)
+    const small = pairs.filter((p) => p.file.size <= LARGE_FILE_BYTES)
+    const large = pairs.filter((p) => p.file.size > LARGE_FILE_BYTES)
+    appendLog(`Starting upload — ${files.length} file(s)`)
+    for (const { file, id } of small) markFileById(id, { status: 'uploading', percent: 0 })
+    for (const { file, id } of large) {
+      markFileById(id, { status: 'uploading', percent: 0 })
+      appendLog(`Large file — uploading "${file.name}" in chunks…`)
+      try {
+        const { job_id: jobId } = await uploadLargeFile(eventId, file, {
+          onProgress: ({ loaded, total }) => {
+            const pct = total ? (loaded / total) * 100 : 0
+            markFileById(id, { status: 'uploading', percent: pct })
+            setProgress({
+              completed: 0,
+              total: 1,
+              current_file: `${file.name} (${Math.round(pct)}% uploaded)`,
+              eta_seconds: null,
+              faces_found_so_far: 0,
+              skipped_so_far: [],
+            })
+          },
+        })
+        markFileById(id, { status: 'processing', percent: 100 })
+        appendLog(`"${file.name}" uploaded — processing…`)
+        saveActiveJob(eventId, jobId)
+        await watchJobOnce(jobId)
+      } catch (e) {
+        markFileById(id, { status: 'error', reason: e.message })
+        appendLog(`"${file.name}" failed — ${e.message}`)
+      }
+    }
+    // Small files go out in <=100-file multipart POSTs so one giant
+    // request can't time out and nuke the whole selection.
+    for (let i = 0; i < small.length; i += MAX_FILES_PER_BATCH) {
+      const chunk = small.slice(i, i + MAX_FILES_PER_BATCH)
+      const chunkFiles = chunk.map((p) => p.file)
+      const chunkTotalBytes = chunk.reduce((s, p) => s + p.file.size, 0) || 1
+      const batchNo = Math.floor(i / MAX_FILES_PER_BATCH) + 1
+      const batchCount = Math.ceil(small.length / MAX_FILES_PER_BATCH)
+      if (batchCount > 1) appendLog(`Uploading batch ${batchNo} of ${batchCount} (${chunk.length} files)…`)
+      try {
+        const { job_id: jobId } = await startPhotoUploadWithProgress(
+          eventId,
+          chunkFiles,
+          ({ loaded, total }) => {
+            const overallPct = total ? (loaded / total) * 100 : 0
+            // Distribute the overall percent by each file's share of the
+            // batch bytes — gives a smooth per-file fill that mirrors
+            // the actual upload bytes going out.
+            let cumulativeBytes = 0
+            for (const { file, id: rowId } of chunk) {
+              const fileStartPct = (cumulativeBytes / chunkTotalBytes) * 100
+              const fileEndPct = ((cumulativeBytes + file.size) / chunkTotalBytes) * 100
+              const filePct =
+                overallPct <= fileStartPct
+                  ? 0
+                  : overallPct >= fileEndPct
+                  ? 100
+                  : ((overallPct - fileStartPct) / (fileEndPct - fileStartPct)) * 100
+              cumulativeBytes += file.size
+              markFileById(rowId, { percent: filePct })
+            }
+          },
+        )
+        // Mark this chunk's files as 'processing' — the bytes are on the
+        // server, now face detection / thumbnail is happening.
+        for (const { id: rowId } of chunk) markFileById(rowId, { status: 'processing', percent: 100 })
+        saveActiveJob(eventId, jobId)
+        await watchJobOnce(jobId)
+      } catch (e) {
+        for (const { id: rowId } of chunk) {
+          markFileById(rowId, { status: 'error', reason: e.message })
+        }
+        appendLog(`Batch failed — ${e.message}`)
+        showToast(e.message, { type: 'error' })
+      }
+    }
+  }
+
+  // One-shot promise wrapper around the SSE progress subscription, used
+  // for every sequential upload batch (large files one by one, small
+  // files in <=100-file multipart POSTs). Awaited by the upload-queue
+  // pump, so batches never overlap and per-file rows stay accurate.
   function watchJobOnce(jobId) {
     return new Promise((resolve) => {
       const cleanup = subscribeToUploadProgress(eventId, jobId, {
@@ -1289,11 +1464,25 @@ export default function EventWorkspace() {
           setProgress(data)
           appendLog(progressLine(data))
           addPhotoFromProgress(data)
+          if (data.current_file) markFileByName(data.current_file, { status: 'processing' })
+          if (data.photo) {
+            markFileByName(data.photo.filename, {
+              status: 'done',
+              facesFound: data.photo.face_count ?? 0,
+            })
+          }
         },
         onDone: (data) => {
           setProgress(null)
+          // Any rows still 'processing' or 'uploading' should be marked
+          // done — the server finished the job, so every queued file
+          // landed (skipped or accepted). Skips are reported separately.
+          setUploadFiles((prev) => prev.map((f) => (f.status === 'processing' || f.status === 'uploading' ? { ...f, status: 'done' } : f)))
           appendLog(`Done — ${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
-          setSkippedFiles(data.skipped || [])
+          // Accumulate (don't replace): the pump runs several batches
+          // per queued selection and each batch reports its own skips.
+          // Non-upload callers reset the list before starting their job.
+          setSkippedFiles((prev) => [...prev, ...(data.skipped || [])])
           clearActiveJob(eventId)
           showToast(`${data.photos_processed} photo(s) processed, ${data.faces_found} face(s) found.`)
           pop()
@@ -1302,6 +1491,10 @@ export default function EventWorkspace() {
         },
         onError: (data) => {
           setProgress(null)
+          // Only flip per-file rows that we still own — the rest are
+          // owned by other in-flight watchJobOnce calls and should keep
+          // their state.
+          setUploadFiles((prev) => prev.map((f) => (f.status === 'processing' || f.status === 'uploading' ? { ...f, status: 'error', reason: data.message || 'Upload failed' } : f)))
           appendLog(`Failed — ${data.message || 'Upload failed'}`)
           clearActiveJob(eventId)
           showToast(data.message || 'Upload failed', { type: 'error' })
@@ -1741,7 +1934,7 @@ export default function EventWorkspace() {
     zipping, zipProgress, zippingPicks, picksZipProgress,
     favView, setFavView, eventFavourites, studioPicks, togglingPickId,
     expandedClient, grantCap, setGrantCap, grantExpiry, setGrantExpiry, savingGrant,
-    uploadTab, setUploadTab, logLines, skippedFiles,
+    uploadTab, setUploadTab, logLines, skippedFiles, uploadFiles, setUploadFiles,
     driveUrl, connectingDrive, testingConnection, connectionTest, testedUrl,
     showExportModal, setShowExportModal, exportUrl, exportTesting,
     exportConnectionTest, exportTestedUrl, exportSource, setExportSource,

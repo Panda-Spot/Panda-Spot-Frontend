@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2, Camera } from 'lucide-react'
+import SelfieCameraModal from '../components/SelfieCameraModal.jsx'
 import {
   downloadMatches,
   fileUrl,
@@ -54,6 +55,9 @@ export default function GuestEvent() {
   const [sendingLink, setSendingLink] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [groupMode, setGroupMode] = useState(false)
+  // Live camera capture: opens the front camera in a modal; captured
+  // frames feed the same addSelfieFiles() pipeline as picked files.
+  const [showCamera, setShowCamera] = useState(false)
   // Phase 2 (consent-first Face Search): checkbox state, notice modal,
   // and the guest data-request form.
   const [consented, setConsented] = useState(false)
@@ -149,13 +153,25 @@ export default function GuestEvent() {
 
   const needsConsent = !!event?.require_face_search_consent
 
-  const handleSelfies = (e) => {
-    const files = Array.from(e.target.files || [])
+  // Shared by the file picker and the camera modal: merges new files
+  // into the current selection, capped at the mode's max. Returns the
+  // merged list so callers (camera) can decide whether to stay open.
+  const addSelfieFiles = (incoming) => {
     const max = groupMode ? MAX_GROUP_SELFIES : MAX_SELFIES
-    const capped = files.slice(0, max)
-    setSelfieHint(files.length > max ? `Using the first ${max} selfies` : '')
-    setSelfies(capped)
-    setPreviews(capped.map((file) => URL.createObjectURL(file)))
+    const room = Math.max(0, max - selfies.length)
+    const accepted = (incoming || []).slice(0, room)
+    if (accepted.length === 0) {
+      setSelfieHint(room <= 0 ? `Already have ${max} selfies — remove one to add another` : '')
+      return selfies
+    }
+    const merged = [...selfies, ...accepted].slice(0, max)
+    if ((incoming || []).length > accepted.length) {
+      setSelfieHint(`Using the first ${max} selfies`)
+    } else {
+      setSelfieHint('')
+    }
+    setSelfies(merged)
+    setPreviews(merged.map((file) => URL.createObjectURL(file)))
     setResult(null)
 
     // Already have enough selfies to run a real search — start it now in
@@ -163,10 +179,10 @@ export default function GuestEvent() {
     // prefetches past the consent gate — or the lead gate in
     // required_search mode: with either required, nothing uploads until
     // the guest completes that step.
-    const ready = capped.length > 0 && (!groupMode || capped.length >= 2)
+    const ready = merged.length > 0 && (!groupMode || merged.length >= 2)
     if (ready && (!event?.require_face_search_consent || consented) && !(event?.lead_capture_mode === 'required_search' && !leadCaptured)) {
-      const key = selfiesKey(capped, groupMode)
-      const promise = startSearch(capped, groupMode, consented)
+      const key = selfiesKey(merged, groupMode)
+      const promise = startSearch(merged, groupMode, consented)
       promise.catch(() => {}) // Surfaced by handleSearch instead, not here.
       // Remember the consent state: unticking after a consented prefetch
       // must not reuse it.
@@ -174,6 +190,38 @@ export default function GuestEvent() {
     } else {
       prefetchRef.current = null
     }
+    return merged
+  }
+
+  const handleSelfies = (e) => {
+    const files = Array.from(e.target.files || [])
+    const max = groupMode ? MAX_GROUP_SELFIES : MAX_SELFIES
+    const capped = files.slice(0, max)
+    setSelfieHint(files.length > max ? `Using the first ${max} selfies` : '')
+    // Picker replaces the whole selection (same as before); the camera
+    // appends via addSelfieFiles() instead.
+    setSelfies(capped)
+    setPreviews(capped.map((file) => URL.createObjectURL(file)))
+    setResult(null)
+
+    const ready = capped.length > 0 && (!groupMode || capped.length >= 2)
+    if (ready && (!event?.require_face_search_consent || consented) && !(event?.lead_capture_mode === 'required_search' && !leadCaptured)) {
+      const key = selfiesKey(capped, groupMode)
+      const promise = startSearch(capped, groupMode, consented)
+      promise.catch(() => {})
+      prefetchRef.current = { key, promise, consented }
+    } else {
+      prefetchRef.current = null
+    }
+  }
+
+  // Camera capture lands here: append to the current selection. Stay open
+  // while there's still room so guests can snap 2–3 in a row; auto-close
+  // once the cap is hit.
+  const handleCameraCapture = (file) => {
+    const max = groupMode ? MAX_GROUP_SELFIES : MAX_SELFIES
+    const merged = addSelfieFiles([file])
+    if (merged.length >= max) setShowCamera(false)
   }
 
   const handleToggleGroupMode = () => {
@@ -495,6 +543,20 @@ export default function GuestEvent() {
               <span className="btn secondary" aria-hidden="true">Choose selfies</span>
               <span className="hint">{selfies.length > 0 ? `${selfies.length} selected` : 'PNG, JPG or WebP'}</span>
             </label>
+            <button
+              type="button"
+              className="btn secondary selfie-camera-btn"
+              onClick={() => setShowCamera(true)}
+            >
+              <Camera size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
+              Take photo
+            </button>
+            <SelfieCameraModal
+              open={showCamera}
+              onClose={() => setShowCamera(false)}
+              onCapture={handleCameraCapture}
+              disabled={searching}
+            />
             {selfieHint && <p className="hint">{selfieHint}</p>}
             {previews.length > 0 && (
               <div className="selfie-preview-row">

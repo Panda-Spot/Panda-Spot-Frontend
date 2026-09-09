@@ -106,12 +106,13 @@ export default function GuestSlideshow() {
     return () => clearInterval(pollRef.current)
   }, [loadFeed])
 
-  // Preload the next photo so turns never show an empty frame.
+  // Preload the next photo (full-res, like the wall shows) so turns
+  // never show an empty frame.
   useEffect(() => {
     if (photos.length < 2) return
     const next = photos[(index + 1) % photos.length]
     const img = new Image()
-    img.src = fileUrl(next.thumbnail_url || next.url)
+    img.src = fileUrl(next.url || next.thumbnail_url)
   }, [photos, index])
 
   // QR always points at the guest search page for this event.
@@ -204,8 +205,15 @@ export default function GuestSlideshow() {
         <img
           key={current.photo_id}
           className="slideshow-image"
-          src={fileUrl(current.thumbnail_url || current.url)}
+          src={fileUrl(current.url || current.thumbnail_url)}
           alt=""
+          // Full-res is served live from local disk or Drive on demand;
+          // if it 404s (expired, Drive revoked), fall back to the thumb
+          // rather than showing a broken frame.
+          onError={(e) => {
+            const thumb = current.thumbnail_url ? fileUrl(current.thumbnail_url) : null
+            if (thumb && e.currentTarget.src !== thumb) e.currentTarget.src = thumb
+          }}
         />
       )}
 

@@ -10,6 +10,7 @@ import { fileUrl } from '../../api.js'
 import Dropzone from '../../components/Dropzone.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import JobProgressLog from '../../components/JobProgressLog.jsx'
+import FileProgressList from '../../components/FileProgressList.jsx'
 import Modal from '../../components/Modal.jsx'
 import StudioLightbox from '../../components/StudioLightbox.jsx'
 import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
@@ -25,7 +26,7 @@ function formatListDate(value) {
 export default function Photos() {
   const {
     event, photos,
-    uploading, progress, error, logLines, skippedFiles,
+    uploading, progress, error, logLines, skippedFiles, uploadFiles,
     liveNotice, uploadTab, setUploadTab,
     driveUrl, connectingDrive, testingConnection, connectionTest, testedUrl,
     handleDriveUrlChange, handleTestConnection, handleDriveTestReset, handleDriveConnect, handleDriveSync,
@@ -240,8 +241,8 @@ export default function Photos() {
                 <Dropzone
                   onFiles={handleFiles}
                   accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.mov,.m4v,.avi"
-                  disabled={uploading}
-                  hint="Photos (JPG/PNG/WebP) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — files over 20MB upload in resumable chunks. Faces are indexed only after you add photos to AI Search."
+                  disabled={false}
+                  hint="Photos (JPG/PNG/WebP) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — up to 100 per batch, more are queued. Files over 20MB upload in resumable chunks. Faces are indexed only after you add photos to AI Search."
                 />
               ) : uploadTab === 'shoots' ? (
                 <div className="drive-import">
@@ -380,6 +381,7 @@ export default function Photos() {
               )}
 
               <JobProgressLog lines={logLines} progress={progress} />
+              {uploadFiles && uploadFiles.length > 0 && <FileProgressList files={uploadFiles} />}
               {skippedFiles.length > 0 && (
                 <div className="skipped-files-box">
                   <p className="hint">Skipped {skippedFiles.length} file(s) — not imported/uploaded:</p>

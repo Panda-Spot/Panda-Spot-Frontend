@@ -47,11 +47,23 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return
     }
+    // Cross-tab auth: if the user logs out in a sibling tab,
+    // localStorage.removeItem("pandaspot_token") in that tab will delete
+    // the mirrored copy this tab was using — react by dropping local state
+    // so the next navigation triggers the ProtectedRoute redirect instead
+    // of a stale flicker.
+    const onStorage = (e) => {
+      if (e && e.key === "pandaspot_token" && !e.newValue && userRef.current) {
+        setUser(null)
+      }
+    }
+    window.addEventListener("storage", onStorage)
     seedActivity()
     api.getMe()
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
+    return () => window.removeEventListener("storage", onStorage)
   }, [])
 
   // Session watchdog: one interval drives all three timers —

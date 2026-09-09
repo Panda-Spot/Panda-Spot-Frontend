@@ -87,12 +87,50 @@ function writeSession(storage, remember, expiresAt) {
   }
 }
 
+function writeSessionToAll(remember, expiresAt) {
+  for (const s of storages()) writeSession(s, remember, expiresAt)
+}
+
 function clearFromAll(key) {
   for (const s of storages()) {
     try {
       s.removeItem(key)
     } catch {
       // ignore
+    }
+  }
+}
+
+// Listen once per tab: when another tab logs out, this tab's storages
+// are already cleared by clearFromAll(), and auth.jsx's idle watchdog
+// will bounce the user — but for same-origin tabs that still have the
+// token in localStorage while sessionStorage is empty, mirror it so the
+// new tab's boot can read the current session without forcing re-login.
+// (Without this, a non-remembered "default" session that lives in
+// sessionStorage in tab A would be invisible to a fresh tab B.)
+function mirrorTokenForNewTab(token, remember, expiresAt) {
+  // Token is already in `target` above; also ensure it's in whichever of
+  // the two storages isn't `target`, so a new tab's readKey(storages())
+  // can find it before it has ever gotten its own copy.
+  for (const s of storages()) {
+    try {
+      if (!s.getItem(TOKEN_KEY)) s.setItem(TOKEN_KEY, token)
+    } catch {
+      // storage unavailable — nothing to mirror
+    }
+  }
+  // If this is the short-lived (non-remember) session class, also plant
+  // its session metadata in localStorage so the new tab's getSession()
+  // doesn't fall through to the legacy-JWT fallback and mis-store the
+  // next refresh in a different bucket, breaking the trim loop.
+  if (!remember) {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY)
+      if (!raw) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ remember, expiresAt }))
+      }
+    } catch {
+      // storage unavailable
     }
   }
 }
@@ -124,13 +162,29 @@ export function setToken(token, { remember = false, expiresIn = null } = {}) {
       ? Date.now() + expiresIn * 1000
       : decodeExpiryMs(token) || Date.now() + 30 * 60 * 1000
   writeSession(target, remember, expiresAt)
+  mirrorTokenForNewTab(token, remember, expiresAt)
 }
 
 /// Applies a POST /auth/refresh response: swaps the token and pushes the
-/// absolute-expiry timer out, keeping the original session class.
+/// absolute-expiry timer out, keeping the original session class. The
+/// same mirroring as setToken applies — refresh happens in the active
+/// tab but the new token must be visible to sibling tabs too.
 export function updateTokenFromRefresh(token, expiresIn) {
   const prev = getSession()
   setToken(token, { remember: prev?.remember === true, expiresIn })
+  // New tabs that boot off the stale localStorage copy would 401 and
+  // bounce — proactively align both storages here.
+  writeSessionToAll(prev?.remember === true, typeof expiresIn === "number" ? Date.now() + expiresIn * 1000 : decodeExpiryMs(token) || Date.now() + 30 * 60 * 1000)
+  // Token itself is already in both (setToken's mirroring) — keep them
+  // in lockstep in case a race overwrote the other tab's localStorage
+  // between the two writes above.
+  for (const s of storages()) {
+    try {
+      s.setItem(TOKEN_KEY, token)
+    } catch {
+      // storage unavailable
+    }
+  }
 }
 
 export const clearToken = () => {
