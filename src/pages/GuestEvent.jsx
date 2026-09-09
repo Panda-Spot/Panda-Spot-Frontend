@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2, Camera } from 'lucide-react'
+import { Share2, Download, X, Lock, KeyRound, Shield, AlertCircle, CheckCircle2, Camera, ChevronDown } from 'lucide-react'
 import SelfieCameraModal from '../components/SelfieCameraModal.jsx'
 import {
   downloadMatches,
@@ -67,6 +67,8 @@ export default function GuestEvent() {
   const [drMessage, setDrMessage] = useState('')
   const [drRequests, setDrRequests] = useState([])
   const [drBusy, setDrBusy] = useState(false)
+  // Data-privacy section stays collapsed until the guest opens it.
+  const [dataOpen, setDataOpen] = useState(false)
   // Phase 10 (lead capture): capture state drives the search/download
   // gates below; optional mode shows a dismissible form instead.
   const [leadCaptured, setLeadCaptured] = useState(null)
@@ -646,10 +648,18 @@ export default function GuestEvent() {
 
       {event && !event.expired && !event.login_required && (!event.locked || unlocked) && event.allow_guest_data_delete_request && (
         <div className="card" style={{ marginTop: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <button
+            type="button"
+            className="collapse-toggle"
+            aria-expanded={dataOpen}
+            onClick={() => setDataOpen((v) => !v)}
+          >
             <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />
-            <div className="guest-link-label" style={{ margin: 0 }}>Your data</div>
-          </div>
+            <span>Data privacy</span>
+            <ChevronDown size={16} style={{ transform: dataOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+          {dataOpen && (
+          <>
           <p className="hint">Ask for a copy of your Face Search data, or ask the studio to delete it.</p>
           <form className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }} onSubmit={handleDataRequest}>
             <div style={{ flex: 1, minWidth: 180 }}>
@@ -703,6 +713,8 @@ export default function GuestEvent() {
                 </li>
               ))}
             </ul>
+          )}
+          </>
           )}
         </div>
       )}
