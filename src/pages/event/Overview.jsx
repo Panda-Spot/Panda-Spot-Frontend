@@ -4,7 +4,7 @@ import Cropper from 'react-easy-crop'
 import {
   Archive, ArchiveRestore, BookOpen, CalendarDays, Camera, CheckCircle2, ChevronRight,
   Circle, Clock, Image, Layers, MapPin, Pencil, Rocket, Search, Send, Share2,
-  SlidersHorizontal, Upload, UserPlus, Users, Zap,
+  SlidersHorizontal, Trash2, Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -277,26 +277,28 @@ export default function Overview() {
             <label className="field-label">Cover photo <span className="hint">(16:9 crop)</span></label>
             {event.cover_url ? (
               <>
-                <div style={{
-                  maxHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--bg-elevated)', borderRadius: 8, marginBottom: 8, overflow: 'hidden',
-                }}>
+                <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
                   <img
                     src={fileUrl(event.cover_url)}
                     alt=""
-                    style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }}
+                    style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }}
                     draggable={false}
                     onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
                   />
-                </div>
-                <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-                  <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                    Change cover
-                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
-                  </label>
-                  <button className="btn secondary" type="button" onClick={handleRemoveCover}>
-                    Remove cover
-                  </button>
+                  <div className="card-overlay-actions">
+                    <div className="meta-actions" style={{ opacity: 1 }}>
+                      <label className="icon-btn" style={{ cursor: 'pointer' }} title="Change cover">
+                        <Camera size={15} />
+                        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCoverFile} style={{ display: 'none' }} />
+                      </label>
+                      <button
+                        className="icon-btn danger" type="button" title="Remove cover"
+                        onClick={handleRemoveCover}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
