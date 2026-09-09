@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 
@@ -66,9 +66,16 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
   if (!photo) return null
 
   const faceList = faces || []
+  // Crop math needs ORIGINAL-image dims (bboxes are original pixels) while
+  // only the thumbnail is ever displayed. Stored dims win; the measured
+  // thumbnail is NOT a substitute (different size = wrong fractions).
+  // Without dims, boxes hide and tiles show the whole thumbnail.
+  const dims = photo.width && photo.height
+    ? { width: photo.width, height: photo.height }
+    : null
 
   const closeup = (f) => {
-    const r = toRect(f.bbox, natural)
+    const r = toRect(f.bbox, dims)
     return paddedSquare({
       left: r.left / 100,
       top: r.top / 100,
@@ -94,8 +101,8 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
             onLoad={(e) => setNatural({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
             onError={() => setImgError(true)}
           />
-          {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the full image.</p>}
-          {natural && faceList.map((f, i) => {
+          {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
+          {dims && natural && faceList.map((f, i) => {
             const r = toRect(f.bbox, natural)
             return (
               <div
@@ -143,10 +150,11 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
               {loading ? 'Loading faces…' : `${faceList.length} face${faceList.length === 1 ? '' : 's'} captured`}
             </span>
           </div>
-          {!loading && faceList.length > 0 && natural && (
+          {!loading && faceList.length > 0 && (
             <div className="face-strip">
               {faceList.map((f, i) => {
-                const sq = closeup(f)
+                const hasCrop = !!dims;
+                const sq = hasCrop ? closeup(f) : null
                 return (
                   <div key={f.id || i} className="face-strip-item">
                     <div className="face-strip-crop">
@@ -154,12 +162,16 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                         src={src}
                         alt={`Face ${i + 1}`}
                         draggable={false}
-                        style={{
+                        style={hasCrop ? {
                           position: 'absolute',
                           left: `${-(sq.left / sq.size) * 100}%`,
                           top: `${-(sq.top / sq.size) * 100}%`,
                           width: `${100 / sq.size}%`,
                           maxWidth: 'none',
+                        } : {
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
                         }}
                       />
                     </div>
@@ -176,8 +188,13 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
           )}
           {onRemove && (
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-              <button className="btn secondary" type="button" onClick={onRemove}>
-                Remove from AI Search
+              <button
+                className="icon-btn danger" type="button"
+                title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
+                onClick={onRemove}
+                style={{ width: 34, height: 34 }}
+              >
+                <Trash2 size={16} />
               </button>
             </div>
           )}

@@ -3248,6 +3248,15 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.face-viewer-strip .icon-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.face-viewer-strip .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
 /* Studio preview: thumbnail instantly, full-res fades in on top (blur-up).
    Fills the screen with ~5% side margins. Scoped here so the guest
    lightbox keeps its own sizing. */

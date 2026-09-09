@@ -2,18 +2,13 @@ import React, { useState } from 'react'
 import GalleryMedia from './GalleryMedia.jsx'
 import { fileUrl } from '../api.js'
 
-function Closeup({ photoId, bbox, eventId, size = 88 }) {
-  // Bboxes are stored in ORIGINAL-image pixels, but we display (and crop)
-  // the cached thumbnail — so the crop math needs the original dimensions
-  // as the denominator, not the thumbnail's. A hidden 1px probe measures
-  // the original once; the visible crop always comes from the thumbnail.
-  // If the original is unreachable (Drive revoked/expired), fall back to
-  // the whole thumbnail instead of an eternal skeleton.
-  const [origDims, setOrigDims] = useState(null)
-  const [origFailed, setOrigFailed] = useState(false)
+function Closeup({ photoId, bbox, dims, eventId, size = 88 }) {
+  // Bboxes are original-image pixels; the crop comes from the cached
+  // thumbnail. With stored dims the fractions are exact. Without dims
+  // (legacy rows), the whole thumbnail shows instead of a skeleton —
+  // originals are never probed or loaded here.
   const [thumbFailed, setThumbFailed] = useState(false)
   const thumbSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)
-  const origSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}`)
 
   if (!Array.isArray(bbox) || bbox.length < 4 || thumbFailed) {
     return (
@@ -24,31 +19,7 @@ function Closeup({ photoId, bbox, eventId, size = 88 }) {
     )
   }
 
-  if (!origDims && !origFailed) {
-    return (
-      <>
-        <img
-          src={origSrc}
-          alt=""
-          aria-hidden="true"
-          onLoad={(e) => {
-            const w = e.currentTarget.naturalWidth
-            const h = e.currentTarget.naturalHeight
-            if (w > 0 && h > 0) setOrigDims({ width: w, height: h })
-            else setOrigFailed(true)
-          }}
-          onError={() => setOrigFailed(true)}
-          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-        />
-        <div
-          className="skeleton"
-          style={{ width: size, height: size, borderRadius: 12 }}
-        />
-      </>
-    )
-  }
-
-  if (origFailed) {
+  if (!dims?.width || !dims?.height) {
     return (
       <img
         src={thumbSrc}
@@ -61,10 +32,10 @@ function Closeup({ photoId, bbox, eventId, size = 88 }) {
   }
 
   const [x1, y1, x2, y2] = bbox.map(Number)
-  const left = Math.max(0, Math.min(x1 / origDims.width, 1))
-  const top = Math.max(0, Math.min(y1 / origDims.height, 1))
-  const right = Math.max(0, Math.min(x2 / origDims.width, 1))
-  const bottom = Math.max(0, Math.min(y2 / origDims.height, 1))
+  const left = Math.max(0, Math.min(x1 / dims.width, 1))
+  const top = Math.max(0, Math.min(y1 / dims.height, 1))
+  const right = Math.max(0, Math.min(x2 / dims.width, 1))
+  const bottom = Math.max(0, Math.min(y2 / dims.height, 1))
   // Padded square around the face, clamped inside the image.
   const cx = (left + right) / 2
   const cy = (top + bottom) / 2
@@ -135,7 +106,7 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
                 onClick={() => onOpenGroup(open ? null : g.group_index)}
                 title={open ? 'Collapse' : 'Show member photos'}
               >
-                <Closeup photoId={g.representative.photo_id} bbox={g.representative.bbox} eventId={eventId} />
+                <Closeup photoId={g.representative.photo_id} bbox={g.representative.bbox} dims={{ width: g.representative.width, height: g.representative.height }} eventId={eventId} />
                 <div style={{ minWidth: 0 }}>
                   <p className="subtle" style={{ margin: 0 }}>
                     <strong>Person {g.group_index + 1}</strong>
@@ -155,6 +126,7 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
                       onClick={() => onOpenPhoto({
                         photo_id: p.photo_id,
                         filename: p.filename,
+                        ...(p.width && p.height ? { width: p.width, height: p.height } : {}),
                         url: `/files/events/${eventId}/photos/${p.photo_id}`,
                         thumbnail_url: `/files/events/${eventId}/photos/${p.photo_id}/thumb`,
                       })}
