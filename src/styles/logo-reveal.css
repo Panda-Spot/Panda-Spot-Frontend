@@ -162,6 +162,61 @@
   }
 }
 
+/* ---- resting logo: no animation, ever (nav bar, repeat views) ---- */
+
+.lr-static .lr-photo {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.lr-static .lr-c,
+.lr-static .lr-pulse {
+  animation: none !important;
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+.lr-static {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* ---- opening splash: blank bg, logo choreography at center ----
+   The page underneath is already mounted and painted; this overlay
+   simply fades away. Rendered by the landing page only. */
+
+.logo-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #06080d;
+  opacity: 1;
+  transition: opacity 0.45s ease-out;
+}
+
+.logo-splash.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.logo-splash-logo {
+  height: 150px;
+}
+
+.logo-splash .animated-logo {
+  height: 100%;
+}
+
+@media (max-width: 640px) {
+  .logo-splash-logo {
+    height: 110px;
+  }
+}
+
 /* ---- hover: tiny 150ms lift, nothing more ---- */
 
 .animated-logo .lr-photo {
