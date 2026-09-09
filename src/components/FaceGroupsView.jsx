@@ -2,19 +2,33 @@ import React, { useState } from 'react'
 import GalleryMedia from './GalleryMedia.jsx'
 import { fileUrl } from '../api.js'
 
-function Closeup({ photoId, bbox, dims, eventId, size = 88 }) {
-  // Bboxes are original-image pixels; the crop comes from the cached
-  // thumbnail. With stored dims the fractions are exact. Without dims
-  // (legacy rows), the whole thumbnail shows instead of a skeleton —
-  // originals are never probed or loaded here.
-  const [thumbFailed, setThumbFailed] = useState(false)
+function Closeup({ photoId, bbox, dims, thumbnailUrl, eventId, size = 88 }) {
+  // Preferred: the server-stored face closeup (extracted at index time,
+  // exact pixels, no math). Fallbacks in order: crop math from stored dims,
+  // whole photo thumbnail, skeleton. Originals are never loaded here.
+  const [failed, setFailed] = useState(false)
   const thumbSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)
 
-  if (!Array.isArray(bbox) || bbox.length < 4 || thumbFailed) {
+  if (thumbnailUrl && !failed) {
     return (
-      <div
-        className="skeleton"
-        style={{ width: size, height: size, borderRadius: 12 }}
+      <img
+        src={fileUrl(thumbnailUrl)}
+        alt=""
+        draggable={false}
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', display: 'block', flexShrink: 0 }}
+      />
+    )
+  }
+
+  if (!Array.isArray(bbox) || bbox.length < 4) {
+    return (
+      <img
+        src={thumbSrc}
+        alt=""
+        draggable={false}
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', display: 'block', flexShrink: 0 }}
       />
     )
   }
@@ -25,7 +39,7 @@ function Closeup({ photoId, bbox, dims, eventId, size = 88 }) {
         src={thumbSrc}
         alt=""
         draggable={false}
-        onError={() => setThumbFailed(true)}
+        onError={() => setFailed(true)}
         style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', display: 'block', flexShrink: 0 }}
       />
     )
@@ -54,7 +68,7 @@ function Closeup({ photoId, bbox, dims, eventId, size = 88 }) {
         src={thumbSrc}
         alt=""
         draggable={false}
-        onError={() => setThumbFailed(true)}
+        onError={() => setFailed(true)}
         style={{
           position: 'absolute',
           left: `${-(sqLeft / sqSize) * 100}%`,
@@ -106,7 +120,7 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
                 onClick={() => onOpenGroup(open ? null : g.group_index)}
                 title={open ? 'Collapse' : 'Show member photos'}
               >
-                <Closeup photoId={g.representative.photo_id} bbox={g.representative.bbox} dims={{ width: g.representative.width, height: g.representative.height }} eventId={eventId} />
+                <Closeup photoId={g.representative.photo_id} bbox={g.representative.bbox} dims={{ width: g.representative.width, height: g.representative.height }} thumbnailUrl={g.representative.thumbnail_url} eventId={eventId} />
                 <div style={{ minWidth: 0 }}>
                   <p className="subtle" style={{ margin: 0 }}>
                     <strong>Person {g.group_index + 1}</strong>

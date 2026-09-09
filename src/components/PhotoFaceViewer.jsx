@@ -167,6 +167,23 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
           {!loading && faceList.length > 0 && (
             <div className="face-strip">
               {faceList.map((f, i) => {
+                // Preferred: server-stored closeup (exact pixels). Fallback:
+                // crop math from stored dims; last resort: whole thumbnail.
+                if (f.thumbnail_url) {
+                  return (
+                    <div key={f.id || i} className="face-strip-item">
+                      <div className="face-strip-crop">
+                        <img
+                          src={fileUrl(f.thumbnail_url)}
+                          alt={`Face ${i + 1}`}
+                          draggable={false}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                      <span className="hint">#{i + 1}{f.det_score != null ? ` · ${Math.round(f.det_score * 100)}%` : ''}</span>
+                    </div>
+                  )
+                }
                 const hasCrop = !!dims;
                 const sq = hasCrop ? closeup(f) : null
                 return (
