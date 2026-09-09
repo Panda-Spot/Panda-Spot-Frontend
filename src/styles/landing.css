@@ -222,6 +222,13 @@ html:has(.landing-page) body {
   display: block;
 }
 
+/* Medium-size brand mark in the nav bar (footer keeps the 34px mark). */
+.landing-brand-logo--nav {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
 /* Faint full-logo watermark behind the hero — brand presence without
    competing with the headline. Static (no animation), hidden on small
    screens where it would crowd the type. */
