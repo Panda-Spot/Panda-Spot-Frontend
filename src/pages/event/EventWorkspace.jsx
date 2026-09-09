@@ -1061,17 +1061,21 @@ export default function EventWorkspace() {
     })
   }
 
-  const toggleManagerSelectAllVisible = () => {
-    const ids = visibleManageablePhotos.map((p) => p.photo_id)
-    const allSelected = ids.length > 0 && ids.every((id) => managerSelected[id])
+  // ids = explicit photo ids (the current page) when the caller passes
+  // them, else every manageable photo across all pages. Merge-aware
+  // either way: never touches ids outside the given set, so ticks on
+  // other pages survive.
+  const toggleManagerSelectAllVisible = (ids) => {
+    const list = Array.isArray(ids) ? ids : visibleManageablePhotos.map((p) => p.photo_id)
+    const allSelected = list.length > 0 && list.every((id) => managerSelected[id])
     // Merge-aware: never touch other pages' ticks — only add/remove the
-    // currently visible ids.
+    // given ids.
     setManagerSelected((prev) => {
       const next = { ...prev }
       if (allSelected) {
-        for (const id of ids) delete next[id]
+        for (const id of list) delete next[id]
       } else {
-        for (const id of ids) next[id] = true
+        for (const id of list) next[id] = true
       }
       return next
     })
@@ -1187,29 +1191,36 @@ export default function EventWorkspace() {
     }
   }
 
-  const handleBulkAddAllVisible = async (patch, label) => {
-    if (visibleManageablePhotos.length === 0) {
+  // ids = explicit photo ids (the current page) when the caller passes
+  // them — "add all visible" then means exactly this page, not every
+  // page behind the filters. Without ids it falls back to the
+  // filter-wide server form.
+  const handleBulkAddAllVisible = async (patch, label, ids) => {
+    const pageIds = Array.isArray(ids) ? ids : visibleManageablePhotos.map((p) => p.photo_id)
+    if (pageIds.length === 0) {
       showToast('No visible photos to update', { type: 'error' })
       return
     }
     const confirmed = await confirm(
-      `Apply to all ${visibleManageablePhotos.length} visible photo(s) (current source/status filters)?`,
+      `Apply to all ${pageIds.length} visible photo(s) on this page?`,
       { title: label, confirmLabel: 'Apply', danger: false }
     )
     if (!confirmed) return
     setBulking(label)
     try {
-      const res = await bulkSetMembership(eventId, {
-        all: { source: sourceFilter === 'all' ? undefined : sourceFilter, status: photoStatusFilter },
-        ...patch,
-      })
+      const res = await bulkSetMembership(eventId, Array.isArray(ids)
+        ? { photoIds: pageIds, ...patch }
+        : {
+            all: { source: sourceFilter === 'all' ? undefined : sourceFilter, status: photoStatusFilter },
+            ...patch,
+          })
       // Same instant-reload as handleBulkMembership above — flags are
       // already applied, the job only fills in face data.
       load()
       if (res.job_id) {
         appendLog(`Indexing photos for Face Search in the background…`)
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
-        pollMembershipIndexed(visibleManageablePhotos.map((p) => p.photo_id))
+        pollMembershipIndexed(pageIds)
       }
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
       const where = label === 'Add to AI Search' ? 'AI Search' : label.replace(/^Add (all visible )?to /, '');

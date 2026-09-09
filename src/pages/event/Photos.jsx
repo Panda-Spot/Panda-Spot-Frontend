@@ -119,6 +119,12 @@ export default function Photos() {
   const pageCount = Math.max(1, Math.ceil(searchedPhotos.length / pageSize))
   const safePage = Math.min(page, pageCount)
   const pagedPhotos = searchedPhotos.slice((safePage - 1) * pageSize, safePage * pageSize)
+  // Current page's manageable ids — "Select all" and "Add all visible"
+  // mean exactly this page; the global id-keyed selection (Add N,
+  // count, per-card ticks) spans all pages and survives page changes.
+  const pagedManageableIds = pagedPhotos
+    .filter((p) => p.approval_status !== 'pending')
+    .map((p) => p.photo_id)
 
   useEffect(() => { setPage(1) }, [visiblePhotos, photoQuery, photoSort, pageSize])
 
@@ -499,13 +505,13 @@ export default function Photos() {
         <div className="photo-browser">
           {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
             <div className="photo-browser-select">
-              <label className="checkbox-row" style={{ margin: 0 }} title="Select or deselect every visible photo">
+              <label className="checkbox-row" style={{ margin: 0 }} title="Select or deselect every photo on this page (other pages' ticks are kept)">
                 <input
                   type="checkbox"
-                  checked={visibleManageablePhotos.length > 0 && visibleManageablePhotos.every((p) => managerSelected[p.photo_id])}
-                  onChange={toggleManagerSelectAllVisible}
+                  checked={pagedManageableIds.length > 0 && pagedManageableIds.every((id) => managerSelected[id])}
+                  onChange={() => toggleManagerSelectAllVisible(pagedManageableIds)}
                 />
-                Select all ({visibleManageablePhotos.length})
+                Select all ({pagedManageableIds.length})
               </label>
               <span
                 className="select-count"
@@ -519,7 +525,7 @@ export default function Photos() {
                   <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
                     {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount}`}
                   </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
+                  <button className="btn secondary" type="button" disabled={bulking || pagedManageableIds.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search', pagedManageableIds)}>
                     Add all visible
                   </button>
                 </div>
@@ -530,7 +536,7 @@ export default function Photos() {
                   <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
                     {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount}`}
                   </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
+                  <button className="btn secondary" type="button" disabled={bulking || pagedManageableIds.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection', pagedManageableIds)}>
                     Add all visible
                   </button>
                 </div>
