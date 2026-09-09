@@ -3,11 +3,19 @@ import GalleryMedia from './GalleryMedia.jsx'
 import { fileUrl } from '../api.js'
 
 function Closeup({ photoId, bbox, eventId, size = 88 }) {
-  const [natural, setNatural] = useState(null)
-  const [failed, setFailed] = useState(false)
-  const src = fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)
+  // Bboxes are stored in ORIGINAL-image pixels, but we display (and crop)
+  // the cached thumbnail — so the crop math needs the original dimensions
+  // as the denominator, not the thumbnail's. A hidden 1px probe measures
+  // the original once; the visible crop always comes from the thumbnail.
+  // If the original is unreachable (Drive revoked/expired), fall back to
+  // the whole thumbnail instead of an eternal skeleton.
+  const [origDims, setOrigDims] = useState(null)
+  const [origFailed, setOrigFailed] = useState(false)
+  const [thumbFailed, setThumbFailed] = useState(false)
+  const thumbSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)
+  const origSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}`)
 
-  if (!Array.isArray(bbox) || bbox.length < 4 || failed) {
+  if (!Array.isArray(bbox) || bbox.length < 4 || thumbFailed) {
     return (
       <div
         className="skeleton"
@@ -16,34 +24,47 @@ function Closeup({ photoId, bbox, eventId, size = 88 }) {
     )
   }
 
-  const onLoad = (e) => {
-    const w = e.currentTarget.naturalWidth
-    const h = e.currentTarget.naturalHeight
-    if (w > 0 && h > 0) setNatural({ width: w, height: h })
-    else setFailed(true)
+  if (!origDims && !origFailed) {
+    return (
+      <>
+        <img
+          src={origSrc}
+          alt=""
+          aria-hidden="true"
+          onLoad={(e) => {
+            const w = e.currentTarget.naturalWidth
+            const h = e.currentTarget.naturalHeight
+            if (w > 0 && h > 0) setOrigDims({ width: w, height: h })
+            else setOrigFailed(true)
+          }}
+          onError={() => setOrigFailed(true)}
+          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+        />
+        <div
+          className="skeleton"
+          style={{ width: size, height: size, borderRadius: 12 }}
+        />
+      </>
+    )
   }
 
-  if (!natural) {
-    // Hidden probe image: measures the thumbnail once, then the real
-    // crop below uses percentages (bbox pixels are original-image
-    // space, so measuring the served file keeps the math exact).
+  if (origFailed) {
     return (
       <img
-        src={src}
+        src={thumbSrc}
         alt=""
-        aria-hidden="true"
-        onLoad={onLoad}
-        onError={() => setFailed(true)}
-        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+        draggable={false}
+        onError={() => setThumbFailed(true)}
+        style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', display: 'block', flexShrink: 0 }}
       />
     )
   }
 
   const [x1, y1, x2, y2] = bbox.map(Number)
-  const left = Math.max(0, Math.min(x1 / natural.width, 1))
-  const top = Math.max(0, Math.min(y1 / natural.height, 1))
-  const right = Math.max(0, Math.min(x2 / natural.width, 1))
-  const bottom = Math.max(0, Math.min(y2 / natural.height, 1))
+  const left = Math.max(0, Math.min(x1 / origDims.width, 1))
+  const top = Math.max(0, Math.min(y1 / origDims.height, 1))
+  const right = Math.max(0, Math.min(x2 / origDims.width, 1))
+  const bottom = Math.max(0, Math.min(y2 / origDims.height, 1))
   // Padded square around the face, clamped inside the image.
   const cx = (left + right) / 2
   const cy = (top + bottom) / 2
@@ -59,9 +80,10 @@ function Closeup({ photoId, bbox, eventId, size = 88 }) {
   return (
     <div style={{ width: size, height: size, borderRadius: 12, overflow: 'hidden', position: 'relative', background: '#000', flexShrink: 0 }}>
       <img
-        src={src}
+        src={thumbSrc}
         alt=""
         draggable={false}
+        onError={() => setThumbFailed(true)}
         style={{
           position: 'absolute',
           left: `${-(sqLeft / sqSize) * 100}%`,
@@ -126,21 +148,21 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
               </div>
               {open && (
                 <div className="photo-grid" style={{ padding: 12, paddingTop: 0 }}>
-                  {g.photo_ids.map((photoId) => (
+                  {(g.photos || g.photo_ids.map((photoId) => ({ photo_id: photoId, filename: `${photoId}.jpg` }))).map((p) => (
                     <div
-                      key={photoId}
+                      key={p.photo_id}
                       style={{ cursor: 'zoom-in' }}
                       onClick={() => onOpenPhoto({
-                        photo_id: photoId,
-                        filename: `${photoId}.jpg`,
-                        url: `/files/events/${eventId}/photos/${photoId}`,
-                        thumbnail_url: `/files/events/${eventId}/photos/${photoId}/thumb`,
+                        photo_id: p.photo_id,
+                        filename: p.filename,
+                        url: `/files/events/${eventId}/photos/${p.photo_id}`,
+                        thumbnail_url: `/files/events/${eventId}/photos/${p.photo_id}/thumb`,
                       })}
                       title="Open fullscreen + face closeups"
                     >
                       <GalleryMedia
-                        src={fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)}
-                        filename={`${photoId}.jpg`}
+                        src={fileUrl(`/files/events/${eventId}/photos/${p.photo_id}/thumb`)}
+                        filename={p.filename}
                       />
                     </div>
                   ))}

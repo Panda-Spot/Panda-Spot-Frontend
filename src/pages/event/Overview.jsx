@@ -98,40 +98,46 @@ export default function Overview() {
             inside Edit details, not via separate buttons) ── */}
         {event && (
           <div className="card">
-            {event.cover_url && (
-              <div style={{
-                maxHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'var(--bg-elevated)', borderRadius: 12, marginBottom: 12, overflow: 'hidden',
-              }}>
-                <img
-                  src={fileUrl(event.cover_url)}
-                  alt=""
-                  style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
-                  draggable={false}
-                  onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
-                />
+            <div className="event-details-row">
+              {event.cover_url && (
+                <div className="event-details-cover">
+                  <img
+                    src={fileUrl(event.cover_url)}
+                    alt=""
+                    draggable={false}
+                    onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
+                  />
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="guest-link-label">Event details</div>
+                {(event.event_date || event.event_venue || event.description) ? (
+                  <div className="event-details-list">
+                    {event.event_date && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <CalendarDays size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                        {new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {event.event_venue && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <MapPin size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                        {event.event_venue}
+                      </span>
+                    )}
+                    {event.description && (
+                      <span className="hint" style={{ lineHeight: 1.5 }}>{event.description}</span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="hint" style={{ margin: '0 0 12px' }}>No date, venue, or notes yet — add them below.</p>
+                )}
+                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                  <button className="btn secondary" type="button" onClick={openEditDetails}>
+                    <Pencil size={14} /> Edit details
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="guest-link-label">Event details</div>
-            {(event.event_date || event.event_venue || event.description) && (
-              <p className="hint" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {event.event_date && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <CalendarDays size={13} /> {new Date(event.event_date).toLocaleDateString()}
-                  </span>
-                )}
-                {event.event_venue && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <MapPin size={13} /> {event.event_venue}
-                  </span>
-                )}
-                {event.description && <span>{event.description}</span>}
-              </p>
-            )}
-            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <button className="btn secondary" type="button" onClick={openEditDetails}>
-                <Pencil size={14} /> Edit details
-              </button>
             </div>
           </div>
         )}
