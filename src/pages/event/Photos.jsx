@@ -127,6 +127,60 @@ export default function Photos() {
     setToolsFilter({ blur: 'all', faces: 'all', dupOnly: false, minRating: 0, tag: 'all' })
   }
 
+  // Card actions (Heart / Bin / Info) — shared by the grid overlay and the
+  // list row. stopPropagation keeps them from opening the preview underneath.
+  const actionButtons = (p) => (
+    <div className="meta-actions" onClick={(e) => e.stopPropagation()}>
+      <button
+        className="icon-btn"
+        type="button"
+        title={p.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
+        onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
+        disabled={togglingHighlightId === p.photo_id}
+        style={{ color: p.highlighted ? '#EF4444' : undefined }}
+      >
+        <Heart size={15} fill={p.highlighted ? '#EF4444' : 'none'} />
+      </button>
+      <button
+        className="icon-btn danger"
+        type="button"
+        title="Delete permanently"
+        onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
+        disabled={deletingPhotoId === p.photo_id}
+      >
+        <Trash2 size={15} />
+      </button>
+      <button
+        className="icon-btn info"
+        type="button"
+        title="Details, archive, rating, downloads, cover"
+        onClick={() => setMetaPhotoId(p.photo_id)}
+      >
+        <Info size={15} />
+      </button>
+    </div>
+  )
+
+  const infoBits = (p) => (
+    <>
+      {isVideoFile(p.filename) ? (
+        <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
+      ) : (
+        <>{p.face_indexed_at && (<>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>)}{p.archived_at && <span className="hint"> · archived</span>}</>
+      )}
+      {(p.rating || 0) > 0 && (
+        <span title={`${p.rating} stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          {' · '}
+          {Array.from({ length: p.rating }).map((_, i) => (
+            <Star key={i} size={11} style={{ color: '#F59E0B' }} fill="#F59E0B" />
+          ))}
+        </span>
+      )}
+      {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
+      {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
+    </>
+  )
+
   return (
     <div>
       <div className="event-stack">
@@ -673,67 +727,36 @@ export default function Photos() {
                       title="Select for bulk add to Photo Selection / AI Search"
                       checked={!!managerSelected[p.photo_id]}
                       onChange={() => toggleManagerSelect(p.photo_id)}
-                      style={{ position: 'absolute', top: 8, left: 8, width: 20, height: 20, cursor: 'pointer', accentColor: '#F59E0B' }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ position: 'absolute', top: 8, left: 8, width: 20, height: 20, cursor: 'pointer', accentColor: '#F59E0B', zIndex: 3 }}
                     />
                   )}
+                  {galleryView !== 'list' && (
+                    <>
+                      <div className="card-overlay-actions">
+                        {actionButtons(p)}
+                      </div>
+                      <div className="card-overlay-info">
+                        {infoBits(p)}
+                      </div>
+                    </>
+                  )}
                 </div>
+                {galleryView === 'list' && (
                 <div className="meta">
                   <span>
-                    {galleryView === 'list' && (
-                      <span className="list-file">
-                        <span className="list-file-name" title={p.filename}>{p.filename}</span>
-                        <span className="hint">
-                          {[p.file_size != null && formatBytes(p.file_size), formatListDate(p.exif_captured_at || p.createdAt)]
-                            .filter(Boolean).join(' · ')}
-                        </span>
+                    <span className="list-file">
+                      <span className="list-file-name" title={p.filename}>{p.filename}</span>
+                      <span className="hint">
+                        {[p.file_size != null && formatBytes(p.file_size), formatListDate(p.exif_captured_at || p.createdAt)]
+                          .filter(Boolean).join(' · ')}
                       </span>
-                    )}
-                    {isVideoFile(p.filename) ? (
-                      <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
-                    ) : (
-                      <>{p.face_indexed_at && (<>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>)}{p.archived_at && <span className="hint"> · archived</span>}</>
-                    )}
-                    {(p.rating || 0) > 0 && (
-                      <span title={`${p.rating} stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                        {' · '}
-                        {Array.from({ length: p.rating }).map((_, i) => (
-                          <Star key={i} size={11} style={{ color: '#F59E0B' }} fill="#F59E0B" />
-                        ))}
-                      </span>
-                    )}
-                    {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
-                    {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
+                    </span>
+                    {infoBits(p)}
                   </span>
-                  <div className="meta-actions">
-                    <button
-                      className="icon-btn"
-                      type="button"
-                      title={p.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
-                      onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
-                      disabled={togglingHighlightId === p.photo_id}
-                      style={{ color: p.highlighted ? '#EF4444' : undefined }}
-                    >
-                      <Heart size={15} fill={p.highlighted ? '#EF4444' : 'none'} />
-                    </button>
-                    <button
-                      className="icon-btn danger"
-                      type="button"
-                      title="Delete permanently"
-                      onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
-                      disabled={deletingPhotoId === p.photo_id}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                    <button
-                      className="icon-btn info"
-                      type="button"
-                      title="Details, archive, rating, downloads, cover"
-                      onClick={() => setMetaPhotoId(p.photo_id)}
-                    >
-                      <Info size={15} />
-                    </button>
-                  </div>
+                  {actionButtons(p)}
                 </div>
+                )}
               </div>
             )}
             />

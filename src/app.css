@@ -337,6 +337,83 @@
   }
 }
 
+/* Card overlays: actions ride on top of the image (top-right), info along
+   the bottom — no below-image bar in grid/masonry. List rows keep .meta. */
+.card-overlay-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: rgba(10, 10, 12, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 2px;
+  backdrop-filter: blur(4px);
+}
+
+.card-overlay-actions .icon-btn {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.card-overlay-actions .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.card-overlay-actions .icon-btn.info {
+  color: #38BDF8;
+}
+
+.card-overlay-actions .icon-btn.info:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38BDF8;
+}
+
+.card-overlay-actions .icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  color: #FCA5A5;
+}
+
+.card-overlay-info {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  max-width: calc(100% - 16px);
+  font-size: 12px;
+  color: #fff;
+  background: rgba(10, 10, 12, 0.55);
+  border-radius: 8px;
+  padding: 3px 8px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-overlay-info .hint {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+@media (hover: hover) {
+  .photo-card .card-overlay-actions,
+  .photo-card .card-overlay-info {
+    opacity: 0;
+  }
+  .photo-card:hover .card-overlay-actions,
+  .photo-card:focus-within .card-overlay-actions,
+  .photo-card:hover .card-overlay-info,
+  .photo-card:focus-within .card-overlay-info {
+    opacity: 1;
+  }
+}
+
+.card-overlay-actions,
+.card-overlay-info {
+  transition: opacity 0.15s;
+}
+
 /* --- Photo inspector modal (Info popup) --- */
 
 .meta-preview {
