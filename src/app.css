@@ -3368,6 +3368,7 @@
   display: grid;
   width: 95vw;
   justify-items: center;
+  margin-top: 10px;
 }
 
 .preview-stack > img {

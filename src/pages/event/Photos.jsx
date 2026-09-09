@@ -716,7 +716,7 @@ export default function Photos() {
               <div className="photo-card" key={p.photo_id}>
                 <div
                   style={{ position: 'relative', cursor: 'zoom-in' }}
-                  onClick={() => setPreview({ items: pagedPhotos, index: i })}
+                  onClick={() => setPreview({ items: searchedPhotos, index: (safePage - 1) * pageSize + i })}
                   title="Open fullscreen preview"
                 >
                   <GalleryMedia
