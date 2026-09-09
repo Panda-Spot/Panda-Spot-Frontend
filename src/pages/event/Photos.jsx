@@ -209,23 +209,27 @@ export default function Photos() {
         ) : (
           <>
             {uploading ? (
-              <div className="card upload-section" style={{ cursor: 'pointer' }} onClick={() => setShowUploadModal(true)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <Upload size={18} style={{ color: '#22C55E' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>Uploading photos…</div>
-                    <div className="hint">{uploadPct}% complete — click to view details</div>
-                  </div>
-                  <div style={{ width: 80, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+              <div
+                className="card upload-teaser"
+                role="button"
+                tabIndex={0}
+                title="Upload in progress — click to view details"
+                onClick={() => setShowUploadModal(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowUploadModal(true) }
+                }}
+              >
+                <div className="upload-teaser-icon">
+                  <Upload size={26} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="upload-teaser-title">Uploading photos…</div>
+                  <div className="hint">{uploadPct}% complete — click to view details</div>
+                  <div style={{ height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', marginTop: 8 }}>
                     <div style={{ width: `${uploadPct}%`, height: '100%', background: '#22C55E', borderRadius: 3, transition: 'width 0.3s' }} />
                   </div>
                 </div>
+                <div className="upload-teaser-hint">{uploadPct}%</div>
               </div>
             ) : (
               <div
