@@ -120,6 +120,14 @@ export default function Studio() {
 
   useEffect(() => { reload() }, [calMonth]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Month stepping for the shoot calendar — calMonth (YYYY-MM) drives
+  // the getStudioCalendar fetch above, so shifting it reloads the grid.
+  const shiftCalMonth = (dir) => {
+    const [y, m] = calMonth.split('-').map(Number)
+    const d = new Date(y, m - 1 + dir, 1)
+    setCalMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
   // Status tabs filter the already-loaded lists locally — instant, no API
   // call. CRUD actions call reload(), which refreshes everything at once.
   const visibleInquiries = useMemo(
@@ -339,25 +347,13 @@ export default function Studio() {
 
       {tab === 'calendar' && (
         <Section title="Shoot calendar" hint="Booked shoots, event dates, and inquiry dates in one view.">
-          <div className="row" style={{ marginBottom: 8, alignItems: 'flex-end' }}>
-            <div>
-              <label className="field-label" htmlFor="cal-month">Month</label>
-              <input id="cal-month" className="text-input" type="month" value={calMonth} onChange={(e) => setCalMonth(e.target.value)} />
-            </div>
-          </div>
-          {!calendar || calendar.items.length === 0 ? <p className="hint">Nothing scheduled in this window.</p> : (
-            <ul className="team-list">
-              {calendar.items.map((it, i) => (
-                <li key={`${it.kind}-${it.id}-${i}`} className="team-list-item">
-                  <span style={{ flex: 1 }}>
-                    <strong>{new Date(it.date).toLocaleDateString()}</strong> · {it.name}
-                    <span className="hint"> · {it.kind}{it.status ? ` · ${it.status}` : ''}</span>
-                  </span>
-                  {it.kind === 'booking' && it.event_id && <Link className="btn secondary" to={`/events/${it.event_id}`}>Event</Link>}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ShootMonthGrid
+            calMonth={calMonth}
+            items={calendar?.items || []}
+            onPrev={() => shiftCalMonth(-1)}
+            onNext={() => shiftCalMonth(1)}
+            onToday={() => setCalMonth(new Date().toISOString().slice(0, 7))}
+          />
         </Section>
       )}
 
@@ -700,6 +696,90 @@ export default function Studio() {
           </Section>
         </>
       )}
+    </div>
+  )
+}
+
+const CAL_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const CAL_KIND_COLORS = { booking: '#F59E0B', event: '#22C55E', inquiry: '#3B82F6' }
+
+// Real monthly calendar grid for shoots/events/inquiries (Google-Calendar
+// concept, same getStudioCalendar data as the old list). Adjacent-month
+// days render greyed so weeks always start on Sunday.
+function ShootMonthGrid({ calMonth, items, onPrev, onNext, onToday }) {
+  const [y, m] = calMonth.split('-').map(Number)
+  const firstDow = new Date(y, m - 1, 1).getDay()
+  const daysInMonth = new Date(y, m, 0).getDate()
+  const now = new Date()
+
+  const cells = []
+  for (let i = 0; i < firstDow; i++) cells.push(new Date(y, m - 1, 1 - firstDow + i))
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(y, m - 1, d))
+  for (let d = 1; cells.length % 7 !== 0; d++) cells.push(new Date(y, m, d))
+
+  const keyOf = (dt) => `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`
+  const byDay = {}
+  for (const it of items || []) {
+    const dt = new Date(it.date)
+    if (Number.isNaN(dt.getTime())) continue
+    const k = keyOf(dt)
+    if (!byDay[k]) byDay[k] = []
+    byDay[k].push(it)
+  }
+
+  const title = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+
+  return (
+    <div>
+      <div className="shoot-cal-head">
+        <h3 className="shoot-cal-title">{title}</h3>
+        <div className="shoot-cal-nav">
+          <button type="button" className="btn secondary" onClick={onPrev} aria-label="Previous month">‹</button>
+          <button type="button" className="btn secondary" onClick={onToday}>Today</button>
+          <button type="button" className="btn secondary" onClick={onNext} aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div className="shoot-cal-weekdays">
+        {CAL_WEEKDAYS.map((w) => <span key={w}>{w}</span>)}
+      </div>
+      <div className="shoot-cal-grid">
+        {cells.map((dt, i) => {
+          const inMonth = dt.getMonth() === m - 1
+          const isToday = dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth() && dt.getDate() === now.getDate()
+          const dayItems = byDay[keyOf(dt)] || []
+          const shown = dayItems.slice(0, 3)
+          return (
+            <div key={i} className={`shoot-cal-cell${inMonth ? '' : ' out'}${isToday ? ' today' : ''}`}>
+              <span className="shoot-cal-day">{dt.getDate()}</span>
+              {shown.map((it, j) => {
+                const label = `${new Date(it.date).toLocaleDateString()} · ${it.name} · ${it.kind}${it.status ? ` · ${it.status}` : ''}`
+                const body = (
+                  <>
+                    <span className="shoot-cal-dot" style={{ background: CAL_KIND_COLORS[it.kind] || '#9CA3AF' }} />
+                    <span className="shoot-cal-name">{it.name}</span>
+                  </>
+                )
+                return it.kind === 'booking' && it.event_id ? (
+                  <Link key={`${it.kind}-${it.id}-${j}`} className="shoot-cal-entry" to={`/events/${it.event_id}`} title={`${label} — open event`}>
+                    {body}
+                  </Link>
+                ) : (
+                  <span key={`${it.kind}-${it.id}-${j}`} className="shoot-cal-entry" title={label}>
+                    {body}
+                  </span>
+                )
+              })}
+              {dayItems.length > 3 && <span className="shoot-cal-more">+{dayItems.length - 3} more</span>}
+            </div>
+          )
+        })}
+      </div>
+      {(items || []).length === 0 && <p className="hint" style={{ marginTop: 8 }}>Nothing scheduled this month.</p>}
+      <p className="hint" style={{ marginTop: 8 }}>
+        <span className="shoot-cal-dot" style={{ background: '#F59E0B' }} /> booking
+        {' · '}<span className="shoot-cal-dot" style={{ background: '#22C55E' }} /> event
+        {' · '}<span className="shoot-cal-dot" style={{ background: '#3B82F6' }} /> inquiry
+      </p>
     </div>
   )
 }
