@@ -736,9 +736,11 @@ export default function Photos() {
                       <div className="card-overlay-actions">
                         {actionButtons(p)}
                       </div>
-                      <div className="card-overlay-info">
-                        {infoBits(p)}
-                      </div>
+                      {(p.face_indexed_at || p.archived_at || (p.rating || 0) > 0 || p.color_tag || p.sharpness != null || isVideoFile(p.filename)) && (
+                        <div className="card-overlay-info">
+                          {infoBits(p)}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
