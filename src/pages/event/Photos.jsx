@@ -665,6 +665,7 @@ export default function Photos() {
                     src={fileUrl(p.thumbnail_url || p.url)}
                     filename={p.filename}
                     style={galleryView === 'masonry' ? { height: 'auto' } : undefined}
+                    priority={i < 8}
                   />
                   {selectMode && (event?.photo_selection_enabled || event?.face_search_enabled) && (
                     <input

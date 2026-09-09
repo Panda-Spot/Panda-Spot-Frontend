@@ -410,7 +410,15 @@ export const startPhotoUploadWithProgress = (eventId, files, onUploadProgress) =
       reject(new Error("Upload aborted"))
     })
     inflightRequests += 1
-    xhr.send(form)
+    try {
+      xhr.send(form)
+    } catch (err) {
+      // Synchronous send failure (e.g. invalid URL, offline at send
+      // time) — settle the promise instead of hanging the upload queue
+      // forever with `uploading` stuck on.
+      inflightRequests -= 1
+      reject(err instanceof Error ? err : new Error("Upload failed to start"))
+    }
   })
 
 // Connects a public Google Drive folder to an event and starts the initial

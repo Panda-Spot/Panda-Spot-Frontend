@@ -18,6 +18,11 @@ export default function GalleryMedia({
   preload = 'metadata',
   onClick,
   onError,
+  // Pass priority for above-the-fold tiles (e.g. first row of the
+  // manager grid). Edge/Chrome replace in-viewport lazy images with
+  // placeholders and defer their load events ("Intervention" console
+  // warning) — eager + high fetch priority opts those tiles out.
+  priority = false,
 }) {
   if (isVideoFile(filename)) {
     return (
@@ -42,7 +47,8 @@ export default function GalleryMedia({
       className={className}
       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...style }}
       draggable={false}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"
       onClick={onClick}
       onError={onError}

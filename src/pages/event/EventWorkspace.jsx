@@ -95,23 +95,6 @@ function progressLine(data) {
   return line
 }
 
-// Per-file helpers for the FileProgressList. We keep the filename-to-id
-// mapping in a ref so SSE callbacks (which only carry the filename being
-// processed) can find the right row, even when two files share a name.
-function fileProgress(updater) {
-  setUploadFiles((prev) => prev.map((f) => (updater ? updater(f) : f)))
-}
-function markFileByName(name, patch) {
-  fileProgress((f) => {
-    if (f.status === 'done' || f.status === 'error' || f.status === 'skipped') return f
-    if (f.name !== name) return f
-    return { ...f, ...patch }
-  })
-}
-function markFileById(id, patch) {
-  fileProgress((f) => (f.id === id ? { ...f, ...patch } : f))
-}
-
 function formatEta(seconds) {
   if (seconds == null || Number.isNaN(seconds)) return null
   const rounded = Math.round(seconds)
@@ -285,6 +268,25 @@ export default function EventWorkspace() {
   // and an all-or-nothing failure — sequential 100-file batches are safer
   // and each gets its own job/progress.
   const MAX_FILES_PER_BATCH = 100
+  // Per-file row updaters for the FileProgressList. Defined inside the
+  // component (they close over setUploadFiles). SSE callbacks only carry
+  // a filename, so markFileByName targets the earliest non-terminal row
+  // with that name — with sequential batches that is always the right
+  // one, even when two selections share a filename.
+  const markFileById = (id, patch) => {
+    setUploadFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)))
+  }
+  const markFileByName = (name, patch) => {
+    setUploadFiles((prev) => {
+      const idx = prev.findIndex(
+        (f) => f.name === name && f.status !== 'done' && f.status !== 'error' && f.status !== 'skipped'
+      )
+      if (idx === -1) return prev
+      const next = prev.slice()
+      next[idx] = { ...next[idx], ...patch }
+      return next
+    })
+  }
   const [driveUrl, setDriveUrl] = useState('')
   const [connectingDrive, setConnectingDrive] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
