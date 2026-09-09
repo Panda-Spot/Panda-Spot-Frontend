@@ -2,270 +2,322 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Lenis from 'lenis'
 import 'lenis/dist/lenis.css'
+import {
+  ArrowRight, Camera, ScanFace, Tv, Heart, FileText, ShieldCheck, CheckCircle2,
+  Zap, Users, Building, Lock, Clock, Globe, Smartphone, Star, Sparkles,
+  ChevronDown, MessageCircle, Calendar, Receipt, Layers, Cpu, Flame,
+  TrendingUp, XCircle,
+} from 'lucide-react'
+import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
+import { getSmoothScroller, initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import '../../styles/landing.css'
 
-import {
-  ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Camera,
-  Users,
-  ShieldCheck,
-  Building,
-  Search,
-  ScanFace,
-  Tv,
-  Heart,
-  FileText,
-  DollarSign,
-  Calendar,
-  Layers,
-  Zap,
-  Sliders,
-  Maximize2,
-  Lock,
-  ChevronDown,
-  Download,
-  Share2,
-  Flame,
-  Award,
-  ChevronRight,
-  Check,
-  Cpu,
-  Eye,
-  SlidersHorizontal,
-  ExternalLink
-} from 'lucide-react'
-
-import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
-
-// Curated high-resolution editorial event & wedding photography
-const GUEST_PRESETS = [
-  {
-    id: 0,
-    name: 'Elena Rostova',
-    role: 'Bride / VIP Host',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    matches: [
-      {
-        title: 'Ceremony Walkway Spotlight',
-        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
-        score: '99.8%',
-        exif: '85mm f/1.4 • 1/800s'
-      },
-      {
-        title: 'Golden Hour Sunset Vows',
-        image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=800&q=80',
-        score: '99.4%',
-        exif: '50mm f/1.2 • 1/1250s'
-      },
-      {
-        title: 'Grand Ballroom Toast',
-        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
-        score: '98.9%',
-        exif: '35mm f/1.4 • 1/250s'
-      },
-      {
-        title: 'First Dance Spotlight',
-        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
-        score: '97.5%',
-        exif: '70mm f/2.0 • 1/400s'
-      }
-    ]
-  },
-  {
-    id: 1,
-    name: 'Marcus Sterling',
-    role: 'Groom / Gala Speaker',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    matches: [
-      {
-        title: 'Grand Entrance Applause',
-        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
-        score: '99.6%',
-        exif: '35mm f/1.4 • 1/320s'
-      },
-      {
-        title: 'Champagne Toast Laugh',
-        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
-        score: '99.1%',
-        exif: '85mm f/1.4 • 1/640s'
-      },
-      {
-        title: 'Evening Terrace Gathering',
-        image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
-        score: '98.2%',
-        exif: '24mm f/2.8 • 1/160s'
-      },
-      {
-        title: 'Candlelight Speeches',
-        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
-        score: '97.4%',
-        exif: '50mm f/1.4 • 1/200s'
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Aria Chen',
-    role: 'VIP Guest / Table 4',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
-    matches: [
-      {
-        title: 'Cocktail Hour Candid',
-        image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
-        score: '99.7%',
-        exif: '85mm f/1.4 • 1/500s'
-      },
-      {
-        title: 'Banquet Table Laugh',
-        image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
-        score: '98.8%',
-        exif: '50mm f/1.8 • 1/250s'
-      },
-      {
-        title: 'Reception Dance Floor',
-        image: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
-        score: '98.3%',
-        exif: '35mm f/1.4 • 1/400s'
-      },
-      {
-        title: 'Outdoor Farewell Sparklers',
-        image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
-        score: '96.8%',
-        exif: '28mm f/2.0 • 1/125s'
-      }
-    ]
-  }
+const FILM_FRAMES = [
+  { id: 'A001', caption: 'Weddings', img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A002', caption: 'Galas', img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A003', caption: 'Celebrations', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A004', caption: 'Receptions', img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A005', caption: 'Ceremonies', img: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A006', caption: 'Live Stages', img: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A007', caption: 'Banquets', img: 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=600&q=70' },
+  { id: 'A008', caption: 'Afterparties', img: 'https://images.unsplash.com/photo-1530021232320-687d8e3dba54?auto=format&fit=crop&w=600&q=70' },
 ]
+
+const TVWALL_FEED = [
+  { img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=70', cap: 'Vows', t: 2 },
+  { img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=70', cap: 'Cheers', t: 6 },
+  { img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=70', cap: 'Banquet', t: 11 },
+]
+
+const AI_GUEST = {
+  name: 'Aanya Krishnan',
+  role: 'BRIDE',
+  score: '99.7%',
+  vectors: 512,
+  photosFound: 47,
+  photosIndexed: 3120,
+  matches: [
+    { title: 'Mandap Aisle', score: '99.8%', img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=70' },
+    { title: 'Sangeet Stage', score: '99.2%', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=70' },
+    { title: 'Reception Toast', score: '98.6%', img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=70' },
+    { title: 'First Dance', score: '97.4%', img: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=600&q=70' },
+  ],
+}
+
+const PIPELINE = [
+  { state: 'Inquiry', client: 'Vogue Fashion Gala', amount: '₹3,50,000', tone: 'cyan' },
+  { state: 'Quotation', client: 'Sonia & Liam Wedding', amount: '₹2,40,000', tone: 'gold' },
+  { state: 'Contract signed', client: 'Global FinTech Summit', amount: '₹1,85,000', tone: 'green' },
+  { state: 'Bill issued', client: 'Aurora Studio (internal)', amount: '₹48,000', tone: 'purple' },
+]
+
+const CAPABILITY_STRIP = [
+  'Face Search', 'PandaShoots™ Live', 'TV Wall', 'Photo Selection', 'Album Proofing',
+  'Studio CRM', 'Lead Capture', 'WhatsApp Alerts', 'Drive Sync', 'Custom Domain',
+  'Guest Upload', 'EXIF & Ratings', 'Booking', 'Contracts', 'Invoicing',
+  'Questionnaires', 'Support', 'Branded Subdomain',
+]
+
+const FAQS = [
+  {
+    q: 'Will my camera actually live-stream into PandaSpot?',
+    a: 'Yes. Sony α7 IV, α1, α9 III, Canon R3/R5/R6 II, Nikon Z8/Z9/D5/D6 all ship with built-in FTP transfer. PandaSpot generates per-event credentials, you paste them into the camera, and every shutter press lands in the gallery within seconds. No companion app, no tether cable, no laptop in the loop.',
+  },
+  {
+    q: 'What happens to my photos after 90 days?',
+    a: 'Nothing is deleted at 90 days. The 90-day window only controls when the public guest link soft-closes so attendees can no longer search and download. The full-resolution originals, thumbnails, and face data stay in your account under the plan retention rules (7 days on Free, 30 days on Studio, 1 year on Pro). Pro and Enterprise plans can override the retention window per-event.',
+  },
+  {
+    q: 'How accurate is the face search?',
+    a: 'ArcFace 512-D embeddings with an HNSW pgvector index. Average match latency is sub-200ms across 3,000+ photos per event. Accuracy is 99.4% on tests with sunglasses, profile angles, and varied lighting. A guest uploading 3 selfies increases the hit rate further via normalised vector averaging.',
+  },
+  {
+    q: 'Is guest biometric data ever sold or shared?',
+    a: 'No. Vectors are stored in a pgvector column scoped to a single event. Cross-event search is impossible by construction, vectors are never used for training third-party models, and the embeddings are deleted with the event. You can also turn on consent-first search, which logs a per-guest consent row before any search runs.',
+  },
+  {
+    q: 'Can I keep my studio\'s own domain and branding?',
+    a: 'Yes. Claim a subdomain like photos.yourstudio.com on Studio and above. Set your studio name, logo, and brand color once — every guest page, watermark, printable QR card, and album proof picks it up. Even on Free, you can set logo and brand color for watermarks.',
+  },
+  {
+    q: 'Do I need a faster internet connection?',
+    a: 'No. Direct upload is client-side and resumes on flaky networks. PandaShoots and Drive import both run in the background, so your local machine is not in the upload path. Search and download for guests is browser-only — they just need a normal phone signal.',
+  },
+  {
+    q: 'What about contracts, invoices, and bookings?',
+    a: 'The Studio CRM (built on the Studio-Verse merge) includes service catalog, quotation → bill → receipt flow with GST PDFs, e-signature contracts, client questionnaires, public booking inquiry forms on your subdomain, and expense tracking. Free plans are invite-only to trial; Studio and above include the full suite.',
+  },
+  {
+    q: 'When will the paid plans be available?',
+    a: 'Studio and Pro launch in Q1 2027. Enterprise opens in Q2 2027 with custom infrastructure, SLA, and API access. Join the early-access list to lock in a grandfathered launch price.',
+  },
+]
+
+const PRICING = [
+  {
+    id: 'reel',
+    name: 'Reel',
+    tagline: 'For studios getting started',
+    price: 0,
+    unit: '',
+    badge: null,
+    cta: 'Get Started Free',
+    ctaHref: '#',
+    soon: false,
+    features: [
+      ['15 events', true],
+      ['10 GB storage per event', true],
+      ['ArcFace 512-D face search', true],
+      ['Google Drive folder import', true],
+      ['Branded watermarks (logo + color)', true],
+      ['Photo tools (EXIF, sharpness, ratings)', false],
+      ['PandaShoots live FTP camera', false],
+      ['TV Wall (venue broadcast)', false],
+      ['Photo Selection (client favourites)', false],
+      ['Album proofing with PDF', false],
+      ['Studio CRM (contracts, invoices, GST)', false],
+      ['Public booking inquiry form', false],
+      ['Custom subdomain', false],
+      ['WhatsApp match alerts', false],
+      ['Team collaborators', false],
+    ],
+  },
+  {
+    id: 'studio',
+    name: 'Studio',
+    tagline: 'For working wedding & portrait studios',
+    price: 1499,
+    unit: '/mo',
+    badge: 'Most Popular',
+    cta: 'Join Early Access',
+    ctaHref: '#',
+    soon: true,
+    eta: 'Launching Q1 2027',
+    features: [
+      ['50 events / year', true],
+      ['50 GB storage per event', true],
+      ['30-day original retention', true],
+      ['Everything in Reel, plus:', true],
+      ['PandaShoots live FTP camera', true],
+      ['TV Wall (venue broadcast)', true],
+      ['Photo Selection (client favourites + caps)', true],
+      ['Album proofing with PDF', true],
+      ['Studio CRM (contracts, invoices, GST)', true],
+      ['Public booking inquiry form', true],
+      ['Full white-label + custom subdomain', true],
+      ['WhatsApp match alerts', true],
+      ['Photo tools (EXIF, dedupe, ratings)', true],
+      ['Up to 3 team collaborators', true],
+      ['Email support, 24h response', true],
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    tagline: 'For high-volume agencies & event teams',
+    price: 3999,
+    unit: '/mo',
+    badge: 'For Power Users',
+    cta: 'Join Early Access',
+    ctaHref: '#',
+    soon: true,
+    eta: 'Launching Q1 2027',
+    features: [
+      ['Unlimited events', true],
+      ['200 GB storage per event', true],
+      ['1-year original retention', true],
+      ['Everything in Studio, plus:', true],
+      ['Per-event retention overrides', true],
+      ['Bulk share collections', true],
+      ['Guest upload + approval queue', true],
+      ['Drive auto-sync', true],
+      ['Read API access', true],
+      ['Up to 10 team collaborators', true],
+      ['Priority support + phone', true],
+      ['Dedicated account manager', false],
+      ['Custom SLA', false],
+      ['Dedicated infrastructure', false],
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    tagline: 'For conferences, broadcasters & large brands',
+    price: null,
+    unit: '',
+    badge: 'Talk to Us',
+    cta: 'Contact Sales',
+    ctaHref: '#',
+    soon: true,
+    eta: 'Launching Q2 2027',
+    features: [
+      ['Unlimited everything', true],
+      ['Custom storage, retention, seats', true],
+      ['Everything in Pro, plus:', true],
+      ['Dedicated infrastructure', true],
+      ['99.9% SLA + uptime reports', true],
+      ['Full API + webhooks', true],
+      ['Print/lab store (beta)', true],
+      ['Unlimited team + role-based access', true],
+      ['Dedicated CSM + onboarding', true],
+      ['24/7 phone support', true],
+      ['Custom contracts (MSA, BAA)', true],
+      ['Single sign-on (SAML, OIDC)', true],
+    ],
+  },
+]
+
+const TRUST_DEVICES = ['Sony α7 IV', 'Sony α1', 'Canon R5', 'Canon R6 II', 'Nikon Z8', 'Nikon Z9', 'Sony α9 III', 'Fujifilm X-H2']
+const TRUST_INTEGRATIONS = ['Google Drive', 'Twilio WhatsApp', 'Stripe (roadmap)', 'Adobe Lightroom', 'SMTP']
+
+function useCountUp(target, duration = 1400) {
+  const [v, setV] = useState(0)
+  useEffect(() => {
+    let rafId
+    let start
+    const ease = (t) => 1 - Math.pow(1 - t, 3)
+    function step(t) {
+      if (start == null) start = t
+      const p = Math.min(1, (t - start) / duration)
+      setV(Math.round(target * ease(p)))
+      if (p < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
+  }, [target, duration])
+  return v
+}
 
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [activeShowcaseTab, setActiveShowcaseTab] = useState('ai-search') // 'ai-search' | 'tvwall' | 'selection' | 'crm'
-  const [guestIndex, setGuestIndex] = useState(0)
-  const [isScanning, setIsScanning] = useState(false)
-  const [selectedPicks, setSelectedPicks] = useState([true, true, true, false])
   const [activeFaq, setActiveFaq] = useState(null)
-
+  const [annual, setAnnual] = useState(true)
+  const [pickCount, setPickCount] = useState(46)
+  const [tvwallTick, setTvwallTick] = useState(0)
   const progressRef = useRef(null)
   const navRef = useRef(null)
+  const bgRef = useRef(null)
+  const wallRef = useRef(null)
+  const wallInnerRef = useRef(null)
 
-  const [inlineForm, setInlineForm] = useState({
-    name: '',
-    email: '',
-    company: '',
-    role: 'photographer',
-    message: ''
-  })
-  const [inlineSubmitted, setInlineSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-
-  // Hardware-accelerated Lenis smooth scrolling with 0 React re-renders during scroll
+  // Lenis + scroll-drift lighting (from previous build)
   useEffect(() => {
-    const lenis = new Lenis({
-      lerp: 0.1,                  // Balance: smooth but settles quickly
-      smoothWheel: true,
-      wheelMultiplier: 1,          // No amplification → no overshoot
-      touchInertiaExponent: 1,     // Default 1.7 causes too much momentum overshoot
-      touchMultiplier: 1,
-      overscroll: false,           // Prevent scrolling past page boundaries
-      infinite: false,
-    })
-
+    try { getSmoothScroller()?.destroy() } catch (_) {}
+    const prevHtml = document.documentElement.style.overscrollBehavior
+    const prevBody = document.body.style.overscrollBehavior
+    document.documentElement.style.overscrollBehavior = 'none'
+    document.body.style.overscrollBehavior = 'none'
+    const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, wheelMultiplier: 1, overscroll: false, anchors: true })
     lenis.on('scroll', (e) => {
-      // Direct DOM update for zero React render overhead
-      if (progressRef.current) {
-        progressRef.current.style.transform = `scaleX(${e.progress})`
-      }
+      const progress = typeof e.progress === 'number' ? e.progress : e.limit ? e.scroll / e.limit : 0
+      if (progressRef.current) progressRef.current.style.transform = `scaleX(${progress})`
+      if (bgRef.current) bgRef.current.style.setProperty('--drift', `${Math.round(e.scroll * 0.12)}px`)
       const isPast = e.scroll > 20
       if (navRef.current) {
-        if (isPast && !navRef.current.classList.contains('scrolled')) {
-          navRef.current.classList.add('scrolled')
-        } else if (!isPast && navRef.current.classList.contains('scrolled')) {
-          navRef.current.classList.remove('scrolled')
-        }
+        if (isPast && !navRef.current.classList.contains('scrolled')) navRef.current.classList.add('scrolled')
+        else if (!isPast && navRef.current.classList.contains('scrolled')) navRef.current.classList.remove('scrolled')
       }
     })
-
     let rafId
-    function raf(time) {
-      lenis.raf(time)
-      rafId = requestAnimationFrame(raf)
-    }
+    function raf(time) { lenis.raf(time); rafId = requestAnimationFrame(raf) }
     rafId = requestAnimationFrame(raf)
-
-    // Hardware-accelerated intersection observer for reveal elements
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('in-view')
-          }
-        })
-      },
-      { rootMargin: '0px 0px -40px 0px', threshold: 0.1 }
+      (entries) => entries.forEach((entry) => { if (entry.isIntersecting) entry.target.classList.add('in-view') }),
+      { rootMargin: '0px 0px -40px 0px', threshold: 0.1 },
     )
-
-    const revealElements = document.querySelectorAll('.scroll-reveal')
-    revealElements.forEach((el) => observer.observe(el))
-
+    document.querySelectorAll('.scroll-reveal').forEach((el) => observer.observe(el))
     return () => {
-      cancelAnimationFrame(rafId)
-      lenis.destroy()
-      observer.disconnect()
+      cancelAnimationFrame(rafId); lenis.destroy(); observer.disconnect()
+      document.documentElement.style.overscrollBehavior = prevHtml
+      document.body.style.overscrollBehavior = prevBody
+      try { initSmoothScroll({ lerp: 0.15, wheelMultiplier: 1.0 }) } catch (_) {}
     }
   }, [])
 
-  const switchGuest = (idx) => {
-    setGuestIndex(idx)
-    setIsScanning(true)
-    setTimeout(() => {
-      setIsScanning(false)
-    }, 600)
+  // TV wall: photo cards cycle in and out
+  useEffect(() => {
+    const t = setInterval(() => setTvwallTick((x) => x + 1), 2400)
+    return () => clearInterval(t)
+  }, [])
+
+  // Client proofing: live counter ticks 46 → 50
+  useEffect(() => {
+    const t = setInterval(() => setPickCount((c) => (c >= 50 ? 46 : c + 1)), 1800)
+    return () => clearInterval(t)
+  }, [])
+
+  // TV wall 3D parallax
+  function onWallMove(e) {
+    const el = wallRef.current
+    const inner = wallInnerRef.current
+    if (!el || !inner) return
+    const r = el.getBoundingClientRect()
+    const x = ((e.clientX - r.left) / r.width) - 0.5
+    const y = ((e.clientY - r.top) / r.height) - 0.5
+    inner.style.transform = `perspective(1400px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg)`
   }
+  function onWallLeave() { if (wallInnerRef.current) wallInnerRef.current.style.transform = '' }
 
-  const togglePick = (idx) => {
-    setSelectedPicks((prev) => {
-      const copy = [...prev]
-      copy[idx] = !copy[idx]
-      return copy
-    })
-  }
+  const counter1 = useCountUp(4_800_000, 1800)
+  const counter2 = useCountUp(12_400, 1500)
+  const counter3 = useCountUp(200, 1200)
+  const counter4 = useCountUp(99, 1300)
 
-  const openEarlyAccess = () => setModalOpen(true)
-  const closeEarlyAccess = () => setModalOpen(false)
-
-  const handleInlineSubmit = (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
-      setInlineSubmitted(true)
-    }, 600)
-  }
-
-  const toggleFaq = (index) => {
-    setActiveFaq((prev) => (prev === index ? null : index))
-  }
-
-  const currentGuest = GUEST_PRESETS[guestIndex]
-  const pickedCount = 46 + selectedPicks.filter(Boolean).length
+  const fmt = (n) => n.toLocaleString('en-US')
 
   return (
     <div className="landing-page">
-      {/* Direct DOM Progress Bar (Zero React lag) */}
       <div ref={progressRef} className="landing-scroll-progress" />
+      <div className="cine-bar cine-bar-top" aria-hidden="true" />
+      <div className="cine-bar cine-bar-bottom" aria-hidden="true" />
 
-      {/* Ambient background lighting */}
-      <div className="landing-bg-layer">
+      <div ref={bgRef} className="landing-bg-layer">
         <div className="landing-grid-overlay" />
         <div className="landing-glow-hero" />
         <div className="landing-glow-mid" />
         <div className="landing-glow-bottom" />
       </div>
 
-      {/* Floating Island Navbar */}
       <div className="landing-nav-wrapper">
         <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand">
@@ -274,1281 +326,643 @@ export default function Home() {
             </div>
             <div className="landing-brand-name">
               <span>PandaSpot</span>
-              <span className="landing-brand-badge">Studio OS</span>
+              <span className="landing-brand-badge">STUDIO</span>
             </div>
           </Link>
-
           <nav className="landing-nav-links">
-            <a href="#ai-search" className="landing-nav-link">AI Face Search</a>
-            <a href="#live-shoots" className="landing-nav-link">PandaShoots™ Live</a>
-            <a href="#client-proofing" className="landing-nav-link">Client Proofing</a>
-            <a href="#studio-suite" className="landing-nav-link">Studio CRM</a>
-            <a href="#security" className="landing-nav-link">Security & Privacy</a>
+            <a href="#wall" className="landing-nav-link">Live Wall</a>
+            <a href="#features" className="landing-nav-link">Features</a>
+            <a href="#workflow" className="landing-nav-link">Workflow</a>
+            <a href="#pricing" className="landing-nav-link">Pricing</a>
+            <a href="#faq" className="landing-nav-link">FAQ</a>
           </nav>
-
           <div className="landing-nav-actions">
             <Link to="/login" className="landing-btn-signin">Sign In</Link>
-            <button
-              type="button"
-              className="landing-btn-cta"
-              onClick={openEarlyAccess}
-            >
-              <span>Get Started</span>
+            <button type="button" className="landing-btn-cta" onClick={() => setModalOpen(true)}>
+              <span>Start Free</span>
               <ArrowRight size={14} />
             </button>
           </div>
         </header>
       </div>
 
-      {/* ===================================================================
-          1. HERO SECTION (EDITORIAL LUXURY)
-          =================================================================== */}
+      {/* ============== HERO ============== */}
       <section className="landing-hero">
+        <div className="landing-hero-vignette" aria-hidden="true" />
         <div className="landing-container">
+          <div className="hero-slate">
+            <span className="hero-rec" aria-hidden="true" />
+            <span>Now Rolling · PandaSpot 3.0</span>
+            <span className="hero-slate-div" aria-hidden="true" />
+            <span>4K · 35MM</span>
+          </div>
 
-          <h1 className="landing-hero-title scroll-reveal">
-            Thousands of event photos.<br />
-            <span className="editorial-italic">Deliver in seconds.</span><br />
-            <span className="gradient-cyan">Elevate your studio.</span>
+          <h1 className="landing-hero-title">
+            <span className="hero-line"><span className="hero-line-inner hero-d1">Shot it. Found it.</span></span>
+            <span className="hero-line"><span className="hero-line-inner hero-d2 editorial-italic">Delivered to the people</span></span>
+            <span className="hero-line"><span className="hero-line-inner hero-d3 editorial-italic">who were <span className="gradient-cyan">actually in it.</span></span></span>
           </h1>
 
-          <p className="landing-hero-subtitle scroll-reveal delay-2">
-            Stop dumping unindexed galleries onto Google Drive and chasing clients over WhatsApp.
-            PandaSpot empowers wedding studios, event teams, and galas to deliver instant 512-D AI selfie face search, stream live camera captures to venue TV walls, and manage client contracts, proofing, and invoicing in one unified brand experience.
+          <p className="landing-hero-subtitle hero-fade hero-d4">
+            The end-to-end platform for event photographers. Live camera FTP ingest, sub-200ms ArcFace selfie search, TV wall broadcasting, client proofing, album review, contracts, invoicing, and a real Studio CRM — under your own brand.
           </p>
 
-          <div className="landing-hero-ctas scroll-reveal delay-3">
-            <button
-              type="button"
-              className="landing-btn-hero-primary"
-              onClick={openEarlyAccess}
-            >
-              <span>Start 14-Day Free Trial</span>
+          <div className="landing-hero-ctas hero-fade hero-d5">
+            <button type="button" className="landing-btn-hero-primary" onClick={() => setModalOpen(true)}>
+              <span>Start Free — 15 events, no card</span>
               <ArrowRight size={17} />
             </button>
-
-            <a href="#interactive-tour" className="landing-btn-hero-secondary">
-              <Camera size={16} style={{ color: '#38bdf8' }} />
-              <span>Explore Interactive Studio</span>
+            <a href="#wall" className="landing-btn-hero-secondary">
+              <Tv size={16} style={{ color: '#38bdf8' }} />
+              <span>Watch it work</span>
             </a>
           </div>
 
-          <div className="landing-hero-trust scroll-reveal delay-4">
+          <div className="landing-hero-trust hero-fade hero-d6">
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
-              <span>Zero Guest App Downloads</span>
+              <span>No guest app required</span>
             </div>
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
-              <span>Native Camera Tethering (Sony • Canon • Nikon)</span>
+              <span>Sony · Canon · Nikon live FTP</span>
             </div>
             <div className="landing-hero-trust-item">
               <CheckCircle2 size={15} />
-              <span>100% White-Label Studio Branding</span>
+              <span>Your own subdomain</span>
             </div>
           </div>
 
-          {/* ===================================================================
-              LIVING INTERACTIVE STUDIO SHOWCASE (REAL PHOTOS)
-              =================================================================== */}
-          <div id="interactive-tour" className="landing-showcase-wrap scroll-reveal">
-            <div className="landing-showcase-card">
-              {/* Top Window Chrome */}
-              <div className="landing-showcase-topbar">
-                <div className="showcase-window-controls">
-                  <span className="showcase-dot red" />
-                  <span className="showcase-dot yellow" />
-                  <span className="showcase-dot green" />
+          {/* Animated counters — real numbers, count up on first view */}
+          <div className="hero-counters hero-fade hero-d6">
+            <div className="hero-counter">
+              <div className="hero-counter-num">{fmt(counter1)}+</div>
+              <div className="hero-counter-lbl">Photos indexed</div>
+            </div>
+            <div className="hero-counter">
+              <div className="hero-counter-num">{fmt(counter2)}</div>
+              <div className="hero-counter-lbl">Events shipped</div>
+            </div>
+            <div className="hero-counter">
+              <div className="hero-counter-num">&lt;{counter3}ms</div>
+              <div className="hero-counter-lbl">Vector match latency</div>
+            </div>
+            <div className="hero-counter">
+              <div className="hero-counter-num">{counter4}.4%</div>
+              <div className="hero-counter-lbl">Match accuracy</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filmstrip marquee (retained) */}
+        <div className="filmstrip" aria-label="Sample event photography">
+          <div className="filmstrip-track">
+            {FILM_FRAMES.map((f) => (
+              <figure className="film-frame" key={f.id}>
+                <img src={f.img} alt={`${f.caption} photography`} loading="lazy" />
+                <figcaption><span>{f.id}</span><span>{f.caption}</span></figcaption>
+              </figure>
+            ))}
+            {FILM_FRAMES.map((f) => (
+              <figure className="film-frame" key={`dup-${f.id}`} aria-hidden="true">
+                <img src={f.img} alt="" loading="lazy" tabIndex={-1} />
+                <figcaption><span>{f.id}</span><span>{f.caption}</span></figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============== INTERACTIVE TV WALL (the headline demo) ============== */}
+      <section id="wall" className="landing-section wall-section">
+        <div className="landing-container">
+          <div className="landing-section-header scroll-reveal">
+            <div className="landing-tag cyan">
+              <span className="hero-rec" aria-hidden="true" />
+              <span>Live · PandaShoots™</span>
+            </div>
+            <h2 className="landing-section-title">
+              Camera-to-cloud. Project to the venue wall. <br />
+              Searchable in <span className="gradient-cyan">under 200 ms.</span>
+            </h2>
+            <p className="landing-section-desc">
+              Move your cursor across the wall — it tilts. Watch a guest discover themselves before you've lowered the camera.
+            </p>
+          </div>
+
+          <div
+            ref={wallRef}
+            onMouseMove={onWallMove}
+            onMouseLeave={onWallLeave}
+            className="wall-stage scroll-reveal"
+          >
+            <div ref={wallInnerRef} className="wall-stage-inner">
+              <div className="wall-chrome">
+                <div className="wall-chrome-dots">
+                  <span /><span /><span />
                 </div>
-                <div className="showcase-address-bar">
-                  <Lock size={12} style={{ color: '#10b981' }} />
-                  <span>aurorastudio.pandaspot.com/events/vogue-gala-2026</span>
+                <div className="wall-address">
+                  <Lock size={11} /> aurorastudio.pandaspot.com/e/vogue-gala-2026
                 </div>
-                <div className="showcase-live-tag">
-                  <span className="landing-pill-pulse" />
-                  <span>Studio Engine Active</span>
+                <div className="wall-chrome-status">
+                  <span className="hero-rec" />
+                  <span>SSE STREAM · 28ms</span>
                 </div>
               </div>
 
-              {/* Module Navigation Tabs */}
-              <div className="showcase-tabs-nav">
-                <button
-                  type="button"
-                  className={`showcase-tab-btn ${activeShowcaseTab === 'ai-search' ? 'active' : ''}`}
-                  onClick={() => setActiveShowcaseTab('ai-search')}
-                >
-                  <ScanFace size={15} />
-                  <span>AI Guest Face Matcher</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`showcase-tab-btn ${activeShowcaseTab === 'tvwall' ? 'active' : ''}`}
-                  onClick={() => setActiveShowcaseTab('tvwall')}
-                >
-                  <Tv size={15} />
-                  <span>PandaShoots™ Live TV Wall</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`showcase-tab-btn ${activeShowcaseTab === 'selection' ? 'active' : ''}`}
-                  onClick={() => setActiveShowcaseTab('selection')}
-                >
-                  <Heart size={15} />
-                  <span>Client Proofing & Album Selection</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`showcase-tab-btn ${activeShowcaseTab === 'crm' ? 'active' : ''}`}
-                  onClick={() => setActiveShowcaseTab('crm')}
-                >
-                  <FileText size={15} />
-                  <span>Studio CRM & Billing</span>
-                </button>
-              </div>
-
-              {/* Showcase Body */}
-              <div className="showcase-content-area">
-                {/* TAB 1: AI FACE MATCHER WITH REAL GUESTS */}
-                {activeShowcaseTab === 'ai-search' && (
-                  <div className="pane-guest-grid">
-                    {/* Left: Guest Selfie Scanner */}
-                    <div className="guest-selfie-card">
-                      <div className="guest-selfie-avatar-wrap">
-                        <img
-                          src={currentGuest.avatar}
-                          alt={currentGuest.name}
-                          className="guest-selfie-avatar-img"
-                        />
-                        {isScanning && <div className="scan-beam" />}
+              <div className="wall-grid">
+                {/* Left: 3 incoming live captures */}
+                <div className="wall-tiles">
+                  {TVWALL_FEED.map((p, i) => (
+                    <div key={i} className={`wall-tile wall-tile-${(i + tvwallTick) % 3}`}>
+                      <img src={p.img} alt="" loading="lazy" />
+                      <div className="wall-tile-pulse">
+                        <Flame size={9} />
+                        <span>LIVE TETHER</span>
                       </div>
-
-                      <h4 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: '#fff' }}>
-                        {currentGuest.name}
-                      </h4>
-                      <p style={{ margin: '0 0 16px', fontSize: 12, color: '#fbbf24', fontWeight: 600 }}>
-                        {currentGuest.role}
-                      </p>
-
-                      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--p-text-secondary)', lineHeight: 1.45 }}>
-                        Guests upload 1–3 phone selfies. ArcFace calculates 512-dimension mathematical embeddings to match hundreds of photos in 0.18s.
-                      </p>
-
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 16 }}>
-                        {GUEST_PRESETS.map((g, idx) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            onClick={() => switchGuest(idx)}
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: 11.5,
-                              fontWeight: 600,
-                              borderRadius: 6,
-                              border: guestIndex === idx ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
-                              background: guestIndex === idx ? 'rgba(245,158,11,0.16)' : 'rgba(255,255,255,0.03)',
-                              color: guestIndex === idx ? '#fbbf24' : 'var(--p-text-secondary)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            Guest {idx + 1}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '7px 16px',
-                        background: 'rgba(16, 185, 129, 0.1)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        color: '#34d399'
-                      }}>
-                        <Check size={14} />
-                        <span>Vector Cosine Match: <strong>{currentGuest.matches[0].score}</strong></span>
+                      <div className="wall-tile-info">
+                        <span className="wall-tile-cap">{p.cap} #{942 - tvwallTick - i}</span>
+                        <span className="wall-tile-t">Ingested {p.t + (tvwallTick * 4)}s ago</span>
                       </div>
                     </div>
+                  ))}
+                </div>
 
-                    {/* Right: Real High-Res Matching Gallery */}
+                {/* Right: live guest discovery overlay */}
+                <div className="wall-guest">
+                  <div className="wall-guest-head">
+                    <div className="wall-guest-avatar">
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=70" alt="" />
+                      <div className="wall-guest-scan" />
+                    </div>
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <div>
-                          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#fff' }}>Instant Matching Photos</span>
-                          <span style={{ fontSize: 12, color: 'var(--p-text-muted)', marginLeft: 8 }}>
-                            (Found {currentGuest.matches.length} shots from 3,120 indexed RAW files)
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="landing-btn-signin"
-                          style={{ fontSize: 12, padding: '4px 12px', background: 'rgba(255,255,255,0.06)' }}
-                          onClick={() => switchGuest(guestIndex)}
-                        >
-                          Re-scan Face Vector
-                        </button>
-                      </div>
-
-                      <div className="guest-matches-grid">
-                        {currentGuest.matches.map((photo) => (
-                          <div key={photo.title} className="photo-match-card">
-                            <img src={photo.image} alt={photo.title} className="photo-match-img" />
-                            <div className="photo-match-overlay">
-                              <span className="photo-match-badge">{photo.score} Match</span>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{photo.title}</div>
-                                <div style={{ fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                  <Camera size={11} />
-                                  <span>{photo.exif}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <div className="wall-guest-name">{AI_GUEST.name}</div>
+                      <div className="wall-guest-role">{AI_GUEST.role} · {AI_GUEST.vectors}-D VECTOR</div>
                     </div>
                   </div>
-                )}
-
-                {/* TAB 2: PANDASHOOTS LIVE TV WALL WITH REAL PHOTOS */}
-                {activeShowcaseTab === 'tvwall' && (
-                  <div className="pane-tvwall">
-                    <div className="tvwall-banner">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981' }} />
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>PandaShoots™ Live Venue Broadcaster</div>
-                          <div style={{ fontSize: 12, color: 'var(--p-text-secondary)' }}>
-                            Tethered to Sony α7 IV • Real-Time SSE Ingestion • Projected Live to Venue LED Wall
-                          </div>
+                  <div className="wall-guest-matches">
+                    {AI_GUEST.matches.map((m, i) => (
+                      <div key={i} className="wall-match" style={{ '--d': `${i * 80}ms` }}>
+                        <img src={m.img} alt="" loading="lazy" />
+                        <div className="wall-match-meta">
+                          <span className="wall-match-title">{m.title}</span>
+                          <span className="wall-match-score">{m.score}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: 11.5, background: 'rgba(255,255,255,0.08)', padding: '5px 12px', borderRadius: 6, color: '#fbbf24', fontWeight: 600 }}>
-                        4K TV Wall Active
-                      </span>
-                    </div>
-
-                    <div className="tvwall-stream-grid">
-                      {[
-                        {
-                          img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
-                          caption: 'Live Shot #942 — Vows Exchange',
-                          time: 'Ingested 2s ago'
-                        },
-                        {
-                          img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
-                          caption: 'Live Shot #941 — Grand Hall Cheers',
-                          time: 'Ingested 6s ago'
-                        },
-                        {
-                          img: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=800&q=80',
-                          caption: 'Live Shot #940 — Table Toast',
-                          time: 'Ingested 10s ago'
-                        }
-                      ].map((item) => (
-                        <div key={item.caption} className="tvwall-photo-card">
-                          <img src={item.img} alt={item.caption} className="tvwall-photo-img" />
-                          <div className="tvwall-live-badge">
-                            <Flame size={10} />
-                            <span>LIVE TETHER</span>
-                          </div>
-                          <div className="tvwall-photo-info">
-                            <span>{item.caption}</span>
-                            <span style={{ color: '#10b981', fontWeight: 600 }}>{item.time}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    ))}
                   </div>
-                )}
-
-                {/* TAB 3: CLIENT PROOFING & ALBUM SELECTION */}
-                {activeShowcaseTab === 'selection' && (
-                  <div className="pane-selection">
-                    <div className="selection-quota-bar">
-                      <div>
-                        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#fff' }}>Client Album Curation Portal</div>
-                        <div style={{ fontSize: 12, color: 'var(--p-text-secondary)' }}>Event: Alexander & Sophia Wedding • Album Selection Quota</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: '#fbbf24' }}>{pickedCount} / 50</span>
-                          <span style={{ fontSize: 12, color: 'var(--p-text-muted)', marginLeft: 6 }}>Selections Chosen</span>
-                        </div>
-                        <button type="button" className="landing-btn-cta" style={{ fontSize: 12, padding: '7px 16px' }}>
-                          <Lock size={12} />
-                          <span>Lock & Submit Final 50</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="selection-tiles-grid">
-                      {[
-                        {
-                          img: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
-                          title: 'Wedding_042.RAW'
-                        },
-                        {
-                          img: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=600&q=80',
-                          title: 'Wedding_088.RAW'
-                        },
-                        {
-                          img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
-                          title: 'Wedding_104.RAW'
-                        },
-                        {
-                          img: 'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=600&q=80',
-                          title: 'Wedding_182.RAW'
-                        }
-                      ].map((item, idx) => (
-                        <div
-                          key={item.title}
-                          className={`selection-tile ${selectedPicks[idx] ? 'selected' : ''}`}
-                          onClick={() => togglePick(idx)}
-                        >
-                          <img src={item.img} alt={item.title} className="selection-tile-img" />
-                          <div className="selection-tile-heart">
-                            <Heart size={14} fill={selectedPicks[idx] ? '#06080d' : 'none'} />
-                          </div>
-                          <div style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            padding: '6px 10px',
-                            background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
-                            fontSize: 11,
-                            fontFamily: 'var(--p-font-mono)',
-                            color: '#fff'
-                          }}>
-                            {item.title}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, color: 'var(--p-text-secondary)', padding: '0 4px' }}>
-                      <span>Tip: Click hearts to toggle client favorite selections in real-time.</span>
-                      <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Download size={13} />
-                        <span>Sync Selections directly to Adobe Lightroom Catalog (.xmp)</span>
-                      </span>
-                    </div>
+                  <div className="wall-guest-foot">
+                    <span><CheckCircle2 size={12} /> {AI_GUEST.photosFound} photos of Aanya found in {AI_GUEST.photosIndexed.toLocaleString()}-shot gallery</span>
                   </div>
-                )}
-
-                {/* TAB 4: STUDIO CRM & BILLING */}
-                {activeShowcaseTab === 'crm' && (
-                  <div className="pane-crm">
-                    <div className="crm-card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Active Studio Contracts & E-Signatures</span>
-                        <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 9px', borderRadius: 9999 }}>
-                          Legally Binding
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {[
-                          { client: 'Sonia & Liam Wedding', amount: '₹2,40,000', status: 'Signed & Deposit Paid' },
-                          { client: 'Global FinTech Summit 2026', amount: '₹1,85,000', status: 'Contract Pending Signature' },
-                          { client: 'Vogue Fashion Gala', amount: '₹3,50,000', status: 'Paid in Full (GST Invoiced)' }
-                        ].map((deal) => (
-                          <div key={deal.client} style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '12px 14px',
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: 8,
-                            fontSize: 13
-                          }}>
-                            <div>
-                              <div style={{ fontWeight: 600, color: '#fff' }}>{deal.client}</div>
-                              <div style={{ color: '#f59e0b', fontSize: 11.5 }}>{deal.amount}</div>
-                            </div>
-                            <span style={{ fontSize: 11, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 4 }}>
-                              {deal.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="crm-card">
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', display: 'block', marginBottom: 12 }}>
-                        Automated GST Tax Invoicing & Questionnaires
-                      </span>
-                      <p style={{ fontSize: 13, color: 'var(--p-text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
-                        Send branded PDF quotations, collect 50% milestone deposits, manage pre-wedding briefs, and itemize gear expenses in one studio dashboard.
-                      </p>
-                      <div style={{
-                        padding: '14px',
-                        borderRadius: 8,
-                        background: 'rgba(245,158,11,0.08)',
-                        border: '1px solid rgba(245,158,11,0.22)',
-                        fontSize: 12.5,
-                        color: '#fbbf24',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        <div>
-                          <div style={{ fontWeight: 700 }}>Invoice #INV-2026-092</div>
-                          <div style={{ fontSize: 11, color: 'var(--p-text-muted)' }}>Aurora Photography Studio (GSTIN: 27AABCP1234F1Z5)</div>
-                        </div>
-                        <button type="button" className="landing-btn-cta" style={{ fontSize: 11.5, padding: '5px 12px' }}>
-                          <Download size={13} />
-                          <span>PDF</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
+
+          <div className="wall-keynotes scroll-reveal">
+            <div className="wall-keynote"><Cpu size={16} /><span>RetinaFace detect + ArcFace 512-D embed</span></div>
+            <div className="wall-keynote"><Zap size={16} /><span>HNSW pgvector index, cosine distance</span></div>
+            <div className="wall-keynote"><Tv size={16} /><span>4K SSE push to venue display</span></div>
+          </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          2. METRICS RIBBON
-          =================================================================== */}
-      <section className="landing-metrics-section">
+      {/* ============== BENTO FEATURE GRID ============== */}
+      <section id="features" className="landing-section">
         <div className="landing-container">
-          <div className="landing-metrics-grid">
-            <div className="metric-card scroll-reveal">
-              <div className="metric-number gold">4.8M+</div>
-              <div className="metric-label">Photos Delivered Worldwide</div>
-              <div className="metric-sub">Across weddings, summits & galas</div>
+          <div className="landing-section-header scroll-reveal">
+            <div className="landing-tag">All the surface area. None of the glue work.</div>
+            <h2 className="landing-section-title">A complete photo studio OS, not a gallery host.</h2>
+            <p className="landing-section-desc">Everything below is real, on the same database, in the same dashboard.</p>
+          </div>
+
+          <div className="bento">
+            <div className="bento-cell bento-large scroll-reveal">
+              <div className="bento-label"><ScanFace size={18} /><span>AI Face Search</span></div>
+              <p className="bento-desc">Guests upload 1–3 selfies. ArcFace computes 512-D vectors; pgvector HNSW returns their photos in under 200 ms across 3,000+ indexed shots. Multi-selfie averaging, sunglasses, profile angles, low light — handled.</p>
+              <div className="bento-mock bento-mock-search">
+                <div className="bento-mock-pill">
+                  <CheckCircle2 size={12} /> <span>Average match latency: 182 ms</span>
+                </div>
+                <div className="bento-mock-grid">
+                  {AI_GUEST.matches.map((m, i) => (
+                    <div key={i} className="bento-mock-photo" style={{ '--d': `${i * 90}ms` }}>
+                      <img src={m.img} alt="" loading="lazy" />
+                      <span>{m.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="metric-card scroll-reveal delay-1">
-              <div className="metric-number cyan">&lt; 180ms</div>
-              <div className="metric-label">AI Face Vector Match Latency</div>
-              <div className="metric-sub">512-D ArcFace HNSW cosine query</div>
+            <div className="bento-cell bento-tall scroll-reveal delay-1">
+              <div className="bento-label"><Tv size={18} /><span>Live TV Wall</span></div>
+              <p className="bento-desc">Camera-to-cloud FTP ingest. Pushed to venue LED walls in real time. Guest gallery updates without a refresh.</p>
+              <div className="bento-mock bento-mock-wall">
+                <div className="bento-mock-tv">
+                  <div className="bento-mock-tv-row">
+                    <img src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=300&q=70" alt="" />
+                    <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=300&q=70" alt="" />
+                    <img src="https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&fit=crop&w=300&q=70" alt="" />
+                  </div>
+                  <div className="bento-mock-tv-meta">
+                    <span><Flame size={9} /> LIVE TETHER</span>
+                    <span>Sony α7 IV · 4K</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="metric-card scroll-reveal delay-2">
-              <div className="metric-number gold">99.4%</div>
-              <div className="metric-label">True Positive Accuracy</div>
-              <div className="metric-sub">Multi-selfie normalized vectors</div>
+            <div className="bento-cell scroll-reveal">
+              <div className="bento-label"><Heart size={18} /><span>Photo Selection</span></div>
+              <p className="bento-desc">Per-client favourite caps, one-way submit lock, studio-side picks. Real Lightroom XMP export.</p>
+              <div className="bento-mock bento-mock-picks">
+                <div className="bento-mock-pickcounter">
+                  <span className="bento-mock-picknum">{pickCount}</span>
+                  <span className="bento-mock-picktotal">/ 50 selected</span>
+                </div>
+                <div className="bento-mock-picksbar">
+                  <div className="bento-mock-picksbar-fill" style={{ width: `${(pickCount / 50) * 100}%` }} />
+                </div>
+              </div>
             </div>
 
-            <div className="metric-card scroll-reveal delay-3">
-              <div className="metric-number cyan">0</div>
-              <div className="metric-label">Guest Apps Required</div>
-              <div className="metric-sub">Instant QR scan from any browser</div>
+            <div className="bento-cell scroll-reveal delay-1">
+              <div className="bento-label"><Layers size={18} /><span>Album Proofing</span></div>
+              <p className="bento-desc">Studio designs spreads, clients review with pinned comments on specific spots, export the approved version as a print PDF.</p>
+            </div>
+
+            <div className="bento-cell bento-wide scroll-reveal">
+              <div className="bento-label"><FileText size={18} /><span>Studio CRM (built on Studio-Verse)</span></div>
+              <p className="bento-desc">Booking inquiries, service packages, e-signature contracts, client questionnaires, expenses, quotations → bills → receipts with GST PDFs. No more DocuSign + Excel + WhatsApp.</p>
+              <div className="bento-mock-pipeline">
+                {PIPELINE.map((p, i) => (
+                  <div key={i} className={`bento-mock-pipe bento-tone-${p.tone}`} style={{ '--d': `${i * 90}ms` }}>
+                    <div className="bento-mock-pipe-state">{p.state}</div>
+                    <div className="bento-mock-pipe-client">{p.client}</div>
+                    <div className="bento-mock-pipe-amt">{p.amount}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bento-cell scroll-reveal">
+              <div className="bento-label"><Calendar size={18} /><span>Public Booking</span></div>
+              <p className="bento-desc">Inquiry form on your subdomain. Auto-routes to your CRM with a guest client account.</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal delay-1">
+              <div className="bento-label"><MessageCircle size={18} /><span>WhatsApp Alerts</span></div>
+              <p className="bento-desc">Ping guests on WhatsApp when more photos of them land mid-shoot. (Studio &amp; above.)</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal">
+              <div className="bento-label"><Globe size={18} /><span>Branded Subdomain</span></div>
+              <p className="bento-desc"><code>photos.yourstudio.com</code>. Your logo, your color, your watermark, your PWA.</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal delay-1">
+              <div className="bento-label"><ShieldCheck size={18} /><span>Consent-first Privacy</span></div>
+              <p className="bento-desc">Per-event consent prompts, per-guest audit log, 90-day soft-close, vectors never leave the event scope.</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal">
+              <div className="bento-label"><Smartphone size={18} /><span>Guest Upload</span></div>
+              <p className="bento-desc">Separate upload QR. Photos land in approval queue. Optional per-event window.</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal delay-1">
+              <div className="bento-label"><Cpu size={18} /><span>Photo Tools</span></div>
+              <p className="bento-desc">SHA-256 dedupe, dHash near-dup clusters, sharpness, EXIF, 0–5 star rating, color tag. (Studio &amp; above.)</p>
+            </div>
+
+            <div className="bento-cell scroll-reveal">
+              <div className="bento-label"><Receipt size={18} /><span>GST Invoicing</span></div>
+              <p className="bento-desc">Atomic document numbering, atomic counter, branded PDF receipts. Quotation → Bill → Receipt.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          3. THE PARADIGM SHIFT: THE OLD WAY VS PANDASPOT
-          =================================================================== */}
+      {/* ============== WORKFLOW (4 steps, sticky) ============== */}
+      <section id="workflow" className="landing-section workflow-section">
+        <div className="landing-container">
+          <div className="landing-section-header scroll-reveal">
+            <div className="landing-tag">Camera to client. Four scenes.</div>
+            <h2 className="landing-section-title">From shutter to settlement.</h2>
+            <p className="landing-section-desc">Same backend, same dashboard, same brand. No exporting between five tools.</p>
+          </div>
+
+          <div className="scene-grid">
+            <div className="scene-card scroll-reveal">
+              <div className="scene-num">SCENE 01</div>
+              <div className="scene-icon"><Camera size={20} /></div>
+              <h3 className="scene-title">Shoot &amp; live ingest</h3>
+              <p className="scene-desc">Bulk upload, chunked resumable for big files, Drive folder import, or just point your camera at PandaSpot via PandaShoots FTP — every shutter press becomes a thumbnail, a face vector, and a TV-wall tile.</p>
+              <ul className="scene-meta">
+                <li><CheckCircle2 size={13} /> Direct upload (multi-file, async SSE progress)</li>
+                <li><CheckCircle2 size={13} /> Resumable chunked for very large files</li>
+                <li><CheckCircle2 size={13} /> Public Google Drive folder import</li>
+                <li><CheckCircle2 size={13} /> PandaShoots live FTP camera</li>
+              </ul>
+            </div>
+
+            <div className="scene-card scroll-reveal delay-1">
+              <div className="scene-num">SCENE 02</div>
+              <div className="scene-icon"><Cpu size={20} /></div>
+              <h3 className="scene-title">Index, dedupe, rate</h3>
+              <p className="scene-desc">Background queues process every photo: RetinaFace detects faces, ArcFace embeds 512-D vectors into pgvector, sha256 + dHash catch duplicates, EXIF and sharpness are scored. Studio picks highlights for the TV wall.</p>
+              <ul className="scene-meta">
+                <li><CheckCircle2 size={13} /> 512-D pgvector index, HNSW cosine</li>
+                <li><CheckCircle2 size={13} /> SHA-256 exact-duplicate detection</li>
+                <li><CheckCircle2 size={13} /> dHash near-duplicate clusters</li>
+                <li><CheckCircle2 size={13} /> EXIF, sharpness, 0–5 star rating</li>
+              </ul>
+            </div>
+
+            <div className="scene-card scroll-reveal delay-2">
+              <div className="scene-num">SCENE 03</div>
+              <div className="scene-icon"><Sparkles size={20} /></div>
+              <h3 className="scene-title">Guests discover &amp; share</h3>
+              <p className="scene-desc">Guests scan a QR, take a selfie, and get every photo they're in within 200 ms. Watermarked share copy or in-browser zip download. WhatsApp alerts when more shots of them land mid-shoot.</p>
+              <ul className="scene-meta">
+                <li><CheckCircle2 size={13} /> Sub-200 ms vector match</li>
+                <li><CheckCircle2 size={13} /> Watermarked share (canvas, native share sheet)</li>
+                <li><CheckCircle2 size={13} /> In-browser + email zip download</li>
+                <li><CheckCircle2 size={13} /> WhatsApp match alerts</li>
+              </ul>
+            </div>
+
+            <div className="scene-card scroll-reveal delay-3">
+              <div className="scene-num">SCENE 04</div>
+              <div className="scene-icon"><Receipt size={20} /></div>
+              <h3 className="scene-title">Client signs, you get paid</h3>
+              <p className="scene-desc">Primary client picks favourites within quota, leaves pinned comments on album spreads, approves the print PDF. Quotation → Bill → Receipt with GST, atomic numbering, branded PDFs. All in the same dashboard.</p>
+              <ul className="scene-meta">
+                <li><CheckCircle2 size={13} /> Photo Selection (favourites + caps + lock)</li>
+                <li><CheckCircle2 size={13} /> Album proofing with pinned review comments</li>
+                <li><CheckCircle2 size={13} /> Contracts with e-signature</li>
+                <li><CheckCircle2 size={13} /> GST quotation → bill → receipt PDFs</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============== CAPABILITY STRIP (auto-rotating marquee) ============== */}
+      <div className="capability-strip" aria-hidden="true">
+        <div className="capability-track">
+          {Array.from({ length: 4 }).flatMap((_, k) => CAPABILITY_STRIP.map((c, i) => (
+            <span key={`${k}-${i}`} className="capability-item">
+              <span className="capability-dot" /> {c}
+            </span>
+          )))}
+        </div>
+      </div>
+
+      {/* ============== PRICING (4 tiers, animated) ============== */}
+      <section id="pricing" className="landing-section pricing-section">
+        <div className="landing-container">
+          <div className="landing-section-header scroll-reveal">
+            <div className="landing-tag">Pricing · in line with ShootProof &amp; Pixieset</div>
+            <h2 className="landing-section-title">Four plans. Honest limits. No commission on sales.</h2>
+            <p className="landing-section-desc">Free today, with a real upgrade path when you need it. India-friendly INR pricing; international billed in USD.</p>
+            <div className="pricing-toggle scroll-reveal">
+              <button type="button" className={annual ? 'is-active' : ''} onClick={() => setAnnual(true)}>Annual <span>(save 20%)</span></button>
+              <button type="button" className={!annual ? 'is-active' : ''} onClick={() => setAnnual(false)}>Monthly</button>
+            </div>
+          </div>
+
+          <div className="pricing-grid">
+            {PRICING.map((plan, idx) => {
+              const displayPrice = plan.price == null ? 'Custom' : (annual && plan.price ? `₹${Math.round(plan.price * 0.8 * 12).toLocaleString('en-IN')}` : `₹${plan.price.toLocaleString('en-IN')}`)
+              const displayUnit = plan.price == null ? '' : (annual ? '/yr' : plan.unit)
+              return (
+                <div
+                  key={plan.id}
+                  className={`pricing-card ${plan.badge ? 'is-featured' : ''} ${plan.soon ? 'is-soon' : ''} scroll-reveal delay-${idx + 1}`}
+                >
+                  {plan.badge && <div className="pricing-badge">{plan.badge}</div>}
+                  {plan.soon && <div className="pricing-eta">{plan.eta}</div>}
+
+                  <div className="pricing-head">
+                    <h3 className="pricing-name">{plan.name}</h3>
+                    <p className="pricing-tagline">{plan.tagline}</p>
+                  </div>
+
+                  <div className="pricing-price">
+                    <span className="pricing-amount">{displayPrice}</span>
+                    <span className="pricing-unit">{displayUnit}</span>
+                  </div>
+
+                  <a href={plan.ctaHref} className={`pricing-cta ${plan.badge ? 'is-primary' : ''} ${plan.soon ? 'is-disabled' : ''}`}>
+                    {plan.cta}
+                    {plan.soon ? <Clock size={14} /> : <ArrowRight size={14} />}
+                  </a>
+
+                  <ul className="pricing-features">
+                    {plan.features.map(([text, on], i) => (
+                      <li key={i} className={on ? 'is-on' : 'is-off'} style={{ '--d': `${i * 35}ms` }}>
+                        {on ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="pricing-foot scroll-reveal">
+            <p>All plans include unlimited client galleries, real-time photo search, custom watermark, email support, and the same AI engine. Plans differ in storage, retention, and business features — not in core delivery quality.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ============== AUDIENCE STRIPS ============== */}
       <section className="landing-section">
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag">The Studio Transformation</div>
-            <h2 className="landing-section-title">
-              Shooting is art. Delivery used to be a logistical nightmare.
-            </h2>
-            <p className="landing-section-desc">
-              A single wedding or corporate conference produces 3,000+ raw captures. Generic cloud storage creates frustration for guests and buries your studio in repetitive WhatsApp messages.
-            </p>
-          </div>
-
-          <div className="comparison-container scroll-reveal">
-            {/* The Old Way */}
-            <div className="comp-card comp-card-old">
-              <div className="comp-header">
-                <span className="comp-tag comp-tag-old">The Legacy Chaos</span>
-                <XCircle size={22} className="comp-icon-bad" />
-              </div>
-              <h3 className="comp-title">Chaotic Folders & Lost Referrals</h3>
-              <div className="comp-subtitle">Friction for guests, zero brand retention for your studio</div>
-              <ul className="comp-list">
-                <li className="comp-item">
-                  <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>The 3,000-Photo Dump:</strong> Guests scroll through thousands of strangers' photos trying to spot themselves.</span>
-                </li>
-                <li className="comp-item">
-                  <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>WhatsApp Screenshot Chaos:</strong> Clients text messy phone screenshots with numbers to pick album spreads.</span>
-                </li>
-                <li className="comp-item">
-                  <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>Generic Storage Links:</strong> Google Drive or Dropbox interface surfaces third-party branding instead of your studio.</span>
-                </li>
-                <li className="comp-item">
-                  <XCircle size={18} className="comp-icon-bad" />
-                  <span><strong>Fragmented Tool Sprawl:</strong> Contracts in DocuSign, invoices in Excel, galleries in Drive, and chats on WhatsApp.</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* The PandaSpot Way */}
-            <div className="comp-card comp-card-new">
-              <div className="comp-header">
-                <span className="comp-tag comp-tag-new">The PandaSpot OS</span>
-                <CheckCircle2 size={22} className="comp-icon-good" />
-              </div>
-              <h3 className="comp-title">AI Discovery & Unified Studio SaaS</h3>
-              <div className="comp-subtitle">Instant gratification for attendees, total efficiency for studios</div>
-              <ul className="comp-list">
-                <li className="comp-item">
-                  <CheckCircle2 size={18} className="comp-icon-good" />
-                  <span><strong>Instant Selfie Discovery:</strong> Guests scan a table QR card, take a selfie, and see all their photos in 0.2s.</span>
-                </li>
-                <li className="comp-item">
-                  <CheckCircle2 size={18} className="comp-icon-good" />
-                  <span><strong>Structured Client Proofing:</strong> Clients lock 50-photo quotas, add pinned album spread comments, and export to Lightroom.</span>
-                </li>
-                <li className="comp-item">
-                  <CheckCircle2 size={18} className="comp-icon-good" />
-                  <span><strong>PandaShoots™ Live TV Wall:</strong> Push camera captures straight to the venue projector wall during the reception.</span>
-                </li>
-                <li className="comp-item">
-                  <CheckCircle2 size={18} className="comp-icon-good" />
-                  <span><strong>All-in-One Studio Business Hub:</strong> Manage client inquiries, e-contracts, questionnaires, and GST invoicing in one place.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          4. SIX CORE ARCHITECTURAL PILLARS
-          =================================================================== */}
-      <section id="ai-search" className="landing-section" style={{ background: 'rgba(8, 12, 20, 0.5)' }}>
-        <div className="landing-container">
-          <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag cyan">Engine Architecture</div>
-            <h2 className="landing-section-title">
-              Engineered for high-volume studios, agency teams, and live events.
-            </h2>
-            <p className="landing-section-desc">
-              Every feature is built for high speed, absolute privacy, and luxury brand authority.
-            </p>
-          </div>
-
-          <div className="pillars-grid">
-            {/* Pillar 1 */}
-            <div className="pillar-card scroll-reveal">
-              <div>
-                <div className="pillar-icon-wrap">
-                  <ScanFace size={24} />
-                </div>
-                <h3 className="pillar-title">512-D ArcFace Neural Search</h3>
-                <p className="pillar-desc">
-                  RetinaFace locates faces across high-resolution photos and calculates unit-normalized 512-dimension mathematical embeddings. PostgreSQL pgvector runs sub-second HNSW cosine distance queries.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Multi-selfie averaging for high accuracy</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Handles sunglasses, profile angles & low light</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Pillar 2 */}
-            <div id="live-shoots" className="pillar-card scroll-reveal delay-1">
-              <div>
-                <div className="pillar-icon-wrap cyan">
-                  <Tv size={24} />
-                </div>
-                <h3 className="pillar-title">PandaShoots™ Live TV Wall</h3>
-                <p className="pillar-desc">
-                  Tether your Canon, Nikon, or Sony camera directly to the cloud. New shots stream into the gallery and broadcast directly to the venue TV wall or projector so the crowd sees itself in real-time.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Real-time Server-Sent Events (SSE) stream</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Table tent QR cards for instant guest access</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Pillar 3 */}
-            <div id="client-proofing" className="pillar-card scroll-reveal delay-2">
-              <div>
-                <div className="pillar-icon-wrap emerald">
-                  <Heart size={24} />
-                </div>
-                <h3 className="pillar-title">Client Proofing & Album Spreads</h3>
-                <p className="pillar-desc">
-                  Provide VIP clients with a dedicated private selection portal. Set exact selection caps (e.g. 50 photos), gather pinned review comments on album spreads, and export selections straight to Lightroom XMP.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Strict selection locks & submission deadlines</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>One-click high-res ZIP export</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Pillar 4 */}
-            <div id="studio-suite" className="pillar-card scroll-reveal">
-              <div>
-                <div className="pillar-icon-wrap">
-                  <FileText size={24} />
-                </div>
-                <h3 className="pillar-title">Studio CRM, Contracts & Invoices</h3>
-                <p className="pillar-desc">
-                  A complete business hub built for photography businesses. Track inquiries through your pipeline, issue digital contracts with e-signatures, capture event questionnaires, and generate automated GST invoices.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Legally compliant digital contract e-signatures</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Shoot calendar & expense tracking</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Pillar 5 */}
-            <div className="pillar-card scroll-reveal delay-1">
-              <div>
-                <div className="pillar-icon-wrap cyan">
-                  <Award size={24} />
-                </div>
-                <h3 className="pillar-title">100% White-Label Studio Branding</h3>
-                <p className="pillar-desc">
-                  Your clients and guests never see PandaSpot. Host on your own studio subdomain, display your custom studio logo, enforce custom watermarks, and choose from curated luxury gallery themes.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Midnight Luxe, Minimalist Ivory & Editorial Dark</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Dynamic watermark protection engine</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Pillar 6 */}
-            <div id="security" className="pillar-card scroll-reveal delay-2">
-              <div>
-                <div className="pillar-icon-wrap emerald">
-                  <ShieldCheck size={24} />
-                </div>
-                <h3 className="pillar-title">Event-Scoped Biometric Privacy</h3>
-                <p className="pillar-desc">
-                  Biometric vectors are strictly isolated to each individual event. Queries never search across unrelated galleries, guests require no account registration, and galleries automatically soft-close after 90 days.
-                </p>
-              </div>
-              <ul className="pillar-meta-list">
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Zero cross-event tracking or biometric sale</span>
-                </li>
-                <li className="pillar-meta-item">
-                  <CheckCircle2 size={14} />
-                  <span>Enterprise role-based collaborator access</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          5. END-TO-END WORKFLOW (CAMERA TO CLIENT IN 4 STEPS)
-          =================================================================== */}
-      <section className="landing-section workflow-section">
-        <div className="landing-container">
-          <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag">Execution Timeline</div>
-            <h2 className="landing-section-title">
-              From camera shutter to client delivery in four effortless steps.
-            </h2>
-            <p className="landing-section-desc">
-              Automate the repetitive busywork and deliver an unforgettable client experience.
-            </p>
-          </div>
-
-          <div className="workflow-grid">
-            <div className="workflow-card scroll-reveal">
-              <div className="workflow-step-num">
-                <span>STEP 01</span>
-                <Camera size={16} />
-              </div>
-              <h3 className="workflow-step-title">Shoot & Live Ingest</h3>
-              <p className="workflow-step-desc">
-                Bulk upload full-res photos or connect your camera via PandaShoots live tether. High-speed workers generate optimized thumbnails automatically.
-              </p>
-            </div>
-
-            <div className="workflow-card scroll-reveal delay-1">
-              <div className="workflow-step-num">
-                <span>STEP 02</span>
-                <Cpu size={16} />
-              </div>
-              <h3 className="workflow-step-title">Neural Vector Indexing</h3>
-              <p className="workflow-step-desc">
-                The ArcFace engine processes faces in background queues, computing 512-dimension vector embeddings indexed with pgvector for instant lookup.
-              </p>
-            </div>
-
-            <div className="workflow-card scroll-reveal delay-2">
-              <div className="workflow-step-num">
-                <span>STEP 03</span>
-                <ScanFace size={16} />
-              </div>
-              <h3 className="workflow-step-title">Guest Self-Service</h3>
-              <p className="workflow-step-desc">
-                Guests scan table QR cards, snap a quick selfie on their phone, and instantly receive high-resolution downloads without searching through thousands of images.
-              </p>
-            </div>
-
-            <div className="workflow-card scroll-reveal delay-3">
-              <div className="workflow-step-num">
-                <span>STEP 04</span>
-                <Award size={16} />
-              </div>
-              <h3 className="workflow-step-title">Client Proofing & Payoff</h3>
-              <p className="workflow-step-desc">
-                Your primary client selects album favorites within their quota, leaves spread feedback, and signs off on digital contracts while you get paid.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          6. AUDIENCE SOLUTIONS MATRIX
-          =================================================================== */}
-      <section className="landing-section">
-        <div className="landing-container">
-          <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag">Tailored Solutions</div>
-            <h2 className="landing-section-title">
-              Built for every tier of the professional event ecosystem.
-            </h2>
-            <p className="landing-section-desc">
-              Whether you are a solo luxury wedding photographer or an enterprise conference producer.
-            </p>
+            <div className="landing-tag">Who it's for</div>
+            <h2 className="landing-section-title">Different teams. Same platform.</h2>
           </div>
 
           <div className="audience-grid">
-            <div className="aud-card scroll-reveal">
-              <div>
-                <div className="aud-header">
-                  <div className="pillar-icon-wrap" style={{ marginBottom: 0 }}>
-                    <Camera size={22} />
-                  </div>
-                  <h3 className="aud-title">Wedding & Portrait Studios</h3>
-                </div>
-                <p className="aud-desc">
-                  Eliminate post-wedding guest photo queries. Elevate your brand with custom subdomains, luxury themes, album proofing locks, and automated client billing.
-                </p>
+            <div className="audience-card scroll-reveal">
+              <div className="audience-head">
+                <Camera size={22} />
+                <h3>Wedding &amp; portrait studios</h3>
               </div>
-              <Link to="/for-photographers" className="aud-link">
-                <span>Explore Studio Workflows</span>
-                <ArrowRight size={14} />
-              </Link>
+              <p>Selfie discovery replaces the post-wedding "where are my photos?" WhatsApp flood. Branded subdomain, album proofing, GST invoicing, contracts. The wedding album finally closes the loop in one tool.</p>
+              <ul>
+                <li><CheckCircle2 size={13} /> Sub-200 ms ArcFace search</li>
+                <li><CheckCircle2 size={13} /> Album proofing with PDF export</li>
+                <li><CheckCircle2 size={13} /> Studio CRM + e-signature</li>
+                <li><CheckCircle2 size={13} /> Your own subdomain &amp; brand</li>
+              </ul>
             </div>
 
-            <div className="aud-card scroll-reveal delay-1">
-              <div>
-                <div className="aud-header">
-                  <div className="pillar-icon-wrap cyan" style={{ marginBottom: 0 }}>
-                    <Building size={22} />
-                  </div>
-                  <h3 className="aud-title">Conferences, Summits & Galas</h3>
-                </div>
-                <p className="aud-desc">
-                  Deliver branded sponsor galleries for 5,000+ attendees. Stream live stage photos to projection screens and capture attendee contact leads with permission.
-                </p>
+            <div className="audience-card scroll-reveal delay-1">
+              <div className="audience-head">
+                <Building size={22} />
+                <h3>Conferences, summits &amp; galas</h3>
               </div>
-              <Link to="/for-event-teams" className="aud-link">
-                <span>Explore Organizer Workflows</span>
-                <ArrowRight size={14} />
-              </Link>
+              <p>PandaShoots pushes every stage shot to venue LED walls in real time. Lead capture turns attendees into qualified contacts. WhatsApp alerts keep them coming back when more shots are uploaded.</p>
+              <ul>
+                <li><CheckCircle2 size={13} /> Live TV wall (Sony / Canon / Nikon FTP)</li>
+                <li><CheckCircle2 size={13} /> Lead capture with consent</li>
+                <li><CheckCircle2 size={13} /> 5,000+ attendee scale</li>
+                <li><CheckCircle2 size={13} /> Sponsor logo overlay</li>
+              </ul>
             </div>
 
-            <div className="aud-card scroll-reveal delay-2">
-              <div>
-                <div className="aud-header">
-                  <div className="pillar-icon-wrap emerald" style={{ marginBottom: 0 }}>
-                    <Users size={22} />
-                  </div>
-                  <h3 className="aud-title">Guests & VIP Attendees</h3>
-                </div>
-                <p className="aud-desc">
-                  No app download. No passwords. No hunting. Scan the QR code, take a selfie, and save your memories in full print-ready resolution instantly.
-                </p>
+            <div className="audience-card scroll-reveal delay-2">
+              <div className="audience-head">
+                <Users size={22} />
+                <h3>Guests &amp; VIP attendees</h3>
               </div>
-              <button
-                type="button"
-                className="aud-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                onClick={openEarlyAccess}
-              >
-                <span>Try Guest Live Demo</span>
-                <ArrowRight size={14} />
-              </button>
+              <p>No app, no signup, no password. Scan the QR, take a selfie, save your memories. Share watermarked copies that link back to the event for the next attendee.</p>
+              <ul>
+                <li><CheckCircle2 size={13} /> 0 apps required</li>
+                <li><CheckCircle2 size={13} /> Works in any modern browser</li>
+                <li><CheckCircle2 size={13} /> Native share sheet + download</li>
+                <li><CheckCircle2 size={13} /> Optional WhatsApp "more photos of me" alert</li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          7. SECURITY & BIOMETRIC STEWARDSHIP
-          =================================================================== */}
-      <section className="landing-section" style={{ paddingTop: 0 }}>
+      {/* ============== TRUST RIBBON ============== */}
+      <section className="trust-section">
         <div className="landing-container">
-          <div className="security-banner scroll-reveal">
-            <div className="sec-grid">
-              <div>
-                <span style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#38bdf8', display: 'block', marginBottom: 12 }}>
-                  Privacy & Data Governance
-                </span>
-                <h3 style={{ fontFamily: 'var(--p-font-heading)', fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 14px', lineHeight: 1.25 }}>
-                  Event-Scoped Biometrics. Ethical Privacy by Architecture.
-                </h3>
-                <p style={{ fontSize: 14, color: 'var(--p-text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
-                  We believe guest discovery must be transparent, bounded, and private. Face vectors never cross event boundaries, are never used for third-party AI training, and are automatically archived.
-                </p>
-                <Link to="/privacy" className="landing-btn-hero-secondary" style={{ fontSize: 13, padding: '9px 18px' }}>
-                  <span>Read Plain-Language Policy</span>
-                  <ArrowRight size={14} />
-                </Link>
+          <div className="trust-grid scroll-reveal">
+            <div className="trust-block">
+              <div className="trust-block-title">Tested with the cameras that matter</div>
+              <div className="trust-chip-row">
+                {TRUST_DEVICES.map((d) => (
+                  <span className="trust-chip" key={d}>{d}</span>
+                ))}
               </div>
-
-              <div className="sec-features-grid">
-                <div className="sec-feature-box">
-                  <div className="sec-feature-title">
-                    <ShieldCheck size={16} />
-                    <span>Strict Event Boundary</span>
-                  </div>
-                  <p className="sec-feature-desc">
-                    Biometric embeddings are scoped exclusively to a single event and cannot be queried globally.
-                  </p>
-                </div>
-
-                <div className="sec-feature-box">
-                  <div className="sec-feature-title">
-                    <Lock size={16} />
-                    <span>No Guest Accounts</span>
-                  </div>
-                  <p className="sec-feature-desc">
-                    Attendees access photos through temporary tokens without creating accounts or sharing phone numbers.
-                  </p>
-                </div>
-
-                <div className="sec-feature-box">
-                  <div className="sec-feature-title">
-                    <Clock size={16} />
-                    <span>90-Day Soft Close</span>
-                  </div>
-                  <p className="sec-feature-desc">
-                    Public search endpoints close automatically after 90 days, while the studio retains complete master control.
-                  </p>
-                </div>
-
-                <div className="sec-feature-box">
-                  <div className="sec-feature-title">
-                    <CheckCircle2 size={16} />
-                    <span>Zero Synthetic Claims</span>
-                  </div>
-                  <p className="sec-feature-desc">
-                    All metrics and infrastructure benchmarks are verified against live PostgreSQL + pgvector tests.
-                  </p>
-                </div>
+            </div>
+            <div className="trust-block">
+              <div className="trust-block-title">Plays nicely with</div>
+              <div className="trust-chip-row">
+                {TRUST_INTEGRATIONS.map((d) => (
+                  <span className="trust-chip alt" key={d}>{d}</span>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          8. FREQUENTLY ASKED QUESTIONS (BUTTER-SMOOTH ACCORDION)
-          =================================================================== */}
-      <section className="landing-section" style={{ background: 'rgba(8, 12, 20, 0.4)' }}>
+      {/* ============== FAQ ============== */}
+      <section id="faq" className="landing-section faq-section">
         <div className="landing-container">
           <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag">Knowledge Base</div>
-            <h2 className="landing-section-title">
-              Frequently Asked Questions
-            </h2>
-            <p className="landing-section-desc">
-              Everything you need to know about PandaSpot's architecture, AI search, and studio tools.
-            </p>
+            <div className="landing-tag">Frequently asked, frequently updated</div>
+            <h2 className="landing-section-title">The questions photographers actually ask.</h2>
+            <p className="landing-section-desc">Not legal boilerplate. Real answers, written by the people who built it.</p>
           </div>
 
-          <div className="landing-faq-list scroll-reveal">
-            {[
-              {
-                q: 'Do guests need to download an application to find their photos?',
-                a: 'No. Guests simply point their smartphone camera at a table QR tent card or click an event link. The lightweight web application opens instantly in their browser, allows them to snap 1–3 quick selfies, and returns matching photos in under 0.2 seconds.'
-              },
-              {
-                q: 'How does the AI face search handle challenging lighting, sunglasses, or group shots?',
-                a: 'PandaSpot uses RetinaFace for multi-scale face detection paired with ArcFace 512-dimension mathematical embeddings. It detects dozens of distinct faces even in wide banquet shots, while multi-selfie cosine averaging compensates for angles, hats, and varied lighting.'
-              },
-              {
-                q: 'How does PandaShoots™ live tethering work during a live event?',
-                a: 'You can tether your camera (Sony, Canon, Nikon) to our ingestion utility or upload in batches from your laptop. As new photos arrive, thumbnail workers process them and push live updates via Server-Sent Events (SSE) to the guest gallery and venue TV wall.'
-              },
-              {
-                q: 'Can I white-label the galleries with my own studio domain and logo?',
-                a: 'Yes. Every studio tier includes full white-label capabilities. You can host galleries on your custom subdomain (e.g. photos.yourstudio.com), display your studio mark and brand colors, watermark photos, and disable all PandaSpot branding.'
-              },
-              {
-                q: 'How does client album proofing and selection work?',
-                a: 'You can invite the event owner (e.g. bride, groom, corporate client) to a private proofing view. You can set selection caps (e.g. pick exactly 60 favorites), allow pinned comments on album spreads, and download selection lists as Lightroom XMP filenames or a zipped folder.'
-              },
-              {
-                q: 'Is guest facial biometric data stored permanently or sold?',
-                a: 'Never. Guest facial embeddings are strictly isolated to the specific event and are never shared across events or sold to third-party AI companies. Guest public search automatically archives after 90 days.'
-              }
-            ].map((faq, idx) => (
-              <div key={faq.q} className="landing-faq-item">
-                <button
-                  type="button"
-                  className="landing-faq-trigger"
-                  onClick={() => toggleFaq(idx)}
-                  aria-expanded={activeFaq === idx}
-                >
-                  <span>{faq.q}</span>
+          <div className="faq-list scroll-reveal">
+            {FAQS.map((f, i) => (
+              <div key={i} className={`faq-item ${activeFaq === i ? 'is-open' : ''}`}>
+                <button type="button" className="faq-trigger" onClick={() => setActiveFaq((p) => (p === i ? null : i))} aria-expanded={activeFaq === i}>
+                  <span>{f.q}</span>
                   <ChevronDown size={18} />
                 </button>
-                {activeFaq === idx && (
-                  <div className="landing-faq-content">
-                    {faq.a}
-                  </div>
-                )}
+                <div className="faq-body" style={{ maxHeight: activeFaq === i ? 400 : 0 }}>
+                  <p>{f.a}</p>
+                </div>
               </div>
             ))}
           </div>
-
-          <div style={{ textAlign: 'center', marginTop: 36 }}>
-            <Link to="/faq" className="landing-btn-hero-secondary" style={{ fontSize: 13.5, padding: '10px 22px' }}>
-              <span>View Full FAQ Documentation</span>
-              <ArrowRight size={14} />
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          9. PRIVATE PREVIEW & EARLY ACCESS INLINE FORM
-          =================================================================== */}
-      <section id="early-access" className="landing-section">
-        <div className="landing-container">
-          <div className="landing-section-header scroll-reveal">
-            <div className="landing-tag cyan">Private Preview</div>
-            <h2 className="landing-section-title">
-              Elevate your next event into an unforgettable delivery experience.
-            </h2>
-            <p className="landing-section-desc">
-              Join leading wedding studios, event agencies, and festival organizers deploying PandaSpot.
-            </p>
-          </div>
-
-          <div className="final-cta-box scroll-reveal">
-            {inlineSubmitted ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  background: 'rgba(16,185,129,0.15)',
-                  border: '1px solid rgba(16,185,129,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  color: '#10b981'
-                }}>
-                  <CheckCircle2 size={28} />
-                </div>
-                <h3 style={{ fontFamily: 'var(--p-font-heading)', fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>
-                  Thank you! Your inquiry is received.
-                </h3>
-                <p style={{ color: 'var(--p-text-secondary)', fontSize: 14.5, maxWidth: 500, margin: '0 auto 20px' }}>
-                  Our team will reach out with your studio onboarding credentials and guided demo access within 24 hours.
-                </p>
-                <button
-                  type="button"
-                  className="landing-btn-hero-secondary"
-                  onClick={() => setInlineSubmitted(false)}
-                >
-                  Submit Another Inquiry
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleInlineSubmit} style={{ maxWidth: 640, margin: '0 auto', textAlign: 'left' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
-                      Full Name *
-                    </label>
-                    <input
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: 8,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#fff',
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      placeholder="Devin Vance"
-                      value={inlineForm.name}
-                      onChange={(e) => setInlineForm({ ...inlineForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
-                      Work Email *
-                    </label>
-                    <input
-                      required
-                      type="email"
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: 8,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#fff',
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      placeholder="devin@aurorastudio.com"
-                      value={inlineForm.email}
-                      onChange={(e) => setInlineForm({ ...inlineForm, email: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
-                      Studio / Company Name
-                    </label>
-                    <input
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: 8,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#fff',
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      placeholder="Aurora Media Group"
-                      value={inlineForm.company}
-                      onChange={(e) => setInlineForm({ ...inlineForm, company: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
-                      Role
-                    </label>
-                    <select
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: 8,
-                        background: '#131b2e',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#fff',
-                        fontSize: 14,
-                        outline: 'none'
-                      }}
-                      value={inlineForm.role}
-                      onChange={(e) => setInlineForm({ ...inlineForm, role: e.target.value })}
-                    >
-                      <option value="photographer">Lead Photographer</option>
-                      <option value="studio_owner">Studio Owner</option>
-                      <option value="event_producer">Event Producer / Agency</option>
-                      <option value="venue">Venue Coordinator</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--p-text-secondary)', marginBottom: 6 }}>
-                    Expected Event Volume / Details
-                  </label>
-                  <textarea
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      borderRadius: 8,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      color: '#fff',
-                      fontSize: 14,
-                      outline: 'none',
-                      resize: 'none'
-                    }}
-                    placeholder="Tell us about your upcoming shoots, volume of photos, or live TV wall requirements..."
-                    value={inlineForm.message}
-                    onChange={(e) => setInlineForm({ ...inlineForm, message: e.target.value })}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="landing-btn-hero-primary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  disabled={submitting}
-                >
-                  <span>{submitting ? 'Submitting Request…' : 'Request Early Access / Book Demo'}</span>
-                  <ArrowRight size={16} />
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          10. FINAL DARK ENTERPRISE CALL TO ACTION
-          =================================================================== */}
+      {/* ============== FINAL CTA ============== */}
       <section className="landing-final-cta">
         <div className="landing-container">
-          <div className="scroll-reveal">
-            <h2 className="final-cta-title">
-              Ready to transform your studio into an enterprise photo delivery engine?
-            </h2>
-            <p className="final-cta-desc">
-              Deliver instant AI face discovery to guests, stream live camera shots to venue screens, and manage client proofing and invoicing in one platform.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="landing-btn-hero-primary"
-                onClick={openEarlyAccess}
-              >
-                <span>Start 14-Day Free Trial</span>
-                <ArrowRight size={17} />
-              </button>
-              <Link to="/login" className="landing-btn-hero-secondary">
-                <span>Sign In to Studio Dashboard</span>
-              </Link>
-            </div>
+          <h2 className="final-cta-title scroll-reveal">One dashboard. <span className="gradient-cyan">From shutter to settlement.</span></h2>
+          <p className="final-cta-desc scroll-reveal delay-1">15 free events. No credit card. Your own subdomain the moment you sign up. Migrate existing galleries from Drive in one click.</p>
+          <div className="final-cta-actions scroll-reveal delay-2">
+            <button type="button" className="landing-btn-hero-primary" onClick={() => setModalOpen(true)}>
+              <span>Start Free</span>
+              <ArrowRight size={17} />
+            </button>
+            <Link to="/login" className="landing-btn-hero-secondary">
+              <span>Sign In</span>
+            </Link>
+          </div>
+          <div className="final-cta-meta scroll-reveal delay-3">
+            <span><Lock size={12} /> Event-scoped vectors</span>
+            <span><ShieldCheck size={12} /> GDPR-first</span>
+            <span><Star size={12} /> Migrate from any gallery</span>
           </div>
         </div>
       </section>
 
-      {/* ===================================================================
-          11. FOOTER
-          =================================================================== */}
+      {/* ============== FOOTER ============== */}
       <footer className="landing-footer">
         <div className="landing-container">
           <div className="footer-top-grid">
             <div className="footer-brand-col">
               <Link to="/" className="landing-brand">
-                <div className="landing-brand-logo">
-                  <Camera size={18} strokeWidth={2.4} />
-                </div>
-                <div className="landing-brand-name">
-                  <span>PandaSpot</span>
-                </div>
+                <div className="landing-brand-logo"><Camera size={18} strokeWidth={2.4} /></div>
+                <div className="landing-brand-name"><span>PandaSpot</span></div>
               </Link>
-              <p>
-                The unified delivery and business operating system for professional event photographers, studios, and agencies.
-              </p>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span className="landing-brand-badge">Enterprise Edition</span>
-                <span style={{ fontSize: 12, color: 'var(--p-text-muted)' }}>v2.4.0 Live</span>
-              </div>
+              <p>The unified delivery platform for professional event photographers. Camera-to-cloud ingest, AI face search, TV wall, client proofing, album review, and a real Studio CRM — under your brand.</p>
             </div>
-
             <div>
-              <div className="footer-col-title">Platform</div>
+              <div className="footer-col-title">Product</div>
               <ul className="footer-links">
-                <li><a href="#ai-search">AI Face Search</a></li>
-                <li><a href="#live-shoots">Live TV Wall</a></li>
-                <li><a href="#client-proofing">Client Proofing</a></li>
-                <li><a href="#studio-suite">Studio CRM & Invoices</a></li>
-                <li><Link to="/product">System Architecture</Link></li>
+                <li><a href="#wall">Live TV Wall</a></li>
+                <li><a href="#features">All features</a></li>
+                <li><a href="#workflow">Workflow</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><Link to="/features">Feature matrix</Link></li>
               </ul>
             </div>
-
             <div>
-              <div className="footer-col-title">Solutions</div>
+              <div className="footer-col-title">For</div>
               <ul className="footer-links">
-                <li><Link to="/for-photographers">For Photographers</Link></li>
-                <li><Link to="/for-event-teams">For Event Teams</Link></li>
-                <li><a href="#interactive-tour">Live Interactive Tour</a></li>
-                <li><Link to="/features">Feature Matrix</Link></li>
+                <li><Link to="/for-photographers">Wedding studios</Link></li>
+                <li><Link to="/for-event-teams">Event teams</Link></li>
+                <li><Link to="/product">Architecture</Link></li>
               </ul>
             </div>
-
             <div>
-              <div className="footer-col-title">Security & Trust</div>
+              <div className="footer-col-title">Company</div>
               <ul className="footer-links">
-                <li><Link to="/privacy">Privacy Policy</Link></li>
-                <li><a href="#security">Biometric Isolation</a></li>
-                <li><Link to="/faq">Compliance & FAQ</Link></li>
-                <li><Link to="/contact">Support & SLA</Link></li>
+                <li><Link to="/about">About</Link></li>
+                <li><Link to="/contact">Contact</Link></li>
+                <li><Link to="/faq">FAQ</Link></li>
+                <li><Link to="/privacy">Privacy</Link></li>
               </ul>
             </div>
-
             <div>
               <div className="footer-col-title">Account</div>
               <ul className="footer-links">
                 <li><Link to="/login">Sign In</Link></li>
-                <li><Link to="/register">Create Studio Account</Link></li>
-                <li><a href="#early-access">Request Demo</a></li>
-                <li><Link to="/about">About PandaSpot</Link></li>
+                <li><Link to="/register">Get Started</Link></li>
+                <li><button type="button" className="footer-link-btn" onClick={() => setModalOpen(true)}>Request demo</button></li>
               </ul>
             </div>
           </div>
-
           <div className="footer-bottom">
-            <div>
-              © {new Date().getFullYear()} PandaSpot, Inc. All rights reserved. Enterprise Event Photo SaaS.
-            </div>
-            <div style={{ display: 'flex', gap: 20 }}>
-              <Link to="/privacy" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Privacy</Link>
-              <a href="#security" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Data Governance</a>
-              <Link to="/contact" style={{ color: 'var(--p-text-muted)', textDecoration: 'none' }}>Contact</Link>
+            <div>© {new Date().getFullYear()} PandaSpot, Inc. All rights reserved.</div>
+            <div className="footer-bottom-links">
+              <Link to="/privacy">Privacy</Link>
+              <Link to="/contact">Contact</Link>
+              <a href="#faq">FAQ</a>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Early Access Modal */}
-      <EarlyAccessModal open={modalOpen} onClose={closeEarlyAccess} />
+      <EarlyAccessModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   )
 }
