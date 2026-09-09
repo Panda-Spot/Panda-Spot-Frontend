@@ -3279,6 +3279,31 @@
   transition: opacity 0.25s ease;
 }
 
+/* Original-download progress (eye toggle in the studio preview). */
+.orig-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.orig-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.orig-progress-busy {
+  animation: orig-progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes orig-progress-slide {
+  0% { margin-left: -35%; width: 35%; }
+  100% { margin-left: 100%; width: 35%; }
+}
+
 /* Studio lightbox footer actions (dark surface overrides). */
 .lightbox-footer-row {
   display: flex;

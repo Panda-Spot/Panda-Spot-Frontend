@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Heart, Info, X } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Eye, EyeOff, Heart, Info, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
+import { getToken } from '../authToken.js'
 import { isVideoFile } from '../utils/media.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 
@@ -24,16 +25,91 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
   const photo = items[index]
   const go = (dir) => onIndexChange((i) => Math.min(Math.max(i + dir, 0), items.length - 1))
 
-  // Preview paints the cached thumbnail instantly, then fades in the full
-  // original underneath for a sharp fullscreen fill — neighbours preload
-  // so arrow/swipe navigation has zero delay.
+  // Preview paints the cached thumbnail instantly and fills the screen.
+  // The full original loads ONLY on eye-toggle (studio owners): direct
+  // uploads + PandaShoots stream from the server, Drive imports are pulled
+  // from the Drive folder on demand — with download progress shown.
   const thumbSrc = (p) => (p ? fileUrl(p.thumbnail_url || p.url) : '')
-  const [fullLoaded, setFullLoaded] = useState(false)
+  const [showOriginal, setShowOriginal] = useState(false)
+  const [origUrl, setOrigUrl] = useState(null)
+  const [origProgress, setOrigProgress] = useState(null) // { loaded, total|null }
+  const [origError, setOrigError] = useState('')
+  const abortRef = useRef(null)
+
+  const stopOriginalLoad = () => {
+    try { abortRef.current?.abort() } catch { /* already settled */ }
+    abortRef.current = null
+  }
+
+  const loadOriginal = async (p) => {
+    stopOriginalLoad()
+    setOrigError('')
+    setOrigProgress({ loaded: 0, total: null })
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const token = getToken()
+      const res = await fetch(fileUrl(p.url), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: ctrl.signal,
+      })
+      if (!res.ok) throw new Error(`Original unavailable (${res.status})`)
+      const total = Number(res.headers.get('Content-Length')) || null
+      if (!res.body || typeof res.body.getReader !== 'function') {
+        const blob = await res.blob()
+        setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
+        setOrigProgress(null)
+        return
+      }
+      const reader = res.body.getReader()
+      const chunks = []
+      let loaded = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.byteLength || value.length || 0
+        setOrigProgress({ loaded, total })
+      }
+      const blob = new Blob(chunks)
+      setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
+      setOrigProgress(null)
+    } catch (e) {
+      if (e?.name !== 'AbortError') {
+        setOrigError(e.message || 'Could not load the original')
+        setOrigProgress(null)
+      }
+    } finally {
+      if (abortRef.current === ctrl) abortRef.current = null
+    }
+  }
+
+  const toggleOriginal = (p) => {
+    if (showOriginal || origUrl) {
+      stopOriginalLoad()
+      setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+      setOrigProgress(null)
+      setOrigError('')
+      setShowOriginal(false)
+    } else {
+      setShowOriginal(true)
+      loadOriginal(p)
+    }
+  }
 
   useEffect(() => {
     setMediaLoaded(false)
-    setFullLoaded(false)
+    stopOriginalLoad()
+    setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+    setOrigProgress(null)
+    setOrigError('')
+    setShowOriginal(false)
   }, [index])
+
+  useEffect(() => () => {
+    stopOriginalLoad()
+    setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+  }, [])
 
   useEffect(() => {
     for (const n of [index - 1, index + 1]) {
@@ -108,24 +184,13 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
         ) : (
           <div className="preview-stack">
             <img
-              key={`t-${photo.photo_id}`}
-              src={thumbSrc(photo)}
+              key={showOriginal && origUrl ? `o-${photo.photo_id}` : `t-${photo.photo_id}`}
+              src={showOriginal && origUrl ? origUrl : thumbSrc(photo)}
               alt={photo.filename}
               className="lightbox-image"
               draggable={false}
               onLoad={() => setMediaLoaded(true)}
               style={{ opacity: mediaLoaded ? 1 : 0 }}
-            />
-            <img
-              key={`f-${photo.photo_id}`}
-              src={fileUrl(photo.url)}
-              alt=""
-              aria-hidden
-              className="lightbox-image preview-full"
-              draggable={false}
-              onLoad={() => setFullLoaded(true)}
-              onError={() => setFullLoaded(false)}
-              style={{ opacity: fullLoaded ? 1 : 0 }}
             />
           </div>
         )}
@@ -139,11 +204,41 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
 
       <div className="lightbox-footer" onClick={(e) => e.stopPropagation()}>
         <p className="lightbox-caption">{photo.filename}</p>
+        {origProgress && (
+          <div className="orig-progress">
+            <div className="orig-progress-bar">
+              <div
+                style={{
+                  width: origProgress.total ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%` : '35%',
+                  height: '100%',
+                  background: '#F59E0B',
+                  borderRadius: 3,
+                  transition: origProgress.total ? 'width 0.2s' : undefined,
+                }}
+                className={origProgress.total ? undefined : 'orig-progress-busy'}
+              />
+            </div>
+            <span className="hint">
+              Downloading original… {origProgress.total
+                ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%`
+                : `${(origProgress.loaded / 1048576).toFixed(1)} MB`}
+            </span>
+          </div>
+        )}
+        {origError && <p className="error" style={{ margin: '4px 0 0', fontSize: 12 }}>{origError}</p>}
         <div className="lightbox-footer-row">
           <span className="hint">{index + 1} of {items.length}</span>
-          {actions && (
-            <div className="lightbox-actions">
-              {actions.onHeart && (
+          <div className="lightbox-actions">
+            {!video && (
+              <button
+                className="icon-btn" type="button"
+                title={showOriginal ? 'Back to thumbnail preview' : 'View full original'}
+                onClick={() => toggleOriginal(photo)}
+              >
+                {showOriginal ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            )}
+            {actions?.onHeart && (
                 <button
                   className="icon-btn" type="button"
                   title={photo.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
@@ -153,7 +248,7 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
                   <Heart size={16} fill={photo.highlighted ? '#EF4444' : 'none'} />
                 </button>
               )}
-              {actions.onArchive && (
+              {actions?.onArchive && (
                 <button
                   className="icon-btn" type="button"
                   title={photo.archived_at ? 'Restore — show to guests and clients again' : 'Archive — hide from guests and clients without deleting'}
@@ -162,7 +257,7 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
                   {photo.archived_at ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                 </button>
               )}
-              {actions.onInfo && (
+              {actions?.onInfo && (
                 <button
                   className="icon-btn info" type="button"
                   title="Details, rating, downloads, cover"
@@ -172,10 +267,9 @@ export default function StudioLightbox({ items, index, onClose, onIndexChange, a
                 </button>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>,
+      </div>,
     document.body
   )
 }
