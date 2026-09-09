@@ -1071,6 +1071,9 @@ export default function EventWorkspace() {
       })
       showToast(`${res.updated} photo(s) removed.`)
       load()
+      // Membership changed — drop cached face groups so the Faces sub-tab
+      // refetches fresh instead of showing removed photos' clusters.
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
     } catch (e) {
       showToast(e.message, { type: 'error' })
     } finally {

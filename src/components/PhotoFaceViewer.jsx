@@ -42,7 +42,10 @@ function paddedSquare(rect) {
 export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemove }) {
   const [natural, setNatural] = useState(null)
   const [imgError, setImgError] = useState(false)
-  const src = photo ? fileUrl(photo.url) : ''
+  // Thumbnails only — originals may live on Drive (revocable) or be
+  // expired; the cached thumbnail is always servable. Same rule as the
+  // studio lightbox: never load the original in a preview.
+  const src = photo ? fileUrl(photo.thumbnail_url || photo.url) : ''
 
   useEffect(() => {
     setNatural(null)
