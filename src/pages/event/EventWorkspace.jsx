@@ -1087,11 +1087,13 @@ export default function EventWorkspace() {
     setBulking(label)
     try {
       const res = await bulkSetMembership(eventId, { photoIds: ids, ...patch })
+      // Membership flags apply synchronously server-side — reload right
+      // away so the AI/Selection pages show the photos instantly instead
+      // of waiting for the background index job (or a manual refresh).
+      load()
       if (res.job_id) {
         appendLog(`Indexing ${ids.length} photo(s) for Face Search in the background…`)
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
-      } else {
-        load()
       }
       // Newly indexed faces alter clusters — drop cached groups so the
       // Faces sub-tab refetches fresh on next open.
@@ -1125,11 +1127,12 @@ export default function EventWorkspace() {
         all: { source: sourceFilter === 'all' ? undefined : sourceFilter, status: photoStatusFilter },
         ...patch,
       })
+      // Same instant-reload as handleBulkMembership above — flags are
+      // already applied, the job only fills in face data.
+      load()
       if (res.job_id) {
         appendLog(`Indexing photos for Face Search in the background…`)
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
-      } else {
-        load()
       }
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
       showToast(`${res.updated} photo(s) updated.`)
