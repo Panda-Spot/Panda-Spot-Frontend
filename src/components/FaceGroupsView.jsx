@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import GalleryMedia from './GalleryMedia.jsx'
 import { fileUrl } from '../api.js'
 
@@ -7,6 +7,10 @@ function Closeup({ photoId, bbox, dims, thumbnailUrl, eventId, size = 88 }) {
   // exact pixels, no math). Fallbacks in order: crop math from stored dims,
   // whole photo thumbnail, skeleton. Originals are never loaded here.
   const [failed, setFailed] = useState(false)
+  // A re-index swaps the representative face id (new thumbnail URL) while
+  // React reuses this tile by position — drop the old failure so the new
+  // closeup gets a fresh load instead of a stuck fallback.
+  useEffect(() => { setFailed(false) }, [thumbnailUrl, photoId])
   const thumbSrc = fileUrl(`/files/events/${eventId}/photos/${photoId}/thumb`)
 
   if (thumbnailUrl && !failed) {
