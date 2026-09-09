@@ -170,34 +170,36 @@ export default function Selection() {
                 {shownMembers.map((p, i) => (
                   <div className="photo-card" key={p.photo_id}>
                     <div
-                      style={{ cursor: 'zoom-in' }}
+                      style={{ position: 'relative', cursor: 'zoom-in' }}
                       onClick={() => setPreview({ items: shownMembers, index: i })}
                       title="Open fullscreen preview"
                     >
                       <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                    </div>
-                    <div className="meta">
-                      <span className="hint">{p.filename}</span>
-                      <div className="meta-actions">
-                        <button
-                          className="icon-btn"
-                          type="button"
-                          title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                          onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                          disabled={togglingPickId === p.photo_id}
-                          style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
-                        >
-                          <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
-                        </button>
-                        <button
-                          className="icon-btn danger"
-                          type="button"
-                          title="Remove from Photo Selection (stays in Photos & Imports)"
-                          onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
-                          disabled={!!savingPhotoFeatures[p.photo_id]}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                      <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                        <div className="meta-actions">
+                          <button
+                            className="icon-btn"
+                            type="button"
+                            title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                            onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                            disabled={togglingPickId === p.photo_id}
+                            style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                          >
+                            <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                          </button>
+                          <button
+                            className="icon-btn danger"
+                            type="button"
+                            title="Remove from Photo Selection (stays in Photos & Imports)"
+                            onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
+                            disabled={!!savingPhotoFeatures[p.photo_id]}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="card-overlay-info" title={p.filename}>
+                        {p.filename}
                       </div>
                     </div>
                   </div>
@@ -502,25 +504,27 @@ export default function Selection() {
                         {g.photos.map((p, i) => (
                           <div className="photo-card" key={p.photo_id}>
                             <div
-                              style={{ cursor: 'zoom-in' }}
+                              style={{ position: 'relative', cursor: 'zoom-in' }}
                               onClick={() => setPreview({ items: g.photos, index: i })}
                               title="Open fullscreen preview"
                             >
                               <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                            </div>
-                            <div className="meta">
-                              <span className="hint">{p.filename}</span>
-                              <div className="meta-actions">
-                                <button
-                                  className="icon-btn"
-                                  type="button"
-                                  title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                                  onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                                  disabled={togglingPickId === p.photo_id}
-                                  style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
-                                >
-                                  <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
-                                </button>
+                              <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                                <div className="meta-actions">
+                                  <button
+                                    className="icon-btn"
+                                    type="button"
+                                    title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                                    onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                                    disabled={togglingPickId === p.photo_id}
+                                    style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                                  >
+                                    <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="card-overlay-info" title={p.filename}>
+                                {p.filename}
                               </div>
                             </div>
                           </div>
@@ -537,27 +541,27 @@ export default function Selection() {
                 {eventFavourites.merged.map((p, i) => (
                   <div className="photo-card" key={p.photo_id}>
                     <div
-                      style={{ cursor: 'zoom-in' }}
+                      style={{ position: 'relative', cursor: 'zoom-in' }}
                       onClick={() => setPreview({ items: eventFavourites.merged, index: i })}
                       title="Open fullscreen preview"
                     >
                       <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                    </div>
-                    <div className="meta">
-                      <span className="hint">
+                      <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                        <div className="meta-actions">
+                          <button
+                            className="icon-btn"
+                            type="button"
+                            title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                            onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                            disabled={togglingPickId === p.photo_id}
+                            style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                          >
+                            <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="card-overlay-info" title={p.favourited_by.map((u) => u.name || u.email).join(', ')}>
                         {p.favourited_by.map((u) => u.name || u.email).join(', ')}
-                      </span>
-                      <div className="meta-actions">
-                        <button
-                          className="icon-btn"
-                          type="button"
-                          title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                          onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                          disabled={togglingPickId === p.photo_id}
-                          style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
-                        >
-                          <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
-                        </button>
                       </div>
                     </div>
                   </div>
