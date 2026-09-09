@@ -1121,10 +1121,14 @@ export default function EventWorkspace() {
       // Newly indexed faces alter clusters — drop cached groups so the
       // Faces sub-tab refetches fresh on next open.
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      // added/already breakdown: re-adding skips photos that are already
+      // members, and says so instead of claiming them as new.
+      const addedBit = `${res.updated} added`;
+      const alreadyBit = res.already > 0 ? `, ${res.already} already in ${destination === 'AI Face Search' ? 'AI Search' : destination}` : '';
       if (res.skipped?.length > 0) {
-        showToast(`${res.updated} updated, ${res.skipped.length} skipped`, { type: 'error' })
+        showToast(`${addedBit}${alreadyBit}, ${res.skipped.length} skipped`, { type: 'error' })
       } else {
-        showToast(`${res.updated} photo(s) updated.`)
+        showToast(`${addedBit}${alreadyBit}.`)
       }
       setManagerSelected({})
     } catch (e) {
@@ -1158,7 +1162,10 @@ export default function EventWorkspace() {
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
       }
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
-      showToast(`${res.updated} photo(s) updated.`)
+      const where = label === 'Add to AI Search' ? 'AI Search' : label.replace(/^Add (all visible )?to /, '');
+      const addedBit = `${res.updated} added`;
+      const alreadyBit = res.already > 0 ? `, ${res.already} already in ${where}` : '';
+      showToast(`${addedBit}${alreadyBit}.`)
       setManagerSelected({})
     } catch (e) {
       showToast(e.message, { type: 'error' })
