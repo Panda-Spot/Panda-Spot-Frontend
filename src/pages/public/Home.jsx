@@ -9,6 +9,7 @@ import {
   TrendingUp, XCircle,
 } from 'lucide-react'
 import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
+import AnimatedLogo from '../../components/AnimatedLogo.jsx'
 import { getSmoothScroller, initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import '../../styles/landing.css'
 
@@ -320,8 +321,8 @@ export default function Home() {
 
       <div className="landing-nav-wrapper">
         <header ref={navRef} className="landing-nav">
-          <Link to="/" className="landing-brand">
-            <img className="landing-brand-lockup" src="/pandaspot-logo.svg" alt="PandaSpot — Spot yourself. Get your photos." height="52" />
+          <Link to="/" className="landing-brand landing-nav-brand" aria-label="PandaSpot home">
+            <AnimatedLogo variant="nav" height={60} />
             <span className="landing-brand-badge">STUDIO</span>
           </Link>
           <nav className="landing-nav-links">

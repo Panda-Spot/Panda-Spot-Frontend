@@ -160,29 +160,36 @@ html:has(.landing-page) body {
    ========================================================================== */
 .landing-nav-wrapper {
   position: fixed;
-  top: 16px;
+  top: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  padding: 0 20px;
+  padding: 0;
   pointer-events: none;
 }
 
 .landing-nav {
   pointer-events: all;
-  max-width: 1140px;
-  margin: 0 auto;
-  height: 62px;
-  border-radius: var(--p-radius-pill);
+  max-width: none;
+  margin: 0;
+  height: 76px;
+  border-radius: 0;
   background: rgba(8, 11, 19, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px 0 22px;
+  padding: 0 28px;
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   will-change: transform;
+}
+
+/* Animated brand lockup in the full-width bar */
+.landing-nav-brand svg {
+  height: 60px;
+  width: auto;
 }
 
 .landing-nav.scrolled {
@@ -1704,8 +1711,11 @@ html:has(.landing-page) body {
     padding: 0 12px;
   }
   .landing-nav {
-    height: 56px;
-    padding: 0 10px 0 16px;
+    height: 60px;
+    padding: 0 10px 0 14px;
+  }
+  .landing-nav-brand svg {
+    height: 42px;
   }
   .landing-metrics-grid {
     grid-template-columns: 1fr 1fr;
