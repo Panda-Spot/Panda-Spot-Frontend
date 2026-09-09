@@ -1,237 +1,269 @@
 /* ==========================================================================
-   PandaSpot opening logo reveal — real brand asset + CSS frame choreography.
-   Logo rises in, focus brackets converge and lock ("spotted" pulse), tiny
-   settle. ~1.7s, then fully static. Only transform/opacity are animated
-   (compositor thread); the box reserves space up front so nothing shifts.
+   PandaSpot hero logo reveal — "Spot → Capture → Reveal".
+   Layered SVG + HTML wordmark, transform/opacity-only CSS (translate3d,
+   compositor thread). ~2.1s, then fully static. Never blocks the page:
+   content underneath renders immediately; only these layers animate.
    ========================================================================== */
 
-.animated-logo {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+.logo-reveal {
+  width: min(340px, 72vw);
+  margin: 10px auto 4px;
+  text-align: center;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.animated-logo .lr-photo {
-  height: 100%;
-  width: auto;
+.logo-reveal .lr-mark {
   display: block;
-  pointer-events: none;
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 
-/* focus frame overlay */
-.animated-logo .lr-frame {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+/* SVG groups animate around their own centers */
+.logo-reveal svg g,
+.logo-reveal svg circle,
+.logo-reveal svg rect,
+.logo-reveal svg ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.animated-logo .lr-c {
-  position: absolute;
-  width: 20%;
-  height: 22%;
-  border: 0 solid #4ADE80;
+/* ---- resting state: everything visible, nothing moving ---- */
+.logo-reveal.lr-done .lr-brackets,
+.logo-reveal.lr-done .lr-panda,
+.logo-reveal.lr-done .lr-lens-on,
+.logo-reveal.lr-done .lr-wordmark,
+.logo-reveal.lr-done .lr-wordmark-in,
+.logo-reveal.lr-done .lr-tagline {
+  opacity: 1;
 }
 
-.animated-logo .lr-tl {
-  top: 2%;
-  left: 2%;
-  border-top-width: 5px;
-  border-left-width: 5px;
-  border-top-left-radius: 8px;
-}
-
-.animated-logo .lr-tr {
-  top: 2%;
-  right: 2%;
-  border-top-width: 5px;
-  border-right-width: 5px;
-  border-top-right-radius: 8px;
-}
-
-.animated-logo .lr-bl {
-  bottom: 2%;
-  left: 2%;
-  border-bottom-width: 5px;
-  border-left-width: 5px;
-  border-bottom-left-radius: 8px;
-}
-
-.animated-logo .lr-br {
-  bottom: 2%;
-  right: 2%;
-  border-bottom-width: 5px;
-  border-right-width: 5px;
-  border-bottom-right-radius: 8px;
-}
-
-/* one-shot pulse ring */
-.animated-logo .lr-pulse {
-  position: absolute;
-  inset: 12%;
-  border: 3px solid #4ADE80;
-  border-radius: 14px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ---- entrance timeline ----
-   Everything waits for .lr-ready (image bytes loaded, or the 2.5s
-   fallback), so the choreography never plays on an empty box. Before
-   that, elements hold their hidden rest state. */
-
-.lr-play .lr-photo {
+.logo-reveal.lr-done .lr-lens-off,
+.logo-reveal.lr-done .lr-ring,
+.logo-reveal.lr-done .lr-glint,
+.logo-reveal.lr-done .lr-flash {
   opacity: 0;
 }
 
-.lr-play.lr-ready .lr-photo {
+/* ---- entrance timeline (only under .lr-play) ---- */
+
+/* LAYER 1 — brackets appear from center, settle, then tighten */
+.lr-play .lr-brackets {
   opacity: 0;
-  animation: lr-photo-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+  animation: lr-brackets 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
 
-.lr-play .lr-tl { --cx: -12px; --cy: -12px; }
-.lr-play .lr-tr { --cx: 12px; --cy: -12px; }
-.lr-play .lr-bl { --cx: -12px; --cy: 12px; }
-.lr-play .lr-br { --cx: 12px; --cy: 12px; }
+/* LAYER 2 — panda+camera: already-there-but-just-found, no bounce */
+.lr-play .lr-panda {
+  opacity: 0;
+  animation: lr-panda-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
 
-.lr-play .lr-c {
+/* LAYER 3 — lens: dark cross-fades to green, ring expands once */
+.lr-play .lr-lens-off {
+  animation: lr-lens-off 0.25s ease-out 0.55s both;
+}
+
+.lr-play .lr-lens-on {
+  opacity: 0;
+  animation: lr-lens-on 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+
+.lr-play .lr-ring {
+  opacity: 0;
+  animation: lr-ring-out 0.35s ease-out 0.55s both;
+}
+
+.lr-play .lr-glint {
   opacity: 0;
 }
 
-.lr-play.lr-ready .lr-c {
+.lr-play .lr-ring {
   opacity: 0;
-  animation: lr-corner-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
 }
 
-.lr-play.lr-ready .lr-pulse {
-  animation: lr-pulse-once 0.35s ease-out 0.95s both;
+/* capture flash — 70ms click at 1.10s */
+.lr-play .lr-flash {
+  opacity: 0;
+  animation: lr-flash 0.07s linear 1.1s both;
 }
 
-/* whole-mark micro settle — holds scale(1) through the delay so `both`
-   fill never enlarges the logo mid-reveal */
-.lr-play.lr-ready {
-  animation: lr-settle 0.2s ease-out 1.3s both;
+/* LAYER 4 — wordmark mask reveal (outer clips, inner rises 6px) */
+.lr-play .lr-wordmark {
+  clip-path: inset(0 100% 0 0);
+  animation: lr-mask 0.4s cubic-bezier(0.22, 1, 0.36, 1) 1.15s both;
 }
 
-/* ---- keyframes (transform + opacity only) ---- */
-
-@keyframes lr-photo-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.lr-play .lr-wordmark-in {
+  opacity: 0;
+  animation: lr-rise-6 0.4s cubic-bezier(0.22, 1, 0.36, 1) 1.15s both;
 }
 
-/* corners converge, hold the lock briefly, then fade — like a real
-   viewfinder. Final resting state is the clean logo alone. */
-@keyframes lr-corner-in {
-  0% { opacity: 0; transform: translate(var(--cx, 0), var(--cy, 0)) scale(0.9); }
-  55% { opacity: 1; transform: translate(0, 0) scale(1); }
-  75% { opacity: 1; transform: translate(0, 0) scale(1); }
-  100% { opacity: 0; transform: translate(0, 0) scale(1); }
+/* O/lens glint sweep at ~1.45s */
+.lr-play .lr-glint {
+  animation: lr-glint-sweep 0.15s ease-out 1.45s both;
 }
 
-@keyframes lr-pulse-once {
-  0% { opacity: 0; transform: scale(0.92); }
-  35% { opacity: 0.7; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.06); }
+/* LAYER 5 — tagline, deliberately boring */
+.lr-play .lr-tagline {
+  opacity: 0;
+  animation: lr-tagline-in 0.35s ease-out 1.5s both;
+}
+
+/* final settle 1.85–2.10: holds scale(1) through the delay */
+.lr-play {
+  animation: lr-settle 0.25s ease-out 1.85s both;
+}
+
+/* ---- keyframes (transform + opacity; mask only for the wipe) ---- */
+
+@keyframes lr-brackets {
+  0% { opacity: 0; transform: scale(1.09); }
+  30% { opacity: 1; transform: scale(1.03); }
+  65% { opacity: 1; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(0.97); }
+}
+
+@keyframes lr-panda-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.96); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes lr-lens-off {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes lr-lens-on {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes lr-ring-out {
+  from { opacity: 0.7; transform: scale(0.6); }
+  to { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes lr-flash {
+  0% { opacity: 0; }
+  50% { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+
+@keyframes lr-mask {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes lr-rise-6 {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes lr-glint-sweep {
+  from { opacity: 0; transform: translate3d(-4px, 2px, 0); }
+  40% { opacity: 1; }
+  to { opacity: 0; transform: translate3d(4px, -2px, 0); }
+}
+
+@keyframes lr-tagline-in {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 @keyframes lr-settle {
   0% { transform: scale(1); }
-  50% { transform: scale(1.004); }
+  50% { transform: scale(1.008); }
   100% { transform: scale(1); }
 }
 
-/* ---- reduced motion: final state, instantly ---- */
+/* ---- wordmark + tagline type ---- */
+
+.lr-wordmark {
+  margin-top: 2px;
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 44px;
+  letter-spacing: 3px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.lr-wordmark-in {
+  display: inline-block;
+}
+
+.lr-wp {
+  color: #ffffff;
+}
+
+.lr-ws {
+  color: #4ADE80;
+  margin-left: 8px;
+}
+
+.lr-tagline {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: #9AA3B2;
+}
+
+/* ---- reduced motion: final frame instantly ---- */
 
 @media (prefers-reduced-motion: reduce) {
-  .animated-logo .lr-photo {
+  .logo-reveal .lr-brackets,
+  .logo-reveal .lr-panda,
+  .logo-reveal .lr-lens-off,
+  .logo-reveal .lr-lens-on,
+  .logo-reveal .lr-ring,
+  .logo-reveal .lr-glint,
+  .logo-reveal .lr-flash,
+  .logo-reveal .lr-wordmark,
+  .logo-reveal .lr-wordmark-in,
+  .logo-reveal .lr-tagline,
+  .logo-reveal {
     animation: none !important;
+  }
+  .logo-reveal .lr-lens-off,
+  .logo-reveal .lr-ring,
+  .logo-reveal .lr-glint,
+  .logo-reveal .lr-flash {
+    opacity: 0 !important;
+  }
+  .logo-reveal .lr-brackets,
+  .logo-reveal .lr-panda,
+  .logo-reveal .lr-lens-on,
+  .logo-reveal .lr-wordmark,
+  .logo-reveal .lr-wordmark-in,
+  .logo-reveal .lr-tagline {
     opacity: 1 !important;
     transform: none !important;
-  }
-  .animated-logo .lr-c,
-  .animated-logo .lr-pulse {
-    animation: none !important;
-    opacity: 0 !important;
-    transform: none !important;
-  }
-  .animated-logo {
-    animation: none !important;
-    transform: none !important;
+    clip-path: inset(0 0 0 0) !important;
   }
 }
 
-/* ---- resting logo: no animation, ever (nav bar, repeat views) ---- */
-
-.lr-static .lr-photo {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
-}
-
-.lr-static .lr-c,
-.lr-static .lr-pulse {
-  animation: none !important;
-  opacity: 0 !important;
-  transform: none !important;
-}
-
-.lr-static {
-  animation: none !important;
-  transform: none !important;
-}
-
-/* ---- opening splash: blank bg, logo choreography at center ----
-   The page underneath is already mounted and painted; this overlay
-   simply fades away. Rendered by the landing page only. */
-
-.logo-splash {
-  position: fixed;
-  inset: 0;
-  z-index: 400;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #06080d;
-  opacity: 1;
-  transition: opacity 0.45s ease-out;
-}
-
-.logo-splash.is-leaving {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.logo-splash-logo {
-  height: 150px;
-}
-
-.logo-splash .animated-logo {
-  height: 100%;
-}
+/* ---- mobile: same story, tighter moves, 220–280px ---- */
 
 @media (max-width: 640px) {
-  .logo-splash-logo {
-    height: 110px;
+  .logo-reveal {
+    width: min(250px, 72vw);
+  }
+  .lr-play .lr-panda {
+    animation-name: lr-panda-in-m;
+  }
+  .lr-wordmark {
+    font-size: 32px;
+    letter-spacing: 2px;
+  }
+  .lr-tagline {
+    font-size: 13px;
   }
 }
 
-/* ---- hover: tiny 150ms lift, nothing more ---- */
-
-.animated-logo .lr-photo {
-  transition: filter 0.15s ease-out;
-}
-
-.animated-logo:hover .lr-photo {
-  filter: brightness(1.08);
-}
-
-/* ---- mobile: same story, slightly tighter ---- */
-
-@media (max-width: 640px) {
-  .lr-play.lr-ready .lr-photo { animation-duration: 0.42s; animation-delay: 0.08s; }
-  .lr-play.lr-ready .lr-c { animation-duration: 0.5s; animation-delay: 0.42s; }
-  .lr-play.lr-ready .lr-pulse { animation-duration: 0.3s; animation-delay: 0.8s; }
-  .lr-play.lr-ready { animation-duration: 0.17s; animation-delay: 1.1s; }
+@keyframes lr-panda-in-m {
+  from { opacity: 0; transform: translate3d(0, 5px, 0) scale(0.97); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }

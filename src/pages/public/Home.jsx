@@ -9,8 +9,7 @@ import {
   TrendingUp, XCircle,
 } from 'lucide-react'
 import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
-import AnimatedLogo from '../../components/AnimatedLogo.jsx'
-import LogoSplash from '../../components/LogoSplash.jsx'
+import LogoReveal from '../../components/LogoReveal.jsx'
 import { getSmoothScroller, initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import '../../styles/landing.css'
 
@@ -309,7 +308,6 @@ export default function Home() {
 
   return (
     <div className="landing-page">
-      <LogoSplash />
       <div ref={progressRef} className="landing-scroll-progress" />
       <div className="cine-bar cine-bar-top" aria-hidden="true" />
       <div className="cine-bar cine-bar-bottom" aria-hidden="true" />
@@ -324,7 +322,7 @@ export default function Home() {
       <div className="landing-nav-wrapper">
         <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand landing-nav-brand" aria-label="PandaSpot home">
-            <AnimatedLogo variant="nav" height={60} play={false} />
+            <img className="landing-brand-lockup" src="/pandaspot-logo.svg" alt="PandaSpot — Spot yourself. Get your photos." height="52" />
             <span className="landing-brand-badge">STUDIO</span>
           </Link>
           <nav className="landing-nav-links">
@@ -365,6 +363,8 @@ export default function Home() {
           <p className="landing-hero-subtitle hero-fade hero-d4">
             The end-to-end platform for event photographers. Live camera FTP ingest, sub-200ms ArcFace selfie search, TV wall broadcasting, client proofing, album review, contracts, invoicing, and a real Studio CRM — under your own brand.
           </p>
+
+          <LogoReveal />
 
           <div className="landing-hero-ctas hero-fade hero-d5">
             <button type="button" className="landing-btn-hero-primary" onClick={() => setModalOpen(true)}>
