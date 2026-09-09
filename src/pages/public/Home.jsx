@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import EarlyAccessModal from '../../components/public/EarlyAccessModal.jsx'
 import AnimatedLogo from '../../components/AnimatedLogo.jsx'
+import LogoSplash from '../../components/LogoSplash.jsx'
 import { getSmoothScroller, initSmoothScroll } from '../../lib/lenisSmoothScroll.js'
 import '../../styles/landing.css'
 
@@ -308,6 +309,7 @@ export default function Home() {
 
   return (
     <div className="landing-page">
+      <LogoSplash />
       <div ref={progressRef} className="landing-scroll-progress" />
       <div className="cine-bar cine-bar-top" aria-hidden="true" />
       <div className="cine-bar cine-bar-bottom" aria-hidden="true" />
@@ -322,7 +324,7 @@ export default function Home() {
       <div className="landing-nav-wrapper">
         <header ref={navRef} className="landing-nav">
           <Link to="/" className="landing-brand landing-nav-brand" aria-label="PandaSpot home">
-            <AnimatedLogo variant="nav" height={60} />
+            <AnimatedLogo variant="nav" height={60} play={false} />
             <span className="landing-brand-badge">STUDIO</span>
           </Link>
           <nav className="landing-nav-links">
