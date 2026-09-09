@@ -3262,16 +3262,17 @@
    lightbox keeps its own sizing. */
 .preview-stack {
   display: grid;
-  max-width: 95vw;
+  width: 95vw;
+  justify-items: center;
 }
 
 .preview-stack > img {
   grid-area: 1 / 1;
-  width: auto;
+  width: 95vw;
   max-width: 95vw;
+  height: auto;
   max-height: 86vh;
   object-fit: contain;
-  justify-self: center;
 }
 
 .preview-stack > img.preview-full {
