@@ -646,6 +646,37 @@ export default function EventWorkspace() {
     })
   }
 
+  // Backup refresh for membership index jobs: the SSE done-event drives
+  // the normal reload (watchJob above), but if that event is ever missed
+  // (dropped stream, replaced subscription) the grid would spin forever
+  // until a manual refresh. So poll the photo flags until every added id
+  // carries face data, then do one final reload. Caps at ~5 minutes and
+  // self-cancels when a newer poll generation starts.
+  const pollGenRef = useRef(0)
+  const pollMembershipIndexed = (ids, tries = 0) => {
+    const gen = ++pollGenRef.current
+    const targets = (Array.isArray(ids) ? ids : []).filter(Boolean)
+    if (targets.length === 0 || tries > 60) return
+    setTimeout(async () => {
+      if (pollGenRef.current !== gen) return
+      try {
+        const rows = await listPhotos(eventId)
+        const byId = new Map(rows.map((p) => [p.photo_id, p]))
+        const pending = targets.filter((id) => {
+          const p = byId.get(id)
+          return p && !p.face_indexed_at
+        })
+        if (pending.length === 0) {
+          load()
+          return
+        }
+      } catch {
+        // transient fetch failure — just try the next round
+      }
+      pollMembershipIndexed(targets, tries + 1)
+    }, 5000)
+  }
+
   const handleStartEvent = async () => {
     setStartingEvent(true)
     setError('')
@@ -1121,6 +1152,10 @@ export default function EventWorkspace() {
       if (res.job_id) {
         appendLog(`Indexing ${ids.length} photo(s) for Face Search in the background…`)
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+        // Backup for a missed SSE done-event: keep refreshing until every
+        // added photo carries face data (or we time out), so the grid
+        // never spins forever waiting on a refresh the user must do.
+        pollMembershipIndexed(ids)
       }
       // Newly indexed faces alter clusters — drop cached groups so the
       // Faces sub-tab refetches fresh on next open.
@@ -1164,6 +1199,7 @@ export default function EventWorkspace() {
       if (res.job_id) {
         appendLog(`Indexing photos for Face Search in the background…`)
         watchJob(res.job_id, { failedLabel: 'Face indexing failed' })
+        pollMembershipIndexed(visibleManageablePhotos.map((p) => p.photo_id))
       }
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
       const where = label === 'Add to AI Search' ? 'AI Search' : label.replace(/^Add (all visible )?to /, '');
