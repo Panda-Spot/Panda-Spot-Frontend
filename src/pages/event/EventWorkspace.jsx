@@ -1101,6 +1101,12 @@ export default function EventWorkspace() {
       showToast('Select photos in the manager grid first', { type: 'error' })
       return
     }
+    const destination = label === 'Add to AI Search' ? 'AI Face Search' : 'Photo Selection'
+    const confirmed = await confirm(
+      `Add ${ids.length} selected photo(s) to ${destination}?${destination === 'AI Face Search' ? ' Faces index in the background once added.' : ''}`,
+      { title: label, confirmLabel: 'Add', danger: false }
+    )
+    if (!confirmed) return
     setBulking(label)
     try {
       const res = await bulkSetMembership(eventId, { photoIds: ids, ...patch })
