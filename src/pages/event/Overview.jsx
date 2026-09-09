@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Cropper from 'react-easy-crop'
 import {
@@ -33,6 +33,11 @@ export default function Overview() {
   const guestSearches = analytics?.total_searches ?? 0
 
   const notStarted = event && !event.started
+
+  // If the cover file 404s (deleted upstream), fall back to the
+  // placeholder instead of hiding the whole banner.
+  const [coverFailed, setCoverFailed] = useState(false)
+  useEffect(() => { setCoverFailed(false) }, [event?.cover_url])
 
   const suggestions = []
   if (notStarted) {
@@ -94,49 +99,54 @@ export default function Overview() {
           </div>
         )}
 
-        {/* ── Cover + event details (medium banner; cover itself is managed
+        {/* ── Cover banner with details overlaid (cover itself is managed
             inside Edit details, not via separate buttons) ── */}
         {event && (
-          <div className="card">
-            <div className="event-details-row">
-              {event.cover_url && (
-                <div className="event-details-cover">
-                  <img
-                    src={fileUrl(event.cover_url)}
-                    alt=""
-                    draggable={false}
-                    onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
-                  />
+          <div className="card event-cover-card">
+            <div className="event-cover-media">
+              {event.cover_url && !coverFailed ? (
+                <img
+                  key={event.cover_url}
+                  src={fileUrl(event.cover_url)}
+                  alt=""
+                  draggable={false}
+                  onError={() => setCoverFailed(true)}
+                />
+              ) : (
+                <div className="event-cover-placeholder" aria-hidden="true">
+                  <Image size={40} strokeWidth={1.5} />
+                  <span>Add a cover from Edit details</span>
                 </div>
               )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="guest-link-label">Event details</div>
-                {(event.event_date || event.event_venue || event.description) ? (
-                  <div className="event-details-list">
-                    {event.event_date && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <CalendarDays size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
-                        {new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
-                    {event.event_venue && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <MapPin size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
-                        {event.event_venue}
-                      </span>
-                    )}
-                    {event.description && (
-                      <span className="hint" style={{ lineHeight: 1.5 }}>{event.description}</span>
-                    )}
-                  </div>
-                ) : (
-                  <p className="hint" style={{ margin: '0 0 12px' }}>No date, venue, or notes yet — add them below.</p>
-                )}
-                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-                  <button className="btn secondary" type="button" onClick={openEditDetails}>
-                    <Pencil size={14} /> Edit details
-                  </button>
+              <div className="event-cover-scrim" aria-hidden="true" />
+            </div>
+            <div className="event-cover-body">
+              <div className="guest-link-label">Event details</div>
+              {(event.event_date || event.event_venue || event.description) ? (
+                <div className="event-details-list">
+                  {event.event_date && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <CalendarDays size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                      {new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                  {event.event_venue && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <MapPin size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                      {event.event_venue}
+                    </span>
+                  )}
+                  {event.description && (
+                    <span className="hint" style={{ lineHeight: 1.5 }}>{event.description}</span>
+                  )}
                 </div>
+              ) : (
+                <p className="hint" style={{ margin: '0 0 12px' }}>No date, venue, or notes yet — add them below.</p>
+              )}
+              <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+                <button className="btn secondary" type="button" onClick={openEditDetails}>
+                  <Pencil size={14} /> Edit details
+                </button>
               </div>
             </div>
           </div>

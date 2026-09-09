@@ -672,33 +672,82 @@
   white-space: nowrap;
 }
 
-/* --- Event details card: cover left, details right --- */
+/* --- Event details card: full-bleed cover banner, details overlaid --- */
 
-.event-details-row {
-  display: flex;
-  gap: 18px;
-  align-items: center;
+.event-cover-card {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
 }
 
-.event-details-cover {
-  height: 45vh;
-  min-height: 220px;
-  max-height: 480px;
-  flex-shrink: 0;
+.event-cover-media {
+  position: relative;
+  height: clamp(240px, 34vh, 380px);
+  overflow: hidden;
+  background: linear-gradient(135deg, #1c1917 0%, #44403c 55%, #78350f 100%);
+}
+
+.event-cover-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.event-cover-placeholder {
+  position: absolute;
+  inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
-  border-radius: 12px;
-  overflow: hidden;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.65);
+  background:
+    radial-gradient(120% 90% at 85% 10%, rgba(245, 158, 11, 0.28) 0%, transparent 55%),
+    radial-gradient(100% 100% at 10% 90%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #1c1917 0%, #44403c 55%, #78350f 100%);
 }
 
-.event-details-cover img {
-  height: 100%;
-  width: auto;
-  max-width: min(100%, 80vh);
-  object-fit: contain;
-  display: block;
+.event-cover-placeholder span {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.event-cover-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.36) 45%,
+    rgba(0, 0, 0, 0.06) 70%,
+    transparent 100%
+  );
+}
+
+.event-cover-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 20px 18px;
+  color: #fff;
+}
+
+.event-cover-body .guest-link-label {
+  color: #fbbf24;
+}
+
+.event-cover-body .event-details-list {
+  color: #fff;
+}
+
+.event-cover-body .hint {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .event-details-list {
@@ -710,18 +759,11 @@
 }
 
 @media (max-width: 640px) {
-  .event-details-row {
-    flex-direction: column;
+  .event-cover-media {
+    height: clamp(200px, 30vh, 280px);
   }
-  .event-details-cover {
-    width: 100%;
-    height: auto;
-    max-height: 45vh;
-  }
-  .event-details-cover img {
-    width: 100%;
-    height: auto;
-    max-width: 100%;
+  .event-cover-body {
+    padding: 12px 14px 14px;
   }
 }
 
