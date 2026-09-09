@@ -202,12 +202,24 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
             </div>
           </div>
           <div>
-            <label className="field-label" htmlFor="meta-tag">Color tag</label>
-            <select id="meta-tag" className="text-input" disabled={busy} value={photo.color_tag || ''} onChange={(e) => saveTag(e.target.value === '' ? null : e.target.value)}>
-              {TAGS.map((t) => (
-                <option key={t.label} value={t.value || ''}>{t.label}</option>
+            <span className="field-label">Color tag</span>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                key="none" type="button" title="No tag"
+                className={`swatch swatch-none${!photo.color_tag ? ' active' : ''}`}
+                disabled={busy} onClick={() => saveTag(null)}
+              >
+                <X size={12} />
+              </button>
+              {TAGS.filter((t) => t.value).map((t) => (
+                <button
+                  key={t.value} type="button" title={t.label}
+                  className={`swatch${photo.color_tag === t.value ? ' active' : ''}`}
+                  style={{ background: t.value }}
+                  disabled={busy} onClick={() => saveTag(t.value)}
+                />
               ))}
-            </select>
+            </div>
           </div>
         </div>
         <div className="guest-link-label" style={{ marginTop: 14 }}>Actions</div>
