@@ -121,7 +121,7 @@ export default function Overview() {
               <div className="event-cover-scrim" aria-hidden="true" />
             </div>
             <div className="event-cover-body">
-              <div className="guest-link-label">Event details</div>
+              <h2 className="event-cover-title" title={event.name}>{event.name}</h2>
               {(event.event_date || event.event_venue || event.description) ? (
                 <div className="event-details-list">
                   {event.event_date && (
@@ -137,7 +137,7 @@ export default function Overview() {
                     </span>
                   )}
                   {event.description && (
-                    <span className="hint" style={{ lineHeight: 1.5 }}>{event.description}</span>
+                    <span className="hint event-cover-desc" style={{ lineHeight: 1.5 }}>{event.description}</span>
                   )}
                 </div>
               ) : (

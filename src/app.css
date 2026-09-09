@@ -742,6 +742,21 @@
   color: #fbbf24;
 }
 
+.event-cover-title {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 2.6vw + 14px, 44px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .event-cover-body .event-details-list {
   color: #fff;
 }
@@ -764,6 +779,21 @@
   }
   .event-cover-body {
     padding: 12px 14px 14px;
+  }
+  .event-cover-title {
+    -webkit-line-clamp: 2;
+    margin-bottom: 6px;
+  }
+  /* Keep the overlay inside the fixed banner height on small screens:
+     description collapses to one line instead of pushing content out. */
+  .event-cover-body .event-cover-desc {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .event-details-list {
+    margin-bottom: 10px;
   }
 }
 
