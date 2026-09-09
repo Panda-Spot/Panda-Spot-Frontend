@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
       <div className="toast-stack" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`} onClick={() => dismiss(t.id)}>
-            {t.type === 'error' ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+            {t.type === 'error' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
             <span>{t.message}</span>
           </div>
         ))}
