@@ -42,6 +42,8 @@ export default function GalleryMedia({
       className={className}
       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...style }}
       draggable={false}
+      loading="lazy"
+      decoding="async"
       onClick={onClick}
       onError={onError}
       onDragStart={(e) => e.preventDefault()}

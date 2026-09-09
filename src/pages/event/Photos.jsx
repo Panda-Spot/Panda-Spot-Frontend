@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Columns3, ImageOff, LayoutGrid, List, Search, Star, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Search, Star, Trash2, Upload, XCircle, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { drivePermissionLabel } from './EventWorkspace.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
@@ -11,8 +11,16 @@ import Dropzone from '../../components/Dropzone.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import JobProgressLog from '../../components/JobProgressLog.jsx'
 import Modal from '../../components/Modal.jsx'
+import StudioLightbox from '../../components/StudioLightbox.jsx'
 import { BLURRY_BELOW } from '../../components/PhotoToolsCard.jsx'
 import { isVideoFile } from '../../utils/media.js'
+
+function formatListDate(value) {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString()
+}
 
 export default function Photos() {
   const {
@@ -37,13 +45,43 @@ export default function Photos() {
     visiblePhotos, handleArchivePhoto, handleRestorePhoto,
     handleToggleHighlight, togglingHighlightId, handleDeletePhoto, deletingPhotoId,
     setMetaPhotoId, subGalleryName, setSubGalleryName, creatingSubGallery,
-    handleCreateSubGallery, setActiveTab,
+    handleCreateSubGallery, setActiveTab, formatBytes,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
 
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [teaserDragOver, setTeaserDragOver] = useState(false)
+  // Fullscreen preview: { items, index } — navigable with arrows/swipe.
+  const [preview, setPreview] = useState(null)
+
+  // Patches the previewed item so footer actions (heart/archive) reflect
+  // instantly — the context handlers already toast + reload the grid.
+  const patchPreviewItem = (photoId, patch) => {
+    setPreview((p) => (p
+      ? { ...p, items: p.items.map((it) => (it.photo_id === photoId ? { ...it, ...patch } : it)) }
+      : p))
+  }
+
+  const previewActions = {
+    onHeart: async (p) => {
+      await handleToggleHighlight(p.photo_id, p.highlighted)
+      patchPreviewItem(p.photo_id, { highlighted: !p.highlighted })
+    },
+    onArchive: async (p) => {
+      if (p.archived_at) {
+        await handleRestorePhoto(p.photo_id, p.filename)
+        patchPreviewItem(p.photo_id, { archived_at: null })
+      } else {
+        await handleArchivePhoto(p.photo_id, p.filename)
+        patchPreviewItem(p.photo_id, { archived_at: new Date().toISOString() })
+      }
+    },
+    onInfo: (p) => {
+      setPreview(null)
+      setMetaPhotoId(p.photo_id)
+    },
+  }
   const [editingExportFolder, setEditingExportFolder] = useState(false)
 
   // Whatever the server reports as the export target (explicit export
@@ -358,7 +396,7 @@ export default function Photos() {
 
         {liveNotice && <p className="live-notice">{liveNotice}</p>}
 
-        {event && !event.is_sub_gallery && (
+        {event && !event.is_sub_gallery && event.sub_galleries_enabled && (
           <div className="card">
             <div className="guest-link-label">Sub-galleries</div>
             <p className="hint">
@@ -395,67 +433,152 @@ export default function Photos() {
             start hero plus sub-gallery management above. */}
         {event?.started && (
         <>
-        <div className="row source-filter-row">
-          {[
-            { key: 'active', label: 'Active' },
-            { key: 'archived', label: 'Archived' },
-            { key: 'all', label: 'All' },
-          ].map((opt) => (
-            <button
-              key={`status-${opt.key}`}
-              type="button"
-              className={photoStatusFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-              onClick={() => setPhotoStatusFilter(opt.key)}
+        <div className="photo-browser">
+          <div className="photo-browser-bar">
+            <select
+              className="text-input" value={photoStatusFilter}
+              onChange={(e) => setPhotoStatusFilter(e.target.value)}
+              title="Status"
+              style={{ width: 'auto' }}
             >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+              <option value="all">All</option>
+            </select>
+            <select
+              className="text-input" value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              title="Source"
+              style={{ width: 'auto' }}
+            >
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'upload', label: 'Uploaded' },
+                ...((event?.pandashoots_enabled || photos.some((p) => p.approval_status !== 'pending' && (p.source || 'upload') === 'shoots'))
+                  ? [{ key: 'shoots', label: 'PandaShoots' }]
+                  : []),
+                { key: 'drive_import', label: 'Drive import' },
+                { key: 'guest', label: 'Guest uploads' },
+              ].map((opt) => {
+                const count = opt.key === 'all'
+                  ? photos.filter((p) => p.approval_status !== 'pending').length
+                  : photos.filter((p) => p.approval_status !== 'pending' && (p.source || 'upload') === opt.key).length
+                return <option key={opt.key} value={opt.key}>{opt.label} ({count})</option>
+              })}
+            </select>
+            <div className="view-switcher" aria-label="Gallery layout">
+              {[
+                { key: 'grid', icon: LayoutGrid, label: 'Grid' },
+                { key: 'masonry', icon: Columns3, label: 'Masonry' },
+                { key: 'list', icon: List, label: 'List' },
+              ].map(({ key, icon: Icon, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={galleryView === key ? 'active' : ''}
+                  onClick={() => setGalleryView(key)}
+                  title={`${label} view`}
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+            {galleryView !== 'list' && (
+              <label className="per-row-slider" title="Photos per row — slide for fewer, bigger photos or more, smaller ones">
+                <ZoomIn size={14} />
+                <input
+                  type="range" min={2} max={10} step={1} value={perRow}
+                  onChange={(e) => setPerRow(Number(e.target.value))}
+                />
+                <ZoomOut size={14} />
+              </label>
+            )}
+            <input
+              className="text-input gallery-search"
+              type="search"
+              placeholder="Search by image name…"
+              value={photoQuery}
+              onChange={(e) => setPhotoQuery(e.target.value)}
+            />
+            <select
+              className="text-input" value={photoSort}
+              onChange={(e) => setPhotoSort(e.target.value)}
+              title="Sort photos"
+              style={{ width: 'auto' }}
+            >
+              {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            <select
+              className="text-input" value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              title="Photos per page"
+              style={{ width: 'auto' }}
+            >
+              {[24, 48, 96].map((n) => <option key={n} value={n}>{n} / page</option>)}
+            </select>
+            {(event?.photo_selection_enabled || event?.face_search_enabled) && (
+              <button
+                className={selectMode ? 'btn' : 'btn secondary'}
+                type="button"
+                onClick={() => setSelectMode((v) => !v)}
+              >
+                {selectMode ? 'Done' : 'Select'}
+              </button>
+            )}
+          </div>
+          <div className="photo-browser-body">
 
         {(selectMode && (event?.photo_selection_enabled || event?.face_search_enabled)) && visibleManageablePhotos.length > 0 && (
-          <div className="card" style={{ padding: '10px 14px' }}>
-            <div className="row" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-              <label className="checkbox-row" style={{ margin: 0 }}>
+          <div className="card select-bar">
+            <div className="select-bar-main">
+              <label className="checkbox-row" style={{ margin: 0 }} title="Select or deselect every visible photo">
                 <input
                   type="checkbox"
                   checked={visibleManageablePhotos.length > 0 && visibleManageablePhotos.every((p) => managerSelected[p.photo_id])}
                   onChange={toggleManagerSelectAllVisible}
                 />
-                Select all visible ({visibleManageablePhotos.length})
+                Select all ({visibleManageablePhotos.length})
               </label>
-              <span className="hint">{selectedCount} selected</span>
-              {event?.photo_selection_enabled && (
-                <>
-                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
-                    {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount} to Photo Selection`}
-                  </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
-                    Add all visible
-                  </button>
-                </>
-              )}
-              {event?.face_search_enabled && (
-                <>
-                  <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
-                    {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount} to AI Search`}
-                  </button>
-                  <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
-                    Add all visible
-                  </button>
-                </>
-              )}
+              <span className="select-count">{selectedCount} selected</span>
+              <div className="select-groups">
+                {event?.face_search_enabled && (
+                  <div className="select-group">
+                    <span className="select-group-label">AI Search</span>
+                    <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ face_search_visible: true }, 'Add to AI Search')}>
+                      {bulking === 'Add to AI Search' ? 'Adding…' : `Add ${selectedCount}`}
+                    </button>
+                    <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ face_search_visible: true }, 'Add all visible to AI Search')}>
+                      Add all visible
+                    </button>
+                  </div>
+                )}
+                {event?.photo_selection_enabled && (
+                  <div className="select-group">
+                    <span className="select-group-label">Selection</span>
+                    <button className="btn secondary" type="button" disabled={bulking || selectedCount === 0} onClick={() => handleBulkMembership({ photo_selection_visible: true }, 'Add to Photo Selection')}>
+                      {bulking === 'Add to Photo Selection' ? 'Adding…' : `Add ${selectedCount}`}
+                    </button>
+                    <button className="btn secondary" type="button" disabled={bulking || visibleManageablePhotos.length === 0} onClick={() => handleBulkAddAllVisible({ photo_selection_visible: true }, 'Add all visible to Photo Selection')}>
+                      Add all visible
+                    </button>
+                  </div>
+                )}
+              </div>
               {selectedCount > 0 && (
-                <button className="dismiss-btn" type="button" onClick={() => setManagerSelected({})}>
-                  Clear
+                <button className="icon-btn" type="button" title="Clear selection" onClick={() => setManagerSelected({})}>
+                  <XCircle size={16} />
                 </button>
               )}
             </div>
-            <p className="hint" style={{ marginTop: 6 }}>
+            <p className="hint select-bar-hint">
               Zero-copy — files stay where they are, only membership flags change. Adding to AI Search face-indexes new photos in the background.
             </p>
           </div>
         )}
 
+        {/* Tool filters appear only after the studio enables Advanced
+            photographic tools on the Tools page (post full analysis). */}
+        {event?.advanced_tools_enabled && (
         <div className="card" style={{ padding: '10px 14px' }}>
           <div className="guest-link-label">Tool filters</div>
           <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
@@ -509,94 +632,7 @@ export default function Photos() {
             </button>
           </div>
         </div>
-        <div className="row source-filter-row">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'upload', label: 'Uploaded' },
-            // PandaShoots source tab only makes sense while the feature is
-            // enabled — unless shoots photos already exist, which keeps the
-            // tab reachable for reviewing them.
-            ...((event?.pandashoots_enabled || photos.some((p) => p.approval_status !== 'pending' && (p.source || 'upload') === 'shoots'))
-              ? [{ key: 'shoots', label: 'PandaShoots' }]
-              : []),
-            { key: 'drive_import', label: 'Drive import' },
-            { key: 'guest', label: 'Guest uploads' },
-          ].map((opt) => {
-            const count = opt.key === 'all'
-              ? photos.filter((p) => p.approval_status !== 'pending').length
-              : photos.filter((p) => p.approval_status !== 'pending' && (p.source || 'upload') === opt.key).length
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                className={sourceFilter === opt.key ? 'upload-tab active' : 'upload-tab'}
-                onClick={() => setSourceFilter(opt.key)}
-              >
-                {opt.label} ({count})
-              </button>
-            )
-          })}
-        </div>
-        <div className="card gallery-toolbar">
-          <div className="view-switcher" aria-label="Gallery layout">
-            {[
-              { key: 'grid', icon: LayoutGrid, label: 'Grid' },
-              { key: 'masonry', icon: Columns3, label: 'Masonry' },
-              { key: 'list', icon: List, label: 'List' },
-            ].map(({ key, icon: Icon, label }) => (
-              <button
-                key={key}
-                type="button"
-                className={galleryView === key ? 'active' : ''}
-                onClick={() => setGalleryView(key)}
-                title={`${label} view`}
-              >
-                <Icon size={14} /> {label}
-              </button>
-            ))}
-          </div>
-          {galleryView !== 'list' && (
-            <label className="per-row-slider" title="Photos per row">
-              {perRow} per row
-              <input
-                type="range" min={2} max={10} step={1} value={perRow}
-                onChange={(e) => setPerRow(Number(e.target.value))}
-              />
-            </label>
-          )}
-          <input
-            className="text-input gallery-search"
-            type="search"
-            placeholder="Search by image name…"
-            value={photoQuery}
-            onChange={(e) => setPhotoQuery(e.target.value)}
-          />
-          <select
-            className="text-input" value={photoSort}
-            onChange={(e) => setPhotoSort(e.target.value)}
-            title="Sort photos"
-            style={{ width: 'auto' }}
-          >
-            {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-          <select
-            className="text-input" value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            title="Photos per page"
-            style={{ width: 'auto' }}
-          >
-            {[24, 48, 96].map((n) => <option key={n} value={n}>{n} / page</option>)}
-          </select>
-          {(event?.photo_selection_enabled || event?.face_search_enabled) && (
-            <button
-              className={selectMode ? 'btn' : 'btn secondary'}
-              type="button"
-              onClick={() => setSelectMode((v) => !v)}
-            >
-              {selectMode ? 'Done' : 'Select'}
-            </button>
-          )}
-        </div>
+        )}
         {searchedPhotos.length === 0 ? (
           <GalleryEmpty
             icon={photoQuery ? Search : ImageOff}
@@ -616,9 +652,13 @@ export default function Photos() {
               items={pagedPhotos}
               view={galleryView}
               perRow={perRow}
-              renderCard={(p) => (
+              renderCard={(p, i) => (
               <div className="photo-card" key={p.photo_id}>
-                <div style={{ position: 'relative' }}>
+                <div
+                  style={{ position: 'relative', cursor: 'zoom-in' }}
+                  onClick={() => setPreview({ items: pagedPhotos, index: i })}
+                  title="Open fullscreen preview"
+                >
                   <GalleryMedia
                     src={fileUrl(p.thumbnail_url || p.url)}
                     filename={p.filename}
@@ -636,10 +676,19 @@ export default function Photos() {
                 </div>
                 <div className="meta">
                   <span>
+                    {galleryView === 'list' && (
+                      <span className="list-file">
+                        <span className="list-file-name" title={p.filename}>{p.filename}</span>
+                        <span className="hint">
+                          {[p.file_size != null && formatBytes(p.file_size), formatListDate(p.exif_captured_at || p.createdAt)]
+                            .filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    )}
                     {isVideoFile(p.filename) ? (
                       <>Video{p.archived_at && <span className="hint"> · archived</span>}</>
                     ) : (
-                      <>{p.face_count} face{p.face_count === 1 ? '' : 's'}{p.archived_at && <span className="hint"> · archived</span>}</>
+                      <>{p.face_indexed_at && (<>{p.face_count} face{p.face_count === 1 ? '' : 's'}</>)}{p.archived_at && <span className="hint"> · archived</span>}</>
                     )}
                     {(p.rating || 0) > 0 && (
                       <span title={`${p.rating} stars`} style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
@@ -652,50 +701,35 @@ export default function Photos() {
                     {p.color_tag && <span title={`Tagged ${p.color_tag}`} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: p.color_tag, marginLeft: 4, verticalAlign: 'baseline' }} />}
                     {p.sharpness != null && <span className="hint" title="Sharpness score"> · {Math.round(p.sharpness)}</span>}
                   </span>
-                  {p.archived_at ? (
+                  <div className="meta-actions">
                     <button
-                      className="dismiss-btn"
+                      className="icon-btn"
                       type="button"
-                      onClick={() => handleRestorePhoto(p.photo_id, p.filename)}
+                      title={p.highlighted ? 'Remove TV highlight' : 'Highlight for the TV wall'}
+                      onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
+                      disabled={togglingHighlightId === p.photo_id}
+                      style={{ color: p.highlighted ? '#EF4444' : undefined }}
                     >
-                      Restore
+                      <Heart size={15} fill={p.highlighted ? '#EF4444' : 'none'} />
                     </button>
-                  ) : (
                     <button
-                      className="dismiss-btn"
+                      className="icon-btn danger"
                       type="button"
-                      title="Hide from guests and clients without deleting"
-                      onClick={() => handleArchivePhoto(p.photo_id, p.filename)}
+                      title="Delete permanently"
+                      onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
+                      disabled={deletingPhotoId === p.photo_id}
                     >
-                      Archive
+                      <Trash2 size={15} />
                     </button>
-                  )}
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    title={p.highlighted ? 'Remove TV highlight' : 'Star for TV highlights wall'}
-                    onClick={() => handleToggleHighlight(p.photo_id, p.highlighted)}
-                    disabled={togglingHighlightId === p.photo_id}
-                    style={{ color: p.highlighted ? '#F59E0B' : undefined }}
-                  >
-                    <Star size={15} fill={p.highlighted ? '#F59E0B' : 'none'} />
-                  </button>
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    onClick={() => handleDeletePhoto(p.photo_id, p.filename)}
-                    disabled={deletingPhotoId === p.photo_id}
-                  >
-                    {deletingPhotoId === p.photo_id ? 'Deleting…' : 'Delete'}
-                  </button>
-                  <button
-                    className="dismiss-btn"
-                    type="button"
-                    title="Metadata, rating, downloads, cover"
-                    onClick={() => setMetaPhotoId(p.photo_id)}
-                  >
-                    Info
-                  </button>
+                    <button
+                      className="icon-btn info"
+                      type="button"
+                      title="Details, archive, rating, downloads, cover"
+                      onClick={() => setMetaPhotoId(p.photo_id)}
+                    >
+                      <Info size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -726,8 +760,20 @@ export default function Photos() {
             </div>
           </>
         )}
+          </div>
+        </div>
         </>)}
       </div>
+
+      {preview && (
+        <StudioLightbox
+          items={preview.items}
+          index={preview.index}
+          onClose={() => setPreview(null)}
+          onIndexChange={(fn) => setPreview((p) => (p ? { ...p, index: typeof fn === 'function' ? fn(p.index) : fn } : p))}
+          actions={previewActions}
+        />
+      )}
 
       {event && (
         <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Export to Google Drive">

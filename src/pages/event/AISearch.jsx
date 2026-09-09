@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Flag, Search, Target, Users } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { BarChart3, CheckSquare, ChevronDown, Flag, Images, ScanFace, Search, ShieldAlert, Target, Trash2, Upload, Users } from 'lucide-react'
 import { updateEvent } from '../../api.js'
 import { useToast } from '../../toast.jsx'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import FaceGroupsView from '../../components/FaceGroupsView.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
+import Modal from '../../components/Modal.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
 import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
 import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
@@ -14,8 +16,9 @@ import TrendChart from '../../components/TrendChart.jsx'
 
 export default function AISearch() {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const {
-    eventId, event, analytics, load,
+    eventId, event, photos, analytics, load,
     aiMembers, aiView, setAiView,
     faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer,
     handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
@@ -29,6 +32,10 @@ export default function AISearch() {
   const [memberQuery, setMemberQuery] = useState('')
   const [memberSort, setMemberSort] = useState('newest')
   const shownAiMembers = useGalleryItems(aiMembers(), { query: memberQuery, sort: memberSort })
+  // Privacy section lives collapsed at the end of the tab.
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  // Analytics lives behind a button, in a fullscreen-style popup.
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
   const handlePrivacySave = async () => {
     if (!privacyDraft) return
@@ -80,29 +87,53 @@ export default function AISearch() {
     )
   }
 
+  // Face Search on but not a single photo in the event yet — hide the
+  // analytics, members, and privacy sections entirely and show one big
+  // guided empty state instead.
+  if (event?.face_search_enabled && photos.length === 0) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '64px 24px' }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: 24,
+          background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <ScanFace size={48} style={{ color: '#F59E0B' }} />
+        </div>
+        <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}>No photos to search yet</h2>
+        <p className="hint" style={{ maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.6 }}>
+          AI Face Search is on, but this event has no photos. Add some to AI Search in three steps:
+        </p>
+        <div style={{
+          display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
+          maxWidth: 640, margin: '0 auto 28px',
+        }}>
+          {[
+            { icon: Upload, title: '1. Upload', desc: 'Add photos on Photos & Imports' },
+            { icon: CheckSquare, title: '2. Select', desc: 'Tap Select, tick photos' },
+            { icon: Images, title: '3. Add to AI Search', desc: 'Faces index in the background' },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} style={{
+              flex: '1 1 160px', maxWidth: 200, padding: '16px 12px',
+              border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)',
+            }}>
+              <Icon size={26} style={{ color: '#F59E0B', marginBottom: 8 }} />
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{title}</div>
+              <div className="hint" style={{ fontSize: 12, lineHeight: 1.45 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        <Link className="btn" to={`/events/${eventId}/photos`} style={{ fontSize: 15, padding: '10px 28px' }}>
+          <Upload size={16} /> Open Photos & Imports
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="event-stack">
-        {analytics && (
-          <div className="card analytics-card">
-            <div className="guest-link-label">Analytics</div>
-            <div className="stat-grid">
-              <StatTile icon={Search} value={analytics.total_searches} label="searches" />
-              <StatTile icon={Users} value={analytics.unique_guests} label="unique guests" />
-              <StatTile icon={Target} value={`${Math.round(analytics.match_rate * 100)}%`} label="match rate" />
-              <StatTile icon={Flag} value={analytics.feedback_count} label="flagged as wrong" />
-            </div>
-            {analytics.daily_searches && (
-              <TrendChart
-                series={[
-                  { key: 'searches', name: 'Searches', data: analytics.daily_searches },
-                  { key: 'matches', name: 'Matches', data: analytics.daily_matches },
-                ]}
-              />
-            )}
-          </div>
-        )}
-
         {event?.face_search_enabled && (
           <div className="card">
             <div className="guest-link-label">
@@ -141,7 +172,19 @@ export default function AISearch() {
               />
             ) : (
               <>
-                <div className="row" style={{ marginBottom: 8 }}>
+                <div className="row" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                  <Link className="btn secondary" to={`/events/${eventId}/photos`}>
+                    <Images size={14} /> Add photos from Photos & Imports
+                  </Link>
+                  {analytics && (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => setAnalyticsOpen(true)}
+                    >
+                      <BarChart3 size={14} /> Analytics
+                    </button>
+                  )}
                   <button
                     className="btn secondary"
                     type="button"
@@ -154,7 +197,8 @@ export default function AISearch() {
                 {aiMembers().length === 0 ? (
                   <GalleryEmpty
                     title="Nothing in AI Search yet"
-                    hint="Select photos in Photos & Imports and add them."
+                    hint="Head to Photos & Imports, tap Select, tick photos, and add them to AI Search."
+                    action={{ label: 'Open Photos & Imports', onClick: () => navigate(`/events/${eventId}/photos`) }}
                   />
                 ) : (
                   <>
@@ -194,14 +238,17 @@ export default function AISearch() {
                               ? `${p.face_count} face${p.face_count === 1 ? '' : 's'} indexed`
                               : 'Indexing…'}
                           </span>
-                          <button
-                            className="dismiss-btn"
-                            type="button"
-                            onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
-                            disabled={!!savingPhotoFeatures[p.photo_id]}
-                          >
-                            Remove
-                          </button>
+                          <div className="meta-actions">
+                            <button
+                              className="icon-btn danger"
+                              type="button"
+                              title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
+                              onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
+                              disabled={!!savingPhotoFeatures[p.photo_id]}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -222,15 +269,52 @@ export default function AISearch() {
         )}
 
         {event && (event.role === 'owner' || event.role === 'collaborator') && (
-          <PrivacySettingsCard
-            event={event}
-            draft={privacyDraft}
-            setDraft={setPrivacyDraft}
-            saving={savingPrivacy}
-            onSave={handlePrivacySave}
-          />
+          <div className="card" style={{ padding: '10px 14px' }}>
+            <button
+              type="button"
+              className="collapse-toggle"
+              aria-expanded={privacyOpen}
+              onClick={() => setPrivacyOpen((v) => !v)}
+            >
+              <ShieldAlert size={16} style={{ color: '#F59E0B' }} />
+              <span>Advanced & privacy concerns</span>
+              <ChevronDown size={16} style={{ transform: privacyOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+            {privacyOpen && (
+              <div style={{ marginTop: 12 }}>
+                <PrivacySettingsCard
+                  event={event}
+                  draft={privacyDraft}
+                  setDraft={setPrivacyDraft}
+                  saving={savingPrivacy}
+                  onSave={handlePrivacySave}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      <Modal open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} title="Search analytics">
+        {analytics && (
+          <>
+            <div className="stat-grid">
+              <StatTile icon={Search} value={analytics.total_searches} label="searches" />
+              <StatTile icon={Users} value={analytics.unique_guests} label="unique guests" />
+              <StatTile icon={Target} value={`${Math.round(analytics.match_rate * 100)}%`} label="match rate" />
+              <StatTile icon={Flag} value={analytics.feedback_count} label="flagged as wrong" />
+            </div>
+            {analytics.daily_searches && (
+              <TrendChart
+                series={[
+                  { key: 'searches', name: 'Searches', data: analytics.daily_searches },
+                  { key: 'matches', name: 'Matches', data: analytics.daily_matches },
+                ]}
+              />
+            )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

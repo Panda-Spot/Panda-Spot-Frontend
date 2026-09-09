@@ -401,7 +401,7 @@ export default function GuestEvent() {
         {event?.logo_url && !event?.theme?.hide_pandaspot_brand && <p className="guest-powered-by">Powered by PandaSpot</p>}
       </div>
 
-      {event?.sub_galleries?.length > 0 ? (
+      {event?.sub_galleries_enabled && event?.sub_galleries?.length > 0 ? (
         <div className="card">
           <p className="subtle">This event has separate galleries — pick one to search:</p>
           <div className="sub-gallery-picker">

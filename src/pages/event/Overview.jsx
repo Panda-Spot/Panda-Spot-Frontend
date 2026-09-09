@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Cropper from 'react-easy-crop'
 import {
-  Archive, ArchiveRestore, CalendarDays, Camera, CheckCircle2, ChevronRight,
-  Circle, Clock, Image, MapPin, Pencil, Rocket, Search, Send, Share2,
-  Upload, UserPlus, Users, Zap,
+  Archive, ArchiveRestore, BookOpen, CalendarDays, Camera, CheckCircle2, ChevronRight,
+  Circle, Clock, Image, Layers, MapPin, Pencil, Rocket, Search, Send, Share2,
+  SlidersHorizontal, Upload, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
@@ -99,13 +99,18 @@ export default function Overview() {
         {event && (
           <div className="card">
             {event.cover_url && (
-              <img
-                src={fileUrl(event.cover_url)}
-                alt=""
-                style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }}
-                draggable={false}
-                onError={(e) => { e.currentTarget.style.display = 'none' }}
-              />
+              <div style={{
+                maxHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--bg-elevated)', borderRadius: 12, marginBottom: 12, overflow: 'hidden',
+              }}>
+                <img
+                  src={fileUrl(event.cover_url)}
+                  alt=""
+                  style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
+                  draggable={false}
+                  onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
+                />
+              </div>
             )}
             <div className="guest-link-label">Event details</div>
             {(event.event_date || event.event_venue || event.description) && (
@@ -174,6 +179,9 @@ export default function Overview() {
               <FeaturePill label="AI Face Search" active={event.face_search_enabled} icon={Search} />
               <FeaturePill label="Photo Selection" active={event.photo_selection_enabled} icon={Image} />
               <FeaturePill label="PandaShoots" active={event.pandashoots_enabled} icon={Camera} />
+              <FeaturePill label="Advanced tools" active={event.advanced_tools_enabled} icon={SlidersHorizontal} />
+              <FeaturePill label="Sub-galleries" active={event.sub_galleries_enabled} icon={Layers} />
+              <FeaturePill label="Albums" active={event.albums_enabled} icon={BookOpen} />
               <FeaturePill label="Guest Uploads" active={event.guest_upload_enabled} icon={Upload} />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>
@@ -263,13 +271,18 @@ export default function Overview() {
             <label className="field-label">Cover photo <span className="hint">(16:9 crop)</span></label>
             {event.cover_url ? (
               <>
-                <img
-                  src={fileUrl(event.cover_url)}
-                  alt=""
-                  style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
-                  draggable={false}
-                  onError={(e) => { e.currentTarget.style.display = 'none' }}
-                />
+                <div style={{
+                  maxHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-elevated)', borderRadius: 8, marginBottom: 8, overflow: 'hidden',
+                }}>
+                  <img
+                    src={fileUrl(event.cover_url)}
+                    alt=""
+                    style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', display: 'block' }}
+                    draggable={false}
+                    onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
+                  />
+                </div>
                 <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   <label className="btn secondary" style={{ cursor: 'pointer' }}>
                     Change cover

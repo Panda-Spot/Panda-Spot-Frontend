@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Star, X } from 'lucide-react';
-import { downloadFile, fileUrl, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
+import { Archive, ArchiveRestore, CameraOff, Download, Fingerprint, Gauge, ScanFace, Star, X } from 'lucide-react';
+import { archivePhoto, downloadFile, fileUrl, restorePhoto, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
 import { useToast } from '../toast.jsx';
 import { useConfirm } from '../confirm.jsx';
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js';
@@ -103,6 +103,26 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     }
   };
 
+  // Archive lives here now that the grid cards show only Heart / Bin /
+  // Info — hides from guests and clients without deleting anything.
+  const handleArchiveToggle = async () => {
+    setBusy(true);
+    try {
+      if (photo.archived_at) {
+        await restorePhoto(eventId, photo.photo_id);
+        showToast('Photo restored — visible to guests and clients again.');
+      } else {
+        await archivePhoto(eventId, photo.photo_id);
+        showToast('Photo archived — hidden from guests and clients.');
+      }
+      onChanged?.();
+    } catch (e) {
+      showToast(e.message, { type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const exifRows = [
     ['Camera', photo.exif_camera],
     ['Lens', photo.exif_lens],
@@ -121,15 +141,38 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
             <X size={18} />
           </button>
         </div>
-        <GalleryMedia src={fileUrl(photo.thumbnail_url || photo.url)} filename={photo.filename} style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8 }} />
-        <div className="stat-grid" style={{ marginTop: 10 }}>
-          <div><div className="hint">Sharpness</div><div>{photo.sharpness != null ? Math.round(photo.sharpness) : 'not measured'}</div></div>
-          <div><div className="hint">Faces</div><div>{photo.face_count ?? 0}</div></div>
-          <div><div className="hint">Duplicate hash</div><div>{photo.file_hash ? `${photo.file_hash.slice(0, 10)}…` : 'not analyzed'}</div></div>
+        <div className="meta-preview">
+          <GalleryMedia src={fileUrl(photo.thumbnail_url || photo.url)} filename={photo.filename} style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8 }} />
         </div>
-        <div className="guest-link-label" style={{ marginTop: 10 }}>Metadata</div>
+        <div className="meta-stats">
+          <div className="meta-stat">
+            <span className="meta-stat-icon"><Gauge size={16} /></span>
+            <span className="meta-stat-text">
+              <span className="meta-stat-value">{photo.sharpness != null ? Math.round(photo.sharpness) : '—'}</span>
+              <span className="hint">Sharpness{photo.sharpness == null ? ' · not measured' : ''}</span>
+            </span>
+          </div>
+          <div className="meta-stat">
+            <span className="meta-stat-icon"><ScanFace size={16} /></span>
+            <span className="meta-stat-text">
+              <span className="meta-stat-value">{photo.face_indexed_at ? (photo.face_count ?? 0) : '—'}</span>
+              <span className="hint">Faces{photo.face_indexed_at ? '' : ' · not indexed'}</span>
+            </span>
+          </div>
+          <div className="meta-stat">
+            <span className="meta-stat-icon"><Fingerprint size={16} /></span>
+            <span className="meta-stat-text">
+              <span className="meta-stat-value">{photo.file_hash ? `${photo.file_hash.slice(0, 10)}…` : '—'}</span>
+              <span className="hint">Duplicate hash{photo.file_hash ? '' : ' · not analyzed'}</span>
+            </span>
+          </div>
+        </div>
+        <div className="guest-link-label" style={{ marginTop: 14 }}>Camera metadata</div>
         {exifRows.length === 0 ? (
-          <p className="hint">No camera metadata on this file (screenshots, exports, and some uploads carry none).</p>
+          <div className="meta-empty">
+            <CameraOff size={18} />
+            <p className="hint" style={{ margin: 0 }}>No camera metadata on this file — screenshots, exports, and some uploads carry none.</p>
+          </div>
         ) : (
           <ul className="team-list">
             {exifRows.map(([k, v]) => (
@@ -137,6 +180,7 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
             ))}
           </ul>
         )}
+        <div className="guest-link-label" style={{ marginTop: 14 }}>Rating & color tag</div>
         <div className="row" style={{ gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <span className="field-label">Rating</span>
@@ -161,6 +205,7 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
             </select>
           </div>
         </div>
+        <div className="guest-link-label" style={{ marginTop: 14 }}>Actions</div>
         <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <label className="field-label" htmlFor="meta-preset">Download</label>
@@ -175,6 +220,9 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
           </button>
           <button className="btn secondary" type="button" disabled={busy} onClick={handleCover}>
             Use as cover
+          </button>
+          <button className="btn secondary" type="button" disabled={busy} onClick={handleArchiveToggle}>
+            {photo.archived_at ? <><ArchiveRestore size={13} /> Restore</> : <><Archive size={13} /> Archive</>}
           </button>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>

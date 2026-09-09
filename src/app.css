@@ -258,6 +258,260 @@
   justify-content: space-between;
 }
 
+/* Card action cluster: icon-only buttons, revealed on hover (always
+   visible on touch devices, which have no hover). Keeps grids clean. */
+.meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+.icon-btn.info {
+  color: #38BDF8;
+}
+
+.icon-btn.info:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38BDF8;
+}
+
+/* Collapsible section toggle (e.g. Advanced & privacy concerns). */
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.collapse-toggle svg:last-child {
+  margin-left: auto;
+  color: var(--text-tertiary);
+}
+
+@media (hover: hover) {
+  .photo-card .meta-actions {
+    opacity: 0;
+  }
+  .photo-card:hover .meta-actions,
+  .photo-card:focus-within .meta-actions {
+    opacity: 1;
+  }
+}
+
+/* --- Photo inspector modal (Info popup) --- */
+
+.meta-preview {
+  background: #111;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.meta-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.meta-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  min-width: 0;
+}
+
+.meta-stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+}
+
+.meta-stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.meta-stat-value {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 560px) {
+  .meta-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Unified photo browser: compact bar attached to the grid --- */
+
+.photo-browser {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.photo-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.photo-browser-bar .text-input {
+  min-width: 0;
+}
+
+.photo-browser-bar .gallery-search {
+  flex: 1;
+  min-width: 140px;
+}
+
+.photo-browser-body {
+  padding: 14px;
+}
+
+.photo-browser-body > .card:first-child {
+  margin-top: 0;
+}
+
+.photo-browser-body > .photo-grid,
+.photo-browser-body > .masonry-grid,
+.photo-browser-body > .photo-list {
+  margin-top: 4px;
+}
+
+/* --- Selection action bar (Google-Drive style bulk bar) --- */
+
+.select-bar {
+  padding: 12px 14px;
+}
+
+.select-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.select-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.select-groups {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.select-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.select-group:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.select-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.select-bar-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
 /* --- Studio gallery toolbar (Photos & Imports, Selection, AI Search) --- */
 
 .gallery-toolbar {
@@ -334,13 +588,23 @@
 /* --- Masonry + list layouts (same .photo-card markup) --- */
 
 .masonry-grid {
-  column-gap: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
   margin-top: 20px;
 }
 
+.masonry-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .masonry-item {
-  break-inside: avoid;
-  margin-bottom: 14px;
+  min-width: 0;
 }
 
 .masonry-grid .photo-card > div:first-child {
@@ -374,6 +638,28 @@
   flex: 1;
   min-width: 0;
   align-items: center;
+}
+
+/* List-view file details: name + size/date above the flags. */
+.list-file {
+  display: block;
+  margin-bottom: 2px;
+  min-width: 0;
+}
+
+.list-file-name {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.photo-list .meta > span:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 /* --- Icon empty states (never bare text) --- */
@@ -2506,6 +2792,127 @@
   object-fit: contain;
   border-radius: 6px;
   transition: opacity 0.15s ease;
+}
+
+/* --- Studio face viewer (Google Photos style): photo + bottom face strip --- */
+
+.face-viewer-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 0;
+}
+
+.face-viewer-photo {
+  position: relative;
+  display: inline-block;
+  max-width: min(1100px, 94vw);
+  line-height: 0;
+}
+
+.face-viewer-img {
+  max-width: min(1100px, 94vw);
+  max-height: 58vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #000;
+}
+
+.face-viewer-strip {
+  width: min(1100px, 94vw);
+  max-height: 30vh;
+  overflow-y: auto;
+  background: rgba(20, 20, 22, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.face-viewer-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.face-viewer-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.face-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-top: 10px;
+  padding-bottom: 4px;
+}
+
+.face-strip-item {
+  flex: 0 0 auto;
+  width: 76px;
+  text-align: center;
+}
+
+.face-strip-crop {
+  width: 76px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Studio lightbox footer actions (dark surface overrides). */
+.lightbox-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lightbox-actions .icon-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.lightbox-actions .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.lightbox-actions .icon-btn.info {
+  color: #38BDF8;
+}
+
+.lightbox-actions .icon-btn.info:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+}
+
+.lightbox-actions .icon-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
 }
 .lightbox-spinner {
   position: absolute;

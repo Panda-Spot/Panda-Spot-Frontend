@@ -1,16 +1,27 @@
-import { useEffect } from 'react'
-import { Wrench } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { SlidersHorizontal, Wrench } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import PhotoToolsCard from '../../components/PhotoToolsCard.jsx'
+import FeatureToggleConfirm from './FeatureToggleConfirm.jsx'
 
 export default function Tools() {
   const {
     eventId, event, photos, load,
     dupIds, setDupIds, setMetaPhotoId,
+    handleToggleFeature, togglingFeature,
     requestStartEvent, setActiveTab,
   } = useEvent()
 
   useEffect(() => { setActiveTab('manager') }, [setActiveTab])
+
+  // { key, title, enable } awaiting confirmation — same shared confirm as
+  // the Danger feature cards (owner-only OFF with typed event name).
+  const [pendingToggle, setPendingToggle] = useState(null)
+
+  // Full analysis has run once at least one photo carries hash data —
+  // the filters need that data to match anything.
+  const analyzed = photos.some((p) => p.file_hash)
 
   if (event && !event.started) {
     return (
@@ -50,6 +61,36 @@ export default function Tools() {
           onOpenMeta={(photoId) => setMetaPhotoId(photoId)}
         />
         <div className="card">
+          <div className="guest-link-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <SlidersHorizontal size={14} /> Advanced photographic tools
+          </div>
+          <p className="hint">
+            {event?.advanced_tools_enabled
+              ? 'On — Sharpness, Faces, Min rating, Color tag and Duplicates filters are live on Photos & Imports.'
+              : 'Run the full analysis above first, then enable this to unlock Sharpness, Faces, Min rating, Color tag and Duplicates filters on Photos & Imports.'}
+          </p>
+          {!analyzed && !event?.advanced_tools_enabled && (
+            <p className="hint">No analyzed photos yet — run an analysis so the filters have data to match.</p>
+          )}
+          <button
+            className={event?.advanced_tools_enabled ? 'btn secondary' : 'btn'}
+            type="button"
+            disabled={togglingFeature === 'advancedTools' || !event}
+            onClick={() => setPendingToggle({ key: 'advancedTools', title: 'Advanced tools', enable: !event?.advanced_tools_enabled })}
+          >
+            {togglingFeature === 'advancedTools'
+              ? 'Saving…'
+              : event?.advanced_tools_enabled
+                ? 'Disable advanced tools'
+                : 'Enable advanced tools'}
+          </button>
+          {event?.advanced_tools_enabled && (
+            <p className="hint" style={{ marginTop: 8 }}>
+              Filters live in <Link to={`/events/${eventId}/photos`} style={{ color: '#F59E0B' }}>Photos & Imports</Link>.
+            </p>
+          )}
+        </div>
+        <div className="card">
           <div className="guest-link-label">How to use the results</div>
           <p className="hint">
             Duplicates-only filtering, ratings and color tags live on the gallery — open Photos &amp; Imports and use
@@ -57,6 +98,18 @@ export default function Tools() {
           </p>
         </div>
       </div>
+
+      <FeatureToggleConfirm
+        pending={pendingToggle}
+        eventName={event?.name}
+        isOwner={event?.role === 'owner'}
+        busy={!!togglingFeature}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => {
+          handleToggleFeature(pendingToggle.key, pendingToggle.enable)
+          setPendingToggle(null)
+        }}
+      />
     </div>
   )
 }
