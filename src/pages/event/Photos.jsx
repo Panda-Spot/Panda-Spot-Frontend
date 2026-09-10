@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Search, Star, Trash2, Upload, XCircle, ZoomIn, ZoomOut } from 'lucide-react'
+import { CheckCircle2, Columns3, Heart, ImageOff, Info, LayoutGrid, List, Lock, Search, Star, Trash2, Upload, XCircle, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEvent } from './EventContext.jsx'
 import { drivePermissionLabel } from './EventWorkspace.jsx'
 import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
@@ -293,13 +293,24 @@ export default function Photos() {
                 >
                   Import from Google Drive
                 </button>
-                {event?.pandashoots_enabled && (
+                {event?.pandashoots_enabled ? (
                   <button
                     type="button"
                     className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
                     onClick={() => setUploadTab('shoots')}
                   >
                     PandaShoots
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={uploadTab === 'shoots' ? 'upload-tab active' : 'upload-tab'}
+                    onClick={() => setUploadTab('shoots')}
+                    title="PandaShoots is turned off for this event — open to see why and how to enable it"
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Lock size={12} /> PandaShoots
+                    </span>
                   </button>
                 )}
               </div>
@@ -312,6 +323,22 @@ export default function Photos() {
                   hint="Photos (JPG/PNG/WebP) or video (MP4/MOV/WebM/MKV/AVI, gallery only) — up to 100 per batch, more are queued. Files over 20MB upload in resumable chunks. Faces are indexed only after you add photos to AI Search."
                 />
               ) : uploadTab === 'shoots' ? (
+                !event?.pandashoots_enabled ? (
+                  <div className="drive-import">
+                    <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Lock size={14} /> PandaShoots is turned off for this event.
+                    </p>
+                    <ul className="notice-list">
+                      <li>Camera-to-cloud capture: photos land in this gallery — scanned for faces and thumbnailed — while the shoot is still happening.</li>
+                      <li>Needs a camera with built-in FTP transfer (most professional mirrorless/DSLR bodies have it), or an add-on WiFi transmitter grip.</li>
+                      <li>PandaShoots captures are the exception to manual triage — they join AI Search and index live.</li>
+                    </ul>
+                    <p className="hint">
+                      To enable it, turn <strong>PandaShoots ON</strong> in the{' '}
+                      <Link to={`/events/${event?.id}/danger`} style={{ color: '#F59E0B' }}>Danger section → Features</Link>.
+                    </p>
+                  </div>
+                ) : (
                 <div className="drive-import">
                   {!event?.shoots_connected ? (
                     <>
@@ -352,6 +379,7 @@ export default function Photos() {
                     </>
                   )}
                 </div>
+                )
               ) : event?.drive_folder_url ? (
                 <div className="drive-import">
                   <p className="hint">
