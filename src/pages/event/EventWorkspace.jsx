@@ -1371,6 +1371,7 @@ export default function EventWorkspace() {
     try {
       await deletePhoto(eventId, photoId)
       setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
       load()
     } catch (e) {
       showToast(e.message, { type: 'error' })
@@ -1967,6 +1968,9 @@ export default function EventWorkspace() {
     try {
       await deletePhoto(eventId, photoId)
       setPhotos((prev) => prev.filter((p) => p.photo_id !== photoId))
+      // Deleted photos must vanish from the Faces sub-tab too — drop
+      // cached groups so it refetches live members only.
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
     } catch (e) {
       showToast(e.message, { type: 'error' })
     } finally {
@@ -2161,7 +2165,7 @@ export default function EventWorkspace() {
           eventId={eventId}
           photo={photos.find((p) => p.photo_id === metaPhotoId) || null}
           onClose={() => setMetaPhotoId(null)}
-          onChanged={load}
+          onChanged={() => { load(); setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev)) }}
         />
       )}
     </EventContext.Provider>
