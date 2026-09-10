@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Camera, CalendarDays, ChevronDown, Layers, Lock, ScanFace, Heart, Search, Plus, Building2, Gift, Sparkles, Crown, FileImage, CalendarOff, UserPlus } from 'lucide-react'
-import { createEvent, fileUrl, getMySubscription, listEvents } from '../api.js'
+import { createEvent, fileUrl, getMySubscription, listEvents, searchFaceNames } from '../api.js'
 import { pop } from '../lib/confetti.js'
 import { runInline, runInWorker } from '../lib/workerTask.js'
 import GlassCard from '../components/ui/GlassCard.jsx'
@@ -67,6 +67,22 @@ export default function Events() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [subscription, setSubscription] = useState(null)
+  // Global studio people search (named faces across owned events).
+  const [peopleQuery, setPeopleQuery] = useState('')
+  const [peopleResults, setPeopleResults] = useState([])
+  const [peopleLoading, setPeopleLoading] = useState(false)
+  useEffect(() => {
+    const q = peopleQuery.trim()
+    if (q.length < 2) { setPeopleResults([]); setPeopleLoading(false); return }
+    setPeopleLoading(true)
+    const t = setTimeout(() => {
+      searchFaceNames(q)
+        .then((r) => setPeopleResults(r.people || []))
+        .catch(() => setPeopleResults([]))
+        .finally(() => setPeopleLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [peopleQuery])
   // Expanded sub-gallery sections per event card (collapsed by default —
   // sub-galleries never list flat on this page).
   const [expandedSubs, setExpandedSubs] = useState({})
@@ -181,6 +197,16 @@ export default function Events() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
+              <div className="flex items-center gap-2 rounded-lg px-3 py-2 flex-1 min-w-[200px]" style={{ background: 'var(--bg-elevated)' }}>
+                <ScanFace size={15} style={{ color: 'var(--text-tertiary)' }} />
+                <input
+                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                  style={{ color: 'var(--text-primary)' }}
+                  placeholder="Search people by name…"
+                  value={peopleQuery}
+                  onChange={(e) => setPeopleQuery(e.target.value)}
+                />
+              </div>
               <label className="text-xs flex items-center gap-2" style={{ color: 'var(--text-tertiary)' }}>
                 Per page
                 <select
@@ -252,6 +278,46 @@ export default function Events() {
               </div>
             </div>
           </GlassCard>
+
+          {peopleQuery.trim().length >= 2 && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <div className="guest-link-label">
+                People matching “{peopleQuery.trim()}”{peopleLoading ? '…' : ` (${peopleResults.length})`}
+              </div>
+              {peopleLoading ? (
+                <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MiniLoader size={16} /> Searching named faces…
+                </p>
+              ) : peopleResults.length === 0 ? (
+                <p className="hint">No named people match — name them from any event's AI Search → Faces tab.</p>
+              ) : (
+                <ul className="team-list">
+                  {peopleResults.map((p) => (
+                    <li key={`${p.event_id}-${p.person_name}`} className="team-list-item">
+                      {p.thumbnail_url ? (
+                        <img
+                          src={fileUrl(p.thumbnail_url)}
+                          alt=""
+                          draggable={false}
+                          style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                      ) : (
+                        <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-elevated)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <ScanFace size={16} style={{ color: 'var(--text-tertiary)' }} />
+                        </span>
+                      )}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <strong>{p.person_name}</strong>
+                        <span className="hint"> · {p.event_name} · {p.photo_count} photo{p.photo_count === 1 ? '' : 's'} · {p.face_count} face{p.face_count === 1 ? '' : 's'}</span>
+                      </span>
+                      <Link className="btn secondary" to={`/events/${p.event_id}/ai-search`}>Open</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between mt-4 mb-3">
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
