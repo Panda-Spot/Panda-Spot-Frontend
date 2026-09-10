@@ -195,7 +195,7 @@ export default function MergeReview({ eventId, onChanged }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Review similar faces</p>
           <p className="hint" style={{ margin: '2px 0 0' }}>
-            {suggestions.length} possible duplicate{suggestions.length === 1 ? '' : 's'} need{uggestions.length === 1 ? 's' : ''} your call — same person or not?
+            {suggestions.length} possible duplicate{suggestions.length === 1 ? '' : 's'} — same person or not? You decide.
           </p>
         </div>
         <span className="merge-count-ribbon">{suggestions.length}</span>
