@@ -555,27 +555,19 @@
   }
 }
 
-/* --- Unified photo browser: one page scrollbar (the grid flows with the
-    page — no inner scroll container), selection strip sticks under the
-    app topbar while photos scroll past. NOTE: no overflow:hidden here —
-    that would trap position:sticky and unpin the strip. --- */
+/* --- Unified photo browser: fixed viewport-height box with its own grid
+    scroll — filter bar, selection strip and pagination footer stay
+    pinned and always visible while only the photos scroll. --- */
 
 .photo-browser {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--card);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-/* Square child corners would poke past the parent's rounding without
-   clipping — round the first/last children instead. */
-.photo-browser > :first-child {
-  border-radius: 11px 11px 0 0;
-}
-
-.photo-browser > :last-child {
-  border-radius: 0 0 11px 11px;
+  height: calc(100vh - 170px);
+  min-height: 420px;
 }
 
 .photo-browser-bar {
@@ -602,6 +594,7 @@
   padding: 14px;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .photo-browser-footer {
@@ -817,12 +810,10 @@
   }
 }
 
-/* --- Selection action strip: first inside the photo browser, sticky
-    under the app topbar so it stays usable while the grid scrolls past
-    on the normal page scrollbar. Opaque background (not translucent) so
-    scrolling photos never show through. z-index sits below the topbar's.
-    Selection itself lives in state keyed by photo id, so it persists
-    across pages/filters. --- */
+/* --- Selection action strip: first inside the photo browser, pinned
+    above the scrolling grid (flex-shrink: 0, outside the scroll body)
+    so it never scrolls away. Selection itself lives in state keyed by
+    photo id, so it persists across pages/filters. --- */
 
 .photo-browser-select {
   display: flex;
@@ -836,9 +827,6 @@
     var(--card);
   flex-shrink: 0;
   font-size: 12.5px;
-  position: sticky;
-  top: var(--topbar-h);
-  z-index: 4;
 }
 
 .select-count {
