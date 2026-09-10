@@ -1121,8 +1121,11 @@ export default function EventWorkspace() {
   const handleBulkRemoveVisible = async (feature) => {    const members = feature === 'selection' ? selectionMembers() : aiMembers()
     if (members.length === 0) return
     const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
+    const aiNote = feature === 'selection'
+      ? 'Files stay in the manager — only membership flags change.'
+      : 'Face closeups are deleted immediately and face data is held 15 days, then purged. Files stay in the manager.'
     const confirmed = await confirm(
-      `Remove ${members.length} visible photo(s) from ${feature === 'selection' ? 'Photo Selection' : 'AI Search'}? Files stay in the manager — only membership flags change.`,
+      `Remove ${members.length} visible photo(s) from ${feature === 'selection' ? 'Photo Selection' : 'AI Search'}? ${aiNote}`,
       { title: 'Remove from feature?', confirmLabel: 'Remove', danger: false }
     )
     if (!confirmed) return
@@ -1981,8 +1984,11 @@ export default function EventWorkspace() {
     if (removingAI || removingSel) {
       const name = (photos || []).find((p) => p.photo_id === photoId)?.filename || 'this photo'
       const where = removingAI && removingSel ? 'AI Search and Photo Selection' : removingAI ? 'AI Search' : 'Photo Selection'
+      const aiNote = removingAI
+        ? 'Face closeups are deleted immediately and face data is held 15 days, then purged. '
+        : 'Only membership flags change. '
       const confirmed = await confirm(
-        `Remove "${name}" from ${where}? The file stays in the manager — only membership changes.`,
+        `Remove "${name}" from ${where}? ${aiNote}The file stays in the manager.`,
         { title: 'Remove photo?', confirmLabel: 'Remove', danger: false }
       )
       if (!confirmed) return false
