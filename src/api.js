@@ -197,7 +197,7 @@ export const loginWithGoogle = async (idToken, rememberMe = true) => {
 }
 
 // Sliding renewal for default sessions — called proactively while the
-// user is active, before the 30-minute token dies. The server rotates the
+// user is active, before the token dies. The server rotates the
 // token (old one blocklisted) and enforces the absolute cap (24 h default,
 // 7 days remember-me); a 401 here means the session is over.
 export const refreshSession = async () => {

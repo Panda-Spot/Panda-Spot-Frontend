@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
   // 2. idle timeout (default class only) → logout('idle'), deferred while
   //    requests are on the wire so uploads are never killed mid-flight
   // 3. proactive sliding refresh (default class, still active) → renews
-  //    the 30-minute token before it dies; the server hard-caps at 24 h.
+  //    the token before it dies; the server hard-caps at 24 h.
   useEffect(() => {
     const onInteract = () => recordActivity()
     for (const evt of INTERACTION_EVENTS) {

@@ -2,7 +2,7 @@
 //
 // - Remember-me sessions (7-day): token + metadata in localStorage, so the
 //   login survives browser/tab restarts.
-// - Default sessions (30-min idle logout): token + metadata in
+// - Default sessions (24-hour idle logout): token + metadata in
 //   sessionStorage, so closing the tab already ends the session.
 //
 // The auth token used to live unconditionally in localStorage; that legacy
@@ -160,7 +160,7 @@ export function setToken(token, { remember = false, expiresIn = null } = {}) {
   const expiresAt =
     typeof expiresIn === "number"
       ? Date.now() + expiresIn * 1000
-      : decodeExpiryMs(token) || Date.now() + 30 * 60 * 1000
+      : decodeExpiryMs(token) || Date.now() + 24 * 60 * 60 * 1000
   writeSession(target, remember, expiresAt)
   mirrorTokenForNewTab(token, remember, expiresAt)
 }
@@ -174,7 +174,7 @@ export function updateTokenFromRefresh(token, expiresIn) {
   setToken(token, { remember: prev?.remember === true, expiresIn })
   // New tabs that boot off the stale localStorage copy would 401 and
   // bounce — proactively align both storages here.
-  writeSessionToAll(prev?.remember === true, typeof expiresIn === "number" ? Date.now() + expiresIn * 1000 : decodeExpiryMs(token) || Date.now() + 30 * 60 * 1000)
+  writeSessionToAll(prev?.remember === true, typeof expiresIn === "number" ? Date.now() + expiresIn * 1000 : decodeExpiryMs(token) || Date.now() + 24 * 60 * 60 * 1000)
   // Token itself is already in both (setToken's mirroring) — keep them
   // in lockstep in case a race overwrote the other tab's localStorage
   // between the two writes above.

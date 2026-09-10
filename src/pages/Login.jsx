@@ -41,7 +41,7 @@ export default function Login() {
         <p className="subtle">Welcome back — manage your events and shared galleries.</p>
 
         {logoutReason === 'idle' && (
-          <p className="auth-notice">You were logged out after 30 minutes of inactivity.</p>
+          <p className="auth-notice">You were logged out after 24 hours of inactivity.</p>
         )}
         {logoutReason === 'expired' && (
           <p className="auth-notice">Your session ended — please log in again.</p>
@@ -86,7 +86,7 @@ export default function Login() {
             Remember me — stay logged in for 7 days
             {!rememberMe && (
               <span className="hint" style={{ display: 'block', marginTop: 2 }}>
-                Otherwise you&apos;ll be logged out after 30 minutes of inactivity.
+                Otherwise you&apos;ll be logged out after 24 hours of inactivity.
               </span>
             )}
           </span>

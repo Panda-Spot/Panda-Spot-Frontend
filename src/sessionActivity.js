@@ -1,6 +1,6 @@
 // Session activity tracking for the idle auto-logout feature.
 //
-// Default (non-remember-me) sessions die after 30 minutes with no user
+// Default (non-remember-me) sessions die after 24 hours with no user
 // interaction. Only genuine DOM interaction counts as activity — background
 // API polling (notifications, analytics) deliberately does NOT reset the
 // timer, otherwise idle logout would never fire.
@@ -11,9 +11,9 @@
 
 export const IDLE_TIMEOUT_MS = (() => {
   // QA override: set VITE_IDLE_TIMEOUT_MINUTES=1 in .env to verify the
-  // idle logout in a minute instead of waiting 30. Production default: 30.
+  // idle logout in a minute instead of waiting 24 hours. Production default: 24h.
   const override = Number(import.meta.env?.VITE_IDLE_TIMEOUT_MINUTES)
-  return Number.isFinite(override) && override > 0 ? override * 60 * 1000 : 30 * 60 * 1000
+  return Number.isFinite(override) && override > 0 ? override * 60 * 1000 : 24 * 60 * 60 * 1000
 })()
 export const SESSION_CHECK_INTERVAL_MS = 30 * 1000 // re-evaluate every 30s
 export const REFRESH_BEFORE_EXPIRY_MS = 10 * 60 * 1000 // renew token when <10 min left
