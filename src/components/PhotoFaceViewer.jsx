@@ -81,8 +81,8 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
 
   if (!photo) return null
 
-  // Person highlight (opened from one person's photo modal): matching
-  // faces get the accent treatment, lead the strip, and the rest dim.
+  // Person highlight lives on the main image only (green box): the
+  // strip below stays neutral and keeps its detection order.
   const isHighlighted = (f) => {
     if (!highlight) return false
     if (Array.isArray(highlight.faceIds) && highlight.faceIds.length > 0) return highlight.faceIds.includes(f.id)
@@ -90,9 +90,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
   }
   const rawList = faces || []
   const hasHighlight = !!highlight && rawList.some(isHighlighted)
-  const faceList = hasHighlight
-    ? [...rawList].sort((a, b) => (isHighlighted(b) ? 1 : 0) - (isHighlighted(a) ? 1 : 0))
-    : rawList
+  const faceList = rawList
   // Crop math needs ORIGINAL-image dims (bboxes are original pixels) while
   // only the thumbnail is ever displayed. Stored dims win; the measured
   // thumbnail is NOT a substitute (different size = wrong fractions).
@@ -188,18 +186,11 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
           {!loading && faceList.length > 0 && (
             <div className="face-strip">
               {faceList.map((f, i) => {
-                const hot = hasHighlight && isHighlighted(f)
                 // Preferred: server-stored closeup (exact pixels). Fallback:
                 // crop math from stored dims; last resort: whole thumbnail.
                 if (f.thumbnail_url) {
                   return (
-                    <div
-                      key={f.id || i}
-                      className="face-strip-item"
-                      style={hot
-                        ? { outline: '2px solid #4ADE80', outlineOffset: 2, borderRadius: 12 }
-                        : hasHighlight ? { opacity: 0.55 } : undefined}
-                    >
+                    <div key={f.id || i} className="face-strip-item">
                       <div className="face-strip-crop">
                         <img
                           src={fileUrl(f.thumbnail_url)}
@@ -215,13 +206,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
                 const hasCrop = !!dims;
                 const sq = hasCrop ? closeup(f) : null
                 return (
-                  <div
-                    key={f.id || i}
-                    className="face-strip-item"
-                    style={hot
-                      ? { outline: '2px solid #4ADE80', outlineOffset: 2, borderRadius: 12 }
-                      : hasHighlight ? { opacity: 0.55 } : undefined}
-                  >
+                  <div key={f.id || i} className="face-strip-item">
                     <div className="face-strip-crop">
                       <img
                         src={src}
