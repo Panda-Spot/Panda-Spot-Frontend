@@ -148,7 +148,8 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
 
   return (
     <div>
-      <p className="hint" style={{ marginBottom: 12 }}>
+      <MergeReview eventId={eventId} onChanged={onRenamed} />
+      <p className="hint" style={{ marginBottom: 12, marginTop: 4 }}>
         {data.group_count} unique face{data.group_count === 1 ? '' : 's'} across {data.face_count} detected face{data.face_count === 1 ? '' : 's'}.
         Guest searches check these unique faces, so the same person is found once no matter how many photos they appear in.
       </p>
@@ -160,7 +161,6 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
         onChange={(e) => setQuery(e.target.value)}
         style={{ marginBottom: 12 }}
       />
-      <MergeReview eventId={eventId} onChanged={onRenamed} />
       {shown.length === 0 && (
         <p className="hint">No people match “{query.trim()}”.</p>
       )}

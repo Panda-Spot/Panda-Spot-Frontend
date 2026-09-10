@@ -5294,6 +5294,151 @@ a.shoot-cal-entry:hover {
   min-width: 0;
 }
 
+/* --- Merge decision wizard: hero entry, Venn grid, fullscreen judge --- */
+
+.merge-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 2px dashed rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(245, 158, 11, 0.015));
+  border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.merge-hero:hover {
+  border-color: #F59E0B;
+  border-style: solid;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.18);
+}
+
+.merge-hero-faces {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.merge-hero-pair {
+  display: inline-flex;
+}
+
+.merge-hero-pair img:nth-child(2),
+.merge-hero-pair span:nth-child(2) {
+  margin-left: -14px;
+}
+
+.merge-count-ribbon {
+  flex-shrink: 0;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #f59e0b;
+  color: #111;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+.merge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.merge-pair-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.merge-pair-card:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+
+.merge-venn {
+  display: flex;
+  justify-content: center;
+}
+
+.merge-venn img:nth-child(2),
+.merge-venn span:nth-child(2) {
+  margin-left: -18px;
+}
+
+.merge-judge-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.merge-judge-panel {
+  width: min(920px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.merge-judge-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.merge-judge-mains {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.merge-judge-photos {
+  display: flex;
+  gap: 12px;
+}
+
+.merge-judge-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.merge-judge-actions .text-input {
+  flex: 1;
+  min-width: 140px;
+}
+
+@media (max-width: 640px) {
+  .merge-judge-photos {
+    flex-direction: column;
+  }
+  .merge-judge-mains img {
+    width: 84px !important;
+    height: 84px !important;
+  }
+}
+
 @media (max-width: 640px) {
   .shoot-cal-cell {
     min-height: 58px;
