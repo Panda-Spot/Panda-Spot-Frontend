@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Tag, Trash2, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 import ZoomableImage from './gallery/ZoomableImage.jsx'
@@ -50,10 +50,15 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
   const [imgError, setImgError] = useState(false)
   // Face boxes sit in unzoomed coordinates — hide them while zoomed.
   const [zoomed, setZoomed] = useState(false)
-  // Thumbnails only — originals may live on Drive (revocable) or be
-  // expired; the cached thumbnail is always servable. Same rule as the
-  // studio lightbox: never load the original in a preview.
-  const src = photo ? fileUrl(photo.thumbnail_url || photo.url) : ''
+  // Thumbnails by default — originals may live on Drive (revocable) or be
+  // expired; the cached thumbnail is always servable. The eye toggle
+  // lets the studio load the full original explicitly, like Photos.
+  const [showOriginal, setShowOriginal] = useState(false)
+  // Person-highlight boxes can be hidden to inspect the clean photo.
+  const [showHighlight, setShowHighlight] = useState(true)
+  const src = photo
+    ? fileUrl(showOriginal && photo.url ? photo.url : (photo.thumbnail_url || photo.url))
+    : ''
   const total = Array.isArray(items) && items.length > 0 ? items.length : 1
   const canNav = typeof onIndexChange === 'function' && total > 1
   const go = (dir) => { if (canNav) onIndexChange(dir) }
@@ -62,7 +67,6 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
     setNatural(null)
     setImgError(false)
   }, [photo?.photo_id])
-
   useEffect(() => {
     if (!photo) return
     lockScroll()
@@ -124,6 +128,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
         <div className="face-viewer-photo">
           {!natural && !imgError && <div className="lightbox-spinner" />}
           <ZoomableImage
+            key={src}
             src={src}
             alt={photo.filename}
             className="face-viewer-img"
@@ -132,7 +137,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
             onZoomChange={(z) => setZoomed(z > 1)}
           />
           {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
-          {dims && !zoomed && faceList.map((f, i) => {
+          {dims && !zoomed && showHighlight && faceList.map((f, i) => {
             const r = toRect(f.bbox, dims)
             const hot = hasHighlight && isHighlighted(f)
             return (
@@ -178,9 +183,31 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
         <div className="face-viewer-strip" onClick={(e) => e.stopPropagation()}>
           <div className="face-viewer-strip-head">
             <span className="face-viewer-title">{photo.filename}</span>
-            <span className="hint">
-              {canNav ? `${index + 1} of ${total} · ` : ''}
-              {loading ? 'Loading faces…' : `${faceList.length} face${faceList.length === 1 ? '' : 's'} captured`}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="hint">
+                {canNav ? `${index + 1} of ${total} · ` : ''}
+                {loading ? 'Loading faces…' : `${faceList.length} face${faceList.length === 1 ? '' : 's'} captured`}
+              </span>
+              {photo.url && (
+                <button
+                  type="button" className="icon-btn"
+                  title={showOriginal ? 'Back to thumbnail (fast, always available)' : 'View full original'}
+                  onClick={(e) => { e.stopPropagation(); setShowOriginal((v) => !v) }}
+                  style={{ width: 26, height: 26 }}
+                >
+                  {showOriginal ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              )}
+              {hasHighlight && (
+                <button
+                  type="button" className="icon-btn"
+                  title={showHighlight ? 'Hide person highlight' : 'Show person highlight'}
+                  onClick={(e) => { e.stopPropagation(); setShowHighlight((v) => !v) }}
+                  style={{ width: 26, height: 26, color: showHighlight ? '#4ADE80' : undefined }}
+                >
+                  <Tag size={14} />
+                </button>
+              )}
             </span>
           </div>
           {!loading && faceList.length > 0 && (
