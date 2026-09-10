@@ -3499,22 +3499,23 @@
 }
 
 .face-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   gap: 10px;
-  overflow-x: auto;
   margin-top: 10px;
   padding-bottom: 4px;
 }
 
 .face-strip-item {
-  flex: 0 0 auto;
-  width: 76px;
+  width: 100%;
+  min-width: 0;
   text-align: center;
 }
 
 .face-strip-crop {
-  width: 76px;
-  height: 76px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
   border-radius: 12px;
   overflow: hidden;
   position: relative;
