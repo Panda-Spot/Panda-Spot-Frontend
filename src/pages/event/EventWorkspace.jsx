@@ -1173,7 +1173,9 @@ export default function EventWorkspace() {
     const items = Array.isArray(viewingList) && viewingList.length > 0 ? viewingList : []
     if (items.length === 0) return
     const next = Math.min(Math.max(viewingIndex + dir, 0), items.length - 1)
-    if (next !== viewingIndex) openFaceViewer(items[next], items)
+    // Carry the person highlight across arrow steps — reopening without
+    // it silently cleared the green boxes on every navigation.
+    if (next !== viewingIndex) openFaceViewer(items[next], items, viewingHighlight)
   }
 
   const handleBulkRemoveVisible = async (feature) => {
