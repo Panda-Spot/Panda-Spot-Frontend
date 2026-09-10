@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 // Shared client-side gallery helpers: name search + sort for the studio
 // photo grids (Photos & Imports, Selection members, AI Search members).
@@ -31,4 +31,37 @@ export function useGalleryItems(items, { query, sort }) {
       : rows
     return [...searched].sort(SORTERS[sort] || SORTERS.newest)
   }, [items, query, sort])
+}
+
+// Tab-local id-keyed selection for member browsers (AI Search / Photo
+// Selection remove-flows). Page-persistent by construction (ids live
+// outside pagination), merge-aware toggling, single-key deselect.
+// Independent from the manager's add-selection so counts never mix.
+export function useIdSelection() {
+  const [selected, setSelected] = useState({})
+  const count = Object.keys(selected).length
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const next = { ...prev }
+      if (next[id]) delete next[id]
+      else next[id] = true
+      return next
+    })
+  }
+  const toggleAll = (ids) => {
+    const list = Array.isArray(ids) ? ids : []
+    setSelected((prev) => {
+      const allOn = list.length > 0 && list.every((id) => prev[id])
+      const next = { ...prev }
+      if (allOn) {
+        for (const id of list) delete next[id]
+      } else {
+        for (const id of list) next[id] = true
+      }
+      return next
+    })
+  }
+  const clear = () => setSelected({})
+  const ids = () => Object.keys(selected)
+  return { selected, count, toggle, toggleAll, clear, ids }
 }

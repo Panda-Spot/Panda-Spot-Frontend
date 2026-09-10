@@ -8,8 +8,7 @@ import { fileUrl } from '../../api.js'
 import FaceGroupsView from '../../components/FaceGroupsView.jsx'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import Modal from '../../components/Modal.jsx'
-import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
-import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
+import MemberBrowser from '../../components/gallery/MemberBrowser.jsx'
 import PrivacySettingsCard from '../../components/PrivacySettingsCard.jsx'
 import StatTile from '../../components/StatTile.jsx'
 import TrendChart from '../../components/TrendChart.jsx'
@@ -21,7 +20,7 @@ export default function AISearch() {
     eventId, event, photos, analytics, load,
     aiMembers, aiView, setAiView,
     faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer, refreshFaceGroups,
-    handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
+    handleBulkRemoveSelected, handlePhotoFeatureMembership, savingPhotoFeatures,
     privacyDraft, setPrivacyDraft,
     requestStartEvent, setActiveTab,
   } = useEvent()
@@ -29,9 +28,6 @@ export default function AISearch() {
   useEffect(() => { setActiveTab('ai') }, [setActiveTab])
 
   const [savingPrivacy, setSavingPrivacy] = useState(false)
-  const [memberQuery, setMemberQuery] = useState('')
-  const [memberSort, setMemberSort] = useState('newest')
-  const shownAiMembers = useGalleryItems(aiMembers(), { query: memberQuery, sort: memberSort })
   // Privacy section lives collapsed at the end of the tab.
   const [privacyOpen, setPrivacyOpen] = useState(false)
   // Analytics lives behind a button, in a fullscreen-style popup.
@@ -194,82 +190,46 @@ export default function AISearch() {
                       <BarChart3 size={14} /> Analytics
                     </button>
                   )}
-                  <button
-                    className="btn secondary"
-                    type="button"
-                    disabled={bulking || aiMembers().length === 0}
-                    onClick={() => handleBulkRemoveVisible('ai')}
-                  >
-                    Remove all visible from AI Search
-                  </button>
                 </div>
-                {aiMembers().length === 0 ? (
-                  <GalleryEmpty
-                    title="Nothing in AI Search yet"
-                    hint="Head to Photos & Imports, tap Select, tick photos, and add them to AI Search."
-                    action={{ label: 'Open Photos & Imports', onClick: () => navigate(`/events/${eventId}/photos`) }}
-                  />
-                ) : (
-                  <>
-                    <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <input
-                        className="text-input gallery-search"
-                        type="search"
-                        placeholder="Search by image name…"
-                        value={memberQuery}
-                        onChange={(e) => setMemberQuery(e.target.value)}
-                      />
-                      <select
-                        className="text-input" value={memberSort}
-                        onChange={(e) => setMemberSort(e.target.value)}
-                        title="Sort photos"
-                        style={{ width: 'auto' }}
-                      >
-                        {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                      </select>
-                    </div>
-                    {shownAiMembers.length === 0 ? (
-                      <GalleryEmpty
-                        icon={Search}
-                        title="No photos match"
-                        hint="Try a different search."
-                      />
-                    ) : (
-                  <div className="photo-grid">
-                    {shownAiMembers.map((p) => (
-                      <div className="photo-card" key={p.photo_id}>
-                        <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => openFaceViewer(p, shownAiMembers)} title="Open fullscreen + face closeups">
-                          <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                          {!p.face_indexed_at && (
-                            <div className="card-indexing-overlay">
-                              <div className="card-spinner" />
-                            </div>
-                          )}
-                          <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
-                            <div className="meta-actions">
-                              <button
-                                className="icon-btn danger"
-                                type="button"
-                                title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
-                                onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
-                                disabled={!!savingPhotoFeatures[p.photo_id]}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
+                <MemberBrowser
+                  items={aiMembers()}
+                  removeTargetLabel="AI Search"
+                  emptyTitle="Nothing in AI Search yet"
+                  emptyHint="Head to Photos & Imports, tap Select, tick photos, and add them to AI Search."
+                  resultNoun="member"
+                  onRemoveSelected={(ids) => handleBulkRemoveSelected('ai', ids)}
+                  onRemoveAllVisible={() => handleBulkRemoveVisible('ai')}
+                  renderCard={(p, i, pageStart, searched) => (
+                    <div className="photo-card" key={p.photo_id}>
+                      <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => openFaceViewer(searched[pageStart + i], searched)} title="Open fullscreen + face closeups">
+                        <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                        {!p.face_indexed_at && (
+                          <div className="card-indexing-overlay">
+                            <div className="card-spinner" />
                           </div>
-                          {p.face_indexed_at && (
-                            <div className="card-overlay-info">
-                              {p.face_count} face{p.face_count === 1 ? '' : 's'} indexed
-                            </div>
-                          )}
+                        )}
+                        <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                          <div className="meta-actions">
+                            <button
+                              className="icon-btn danger"
+                              type="button"
+                              title="Remove from AI Search (face data kept, photo stays in Photos & Imports)"
+                              onClick={() => handlePhotoFeatureMembership(p.photo_id, { face_search_visible: false })}
+                              disabled={!!savingPhotoFeatures[p.photo_id]}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
+                        {p.face_indexed_at && (
+                          <div className="card-overlay-info">
+                            {p.face_count} face{p.face_count === 1 ? '' : 's'} indexed
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
+                />
               </>
             )}
           </div>

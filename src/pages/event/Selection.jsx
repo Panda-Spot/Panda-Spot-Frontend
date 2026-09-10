@@ -5,13 +5,12 @@ import { useEvent } from './EventContext.jsx'
 import { fileUrl } from '../../api.js'
 import GalleryMedia from '../../components/GalleryMedia.jsx'
 import StudioLightbox from '../../components/StudioLightbox.jsx'
-import { GALLERY_SORTS, useGalleryItems } from '../../components/gallery/galleryTools.js'
-import GalleryEmpty from '../../components/gallery/GalleryEmpty.jsx'
+import MemberBrowser from '../../components/gallery/MemberBrowser.jsx'
 
 export default function Selection() {
   const {
     eventId, event, publishing, handlePublish, togglingDownload, handleAllowDownload,
-    selectionMembers, handleBulkRemoveVisible, bulking,
+    selectionMembers, handleBulkRemoveVisible, handleBulkRemoveSelected, bulking,
     handleTogglePick, studioPicks, togglingPickId,
     handlePhotoFeatureMembership, savingPhotoFeatures,
     clients, pendingClientInvites, clientInviteEmail, setClientInviteEmail,
@@ -35,9 +34,6 @@ export default function Selection() {
 
   useEffect(() => { setActiveTab('selection') }, [setActiveTab])
 
-  const [memberQuery, setMemberQuery] = useState('')
-  const [memberSort, setMemberSort] = useState('newest')
-  const shownMembers = useGalleryItems(selectionMembers(), { query: memberQuery, sort: memberSort })
   // Fullscreen preview: { items, index } — navigable with arrows/swipe.
   const [preview, setPreview] = useState(null)
 
@@ -123,91 +119,54 @@ export default function Selection() {
               Selection members ({selectionMembers().length})
             </div>
             <p className="hint">
-              Only these photos appear in client galleries. Add more from Photos &amp; Imports — remove here, one by one or all visible at once.
+              Only these photos appear in client galleries. Add more from Photos &amp; Imports — remove here, one by one or in bulk with Select.
             </p>
-            <div className="row" style={{ marginBottom: 8 }}>
-              <button
-                className="btn secondary"
-                type="button"
-                disabled={bulking || selectionMembers().length === 0}
-                onClick={() => handleBulkRemoveVisible('selection')}
-              >
-                Remove all visible from Photo Selection
-              </button>
-            </div>
-            {selectionMembers().length === 0 ? (
-              <GalleryEmpty
-                title="Nothing in Photo Selection yet"
-                hint="Select photos in Photos & Imports and add them."
-              />
-            ) : (
-              <>
-                <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <input
-                    className="text-input gallery-search"
-                    type="search"
-                    placeholder="Search by image name…"
-                    value={memberQuery}
-                    onChange={(e) => setMemberQuery(e.target.value)}
-                  />
-                  <select
-                    className="text-input" value={memberSort}
-                    onChange={(e) => setMemberSort(e.target.value)}
-                    title="Sort photos"
-                    style={{ width: 'auto' }}
+            <MemberBrowser
+              items={selectionMembers()}
+              removeTargetLabel="Selection"
+              emptyTitle="Nothing in Photo Selection yet"
+              emptyHint="Select photos in Photos & Imports and add them."
+              resultNoun="member"
+              onRemoveSelected={(ids) => handleBulkRemoveSelected('selection', ids)}
+              onRemoveAllVisible={() => handleBulkRemoveVisible('selection')}
+              renderCard={(p, i, pageStart, searched) => (
+                <div className="photo-card" key={p.photo_id}>
+                  <div
+                    style={{ position: 'relative', cursor: 'zoom-in' }}
+                    onClick={() => setPreview({ items: searched, index: pageStart + i })}
+                    title="Open fullscreen preview"
                   >
-                    {GALLERY_SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                  </select>
-                </div>
-                {shownMembers.length === 0 ? (
-                  <GalleryEmpty
-                    icon={Search}
-                    title="No photos match"
-                    hint="Try a different search."
-                  />
-                ) : (
-              <div className="photo-grid">
-                {shownMembers.map((p, i) => (
-                  <div className="photo-card" key={p.photo_id}>
-                    <div
-                      style={{ position: 'relative', cursor: 'zoom-in' }}
-                      onClick={() => setPreview({ items: shownMembers, index: i })}
-                      title="Open fullscreen preview"
-                    >
-                      <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
-                      <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
-                        <div className="meta-actions">
-                          <button
-                            className="icon-btn"
-                            type="button"
-                            title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
-                            onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
-                            disabled={togglingPickId === p.photo_id}
-                            style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
-                          >
-                            <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
-                          </button>
-                          <button
-                            className="icon-btn danger"
-                            type="button"
-                            title="Remove from Photo Selection (stays in Photos & Imports)"
-                            onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
-                            disabled={!!savingPhotoFeatures[p.photo_id]}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="card-overlay-info" title={p.filename}>
-                        {p.filename}
+                    <GalleryMedia src={fileUrl(p.thumbnail_url || p.url)} filename={p.filename} />
+                    <div className="card-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                      <div className="meta-actions">
+                        <button
+                          className="icon-btn"
+                          type="button"
+                          title={studioPicks.includes(p.photo_id) ? 'Remove studio pick' : 'Mark as studio pick'}
+                          onClick={() => handleTogglePick(p.photo_id, studioPicks.includes(p.photo_id))}
+                          disabled={togglingPickId === p.photo_id}
+                          style={{ color: studioPicks.includes(p.photo_id) ? '#EF4444' : undefined }}
+                        >
+                          <Heart size={15} fill={studioPicks.includes(p.photo_id) ? '#EF4444' : 'none'} />
+                        </button>
+                        <button
+                          className="icon-btn danger"
+                          type="button"
+                          title="Remove from Photo Selection (stays in Photos & Imports)"
+                          onClick={() => handlePhotoFeatureMembership(p.photo_id, { photo_selection_visible: false })}
+                          disabled={!!savingPhotoFeatures[p.photo_id]}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
+                    <div className="card-overlay-info" title={p.filename}>
+                      {p.filename}
+                    </div>
                   </div>
-                ))}
-              </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+            />
           </div>
 
           <div className="card team-card">

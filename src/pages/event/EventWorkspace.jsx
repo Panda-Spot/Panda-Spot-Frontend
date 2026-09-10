@@ -1127,7 +1127,8 @@ export default function EventWorkspace() {
     if (next !== viewingIndex) openFaceViewer(items[next], items)
   }
 
-  const handleBulkRemoveVisible = async (feature) => {    const members = feature === 'selection' ? selectionMembers() : aiMembers()
+  const handleBulkRemoveVisible = async (feature) => {
+    const members = feature === 'selection' ? selectionMembers() : aiMembers()
     if (members.length === 0) return
     const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
     const aiNote = feature === 'selection'
@@ -1151,6 +1152,37 @@ export default function EventWorkspace() {
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
     } catch (e) {
       showToast(e.message, { type: 'error' })
+    } finally {
+      setBulking(null)
+    }
+  }
+
+  // Member-tab select mode: remove an explicit id set (across pages) from
+  // one feature. Confirm carries the count; single-photo bins keep using
+  // handlePhotoFeatureMembership. Returns true when applied.
+  const handleBulkRemoveSelected = async (feature, ids) => {
+    const list = Array.isArray(ids) ? ids : []
+    if (list.length === 0) return false
+    const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
+    const where = feature === 'selection' ? 'Photo Selection' : 'AI Search'
+    const aiNote = feature === 'selection'
+      ? 'Files stay in the manager — only membership flags change.'
+      : 'Face closeups are deleted immediately and face data is held 15 days, then purged. Files stay in the manager.'
+    const confirmed = await confirm(
+      `Remove ${list.length} selected photo(s) from ${where}? ${aiNote}`,
+      { title: 'Remove from feature?', confirmLabel: 'Remove', danger: false }
+    )
+    if (!confirmed) return false
+    setBulking('remove')
+    try {
+      const res = await bulkSetMembership(eventId, { photoIds: list, ...patch })
+      showToast(`${res.updated} photo(s) removed.`)
+      load()
+      setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      return true
+    } catch (e) {
+      showToast(e.message, { type: 'error' })
+      return false
     } finally {
       setBulking(null)
     }
@@ -2131,7 +2163,7 @@ export default function EventWorkspace() {
     handleStudioZip, handlePicksZip, handleArchivePhoto, handleRestorePhoto,
     toggleManagerSelect, toggleManagerSelectAllVisible,
     selectionMembers, aiMembers, openFaceViewer,
-    handleBulkRemoveVisible, handleBulkMembership, handleBulkAddAllVisible,
+    handleBulkRemoveVisible, handleBulkRemoveSelected, handleBulkMembership, handleBulkAddAllVisible,
     handleTogglePick, openGrantPanel, handleSaveGrant,
     handleSubmitBehalf, handleUnsubmit, handleRevoke, handleRestoreAccess,
     handleApprovePhoto, handleToggleHighlight, handleRejectPhoto,
