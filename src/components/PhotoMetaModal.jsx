@@ -34,6 +34,14 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [preset, setPreset] = useState('full');
   const [downloading, setDownloading] = useState(false);
+  // Optimistic rating/tag: instant local feel, server confirms after.
+  // Re-seeded whenever a different photo opens.
+  const [rating, setRating] = useState(photo?.rating ?? 0);
+  const [colorTag, setColorTag] = useState(photo?.color_tag ?? null);
+  useEffect(() => {
+    setRating(photo?.rating ?? 0);
+    setColorTag(photo?.color_tag ?? null);
+  }, [photo?.photo_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (photo) {
@@ -64,27 +72,30 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     }
   };
 
-  const saveRating = async (rating) => {
-    setBusy(true);
+  const saveRating = async (next) => {
+    const prev = rating;
+    const value = prev === next ? 0 : next;
+    setRating(value);
     try {
-      await setPhotoRating(eventId, photo.photo_id, rating);
+      await setPhotoRating(eventId, photo.photo_id, value);
+      showToast(value === 0 ? 'Rating cleared.' : `Rated ${value} star${value === 1 ? '' : 's'}.`);
       onChanged?.();
     } catch (e) {
+      setRating(prev);
       showToast(e.message, { type: 'error' });
-    } finally {
-      setBusy(false);
     }
   };
 
-  const saveTag = async (colorTag) => {
-    setBusy(true);
+  const saveTag = async (next) => {
+    const prev = colorTag;
+    setColorTag(next);
     try {
-      await setPhotoColorTag(eventId, photo.photo_id, colorTag);
+      await setPhotoColorTag(eventId, photo.photo_id, next);
+      showToast(next ? `Color tag set to ${next}.` : 'Color tag cleared.');
       onChanged?.();
     } catch (e) {
+      setColorTag(prev);
       showToast(e.message, { type: 'error' });
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -199,10 +210,10 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
               <div className="meta-stars">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
-                    key={n} type="button" className={`meta-star${(photo.rating || 0) >= n ? ' lit' : ''}`} title={`${n} star${n === 1 ? '' : 's'}`}
-                    disabled={busy} onClick={() => saveRating(photo.rating === n ? 0 : n)}
+                    key={n} type="button" className={`meta-star${rating >= n ? ' lit' : ''}`} title={`${n} star${n === 1 ? '' : 's'}`}
+                    onClick={() => saveRating(n)}
                   >
-                    <Star size={18} fill={(photo.rating || 0) >= n ? '#F59E0B' : 'none'} />
+                    <Star size={18} fill={rating >= n ? '#F59E0B' : 'none'} />
                   </button>
                 ))}
               </div>
@@ -212,17 +223,17 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
               <div className="meta-swatches">
                 <button
                   key="none" type="button" title="No tag"
-                  className={`swatch swatch-none${!photo.color_tag ? ' active' : ''}`}
-                  disabled={busy} onClick={() => saveTag(null)}
+                  className={`swatch swatch-none${!colorTag ? ' active' : ''}`}
+                  onClick={() => saveTag(null)}
                 >
                   <X size={12} />
                 </button>
                 {TAGS.filter((t) => t.value).map((t) => (
                   <button
                     key={t.value} type="button" title={t.label}
-                    className={`swatch${photo.color_tag === t.value ? ' active' : ''}`}
+                    className={`swatch${colorTag === t.value ? ' active' : ''}`}
                     style={{ background: t.value }}
-                    disabled={busy} onClick={() => saveTag(t.value)}
+                    onClick={() => saveTag(t.value)}
                   />
                 ))}
               </div>
