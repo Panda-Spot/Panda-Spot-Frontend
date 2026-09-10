@@ -359,7 +359,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
                   <div key={f.id || i} className="face-strip-item">
                     <div className="face-strip-crop">
                       <img
-                        src={src}
+                        src={thumbSrc}
                         alt={`Face ${i + 1}`}
                         draggable={false}
                         style={(hasCrop && sq) ? {
