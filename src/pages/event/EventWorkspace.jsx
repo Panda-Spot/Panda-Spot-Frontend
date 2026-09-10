@@ -388,6 +388,7 @@ export default function EventWorkspace() {
   const [viewingIndex, setViewingIndex] = useState(0)
   const [viewingFaces, setViewingFaces] = useState([])
   const [facesLoading, setFacesLoading] = useState(false)
+  const [viewingHighlight, setViewingHighlight] = useState(null)
   // Phase 22 — AI Faces sub-tab (auto face groups).
   const [aiView, setAiView] = useState('members') // members | faces
   const [faceGroupsState, setFaceGroupsState] = useState({ loading: false, error: '', data: null })
@@ -603,7 +604,7 @@ export default function EventWorkspace() {
     saveActiveJob(eventId, jobId)
     cleanupRef.current = subscribeToUploadProgress(eventId, jobId, {
       onProgress: (data) => {
-        setProgress(data)
+        setProgressThrottled(data)
         appendLog(progressLine(data))
         addPhotoFromProgress(data)
         if (data.current_file) markFileByName(data.current_file, { status: 'processing' })
@@ -655,17 +656,31 @@ export default function EventWorkspace() {
     })
   }
 
-  // Backup refresh for membership index jobs: the SSE done-event drives
-  // the normal reload (watchJob above), but if that event is ever missed
+  // Progress-bar state updates at most twice a second — SSE ticks can
+  // fire far faster during bulk imports, and every setProgress re-renders
+  // the whole workspace (grids included). Logs stay per-tick.
+  const progressAtRef = useRef(0)
+  const setProgressThrottled = (data) => {
+    const now = Date.now()
+    if (now - progressAtRef.current > 500) {
+      progressAtRef.current = now
+      setProgress(data)
+    }
+  }
+
+  // Backup refresh for membership index jobs: the SSE done-event drives  // the normal reload (watchJob above), but if that event is ever missed
   // (dropped stream, replaced subscription) the grid would spin forever
   // until a manual refresh. So poll the photo flags until every added id
-  // carries face data, then do one final reload. Caps at ~5 minutes and
-  // self-cancels when a newer poll generation starts.
+  // carries face data, then do one final reload. Each round also flips
+  // newly-indexed cards live (surgical setPhotos patch — only changed
+  // rows produce a new array, so big grids don't re-render per round).
+  // Caps at ~2 minutes and self-cancels when a newer poll starts.
   const pollGenRef = useRef(0)
   const pollMembershipIndexed = (ids, tries = 0) => {
     const gen = ++pollGenRef.current
     const targets = (Array.isArray(ids) ? ids : []).filter(Boolean)
     if (targets.length === 0 || tries > 60) return
+    const targetSet = new Set(targets)
     setTimeout(async () => {
       if (pollGenRef.current !== gen) return
       try {
@@ -675,6 +690,24 @@ export default function EventWorkspace() {
           const p = byId.get(id)
           return p && !p.face_indexed_at
         })
+        setPhotos((prev) => {
+          let changed = false
+          const next = prev.map((p) => {
+            if (!targetSet.has(p.photo_id) || p.face_indexed_at) return p
+            const fresh = byId.get(p.photo_id)
+            if (fresh && fresh.face_indexed_at) {
+              changed = true
+              return {
+                ...p,
+                face_indexed_at: fresh.face_indexed_at,
+                face_count: fresh.face_count,
+                thumbnail_url: fresh.thumbnail_url || p.thumbnail_url,
+              }
+            }
+            return p
+          })
+          return changed ? next : prev
+        })
         if (pending.length === 0) {
           load()
           return
@@ -683,7 +716,7 @@ export default function EventWorkspace() {
         // transient fetch failure — just try the next round
       }
       pollMembershipIndexed(targets, tries + 1)
-    }, 5000)
+    }, 2000)
   }
 
   const handleStartEvent = async () => {
@@ -1101,18 +1134,34 @@ export default function EventWorkspace() {
     (p) => p.approval_status !== 'pending' && p.face_search_visible !== false
   )
 
-  const openFaceViewer = async (photo, list) => {
+  const openFaceViewer = async (photo, list, highlight) => {
     const items = Array.isArray(list) && list.length > 0 ? list : [photo]
     const at = Math.max(0, items.findIndex((p) => p.photo_id === photo.photo_id))
     const current = items[at] || photo
     setViewingList(items)
     setViewingIndex(at)
     setViewingPhoto(current)
+    // Person highlight (from a group's photo modal): kept across arrow
+    // navigation since it's the same person in every photo. Direct opens
+    // pass none and clear any previous highlight.
+    setViewingHighlight(highlight && (highlight.personName || (highlight.faceIds || []).length > 0) ? highlight : null)
     setViewingFaces([])
     setFacesLoading(true)
     try {
       const data = await getPhotoFaces(eventId, current.photo_id)
-      setViewingFaces(data.faces || [])
+      const faces = data.faces || []
+      // Newly indexed faces carry no studio name yet even when their
+      // group does — backfill from the loaded groups so the strip shows
+      // "Name · %" instead of bare "#n · %".
+      const groups = faceGroupsState?.data?.groups || []
+      const nameByFaceId = {}
+      for (const g of groups) {
+        if (!g.person_name || !Array.isArray(g.face_ids)) continue
+        for (const fid of g.face_ids) {
+          if (!nameByFaceId[fid]) nameByFaceId[fid] = g.person_name
+        }
+      }
+      setViewingFaces(faces.map((f) => (f.person_name || !nameByFaceId[f.id] ? f : { ...f, person_name: nameByFaceId[f.id] })))
     } catch (e) {
       showToast(e.message, { type: 'error' })
     } finally {
@@ -1619,7 +1668,7 @@ export default function EventWorkspace() {
     return new Promise((resolve) => {
       const cleanup = subscribeToUploadProgress(eventId, jobId, {
         onProgress: (data) => {
-          setProgress(data)
+          setProgressThrottled(data)
           appendLog(progressLine(data))
           addPhotoFromProgress(data)
           if (data.current_file) markFileByName(data.current_file, { status: 'processing' })
@@ -2190,10 +2239,11 @@ export default function EventWorkspace() {
         photo={viewingPhoto}
         faces={viewingFaces}
         loading={facesLoading}
+        highlight={viewingHighlight}
         items={viewingList}
         index={viewingIndex}
         onIndexChange={(dir) => stepFaceViewer(typeof dir === 'function' ? dir(0) : dir)}
-        onClose={() => { setViewingPhoto(null); setViewingFaces([]); setViewingList([]); setViewingIndex(0) }}
+        onClose={() => { setViewingPhoto(null); setViewingFaces([]); setViewingList([]); setViewingIndex(0); setViewingHighlight(null) }}
         onRemove={viewingPhoto ? async () => {
           const applied = await handlePhotoFeatureMembership(viewingPhoto.photo_id, { face_search_visible: false })
           if (!applied) return
@@ -2201,6 +2251,7 @@ export default function EventWorkspace() {
           setViewingFaces([])
           setViewingList([])
           setViewingIndex(0)
+          setViewingHighlight(null)
         } : undefined}
       />
       {metaPhotoId && (

@@ -45,7 +45,7 @@ function paddedSquare(rect, aspect) {
  * original-image pixels, converted here against the loaded image's natural
  * size. Used only from the studio AI Search tab.
  */
-export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemove, items, index = 0, onIndexChange }) {
+export default function PhotoFaceViewer({ photo, faces, loading, highlight, onClose, onRemove, items, index = 0, onIndexChange }) {
   const [natural, setNatural] = useState(null)
   const [imgError, setImgError] = useState(false)
   // Face boxes sit in unzoomed coordinates — hide them while zoomed.
@@ -81,7 +81,18 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
 
   if (!photo) return null
 
-  const faceList = faces || []
+  // Person highlight (opened from one person's photo modal): matching
+  // faces get the accent treatment, lead the strip, and the rest dim.
+  const isHighlighted = (f) => {
+    if (!highlight) return false
+    if (Array.isArray(highlight.faceIds) && highlight.faceIds.length > 0) return highlight.faceIds.includes(f.id)
+    return !!(highlight.personName && f.person_name && f.person_name === highlight.personName)
+  }
+  const rawList = faces || []
+  const hasHighlight = !!highlight && rawList.some(isHighlighted)
+  const faceList = hasHighlight
+    ? [...rawList].sort((a, b) => (isHighlighted(b) ? 1 : 0) - (isHighlighted(a) ? 1 : 0))
+    : rawList
   // Crop math needs ORIGINAL-image dims (bboxes are original pixels) while
   // only the thumbnail is ever displayed. Stored dims win; the measured
   // thumbnail is NOT a substitute (different size = wrong fractions).
@@ -125,6 +136,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
           {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
           {dims && !zoomed && faceList.map((f, i) => {
             const r = toRect(f.bbox, dims)
+            const hot = hasHighlight && isHighlighted(f)
             return (
               <div
                 key={f.id || i}
@@ -134,9 +146,10 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                   top: `${r.top}%`,
                   width: `${r.width}%`,
                   height: `${r.height}%`,
-                  border: '2px solid #F59E0B',
+                  border: hot ? '3px solid #4ADE80' : '2px solid #F59E0B',
                   borderRadius: 6,
-                  boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
+                  boxShadow: hot ? '0 0 12px rgba(74,222,128,0.8), 0 0 0 1px rgba(0,0,0,0.6)' : '0 0 0 1px rgba(0,0,0,0.6)',
+                  opacity: hasHighlight && !hot ? 0.45 : 1,
                   pointerEvents: 'none',
                 }}
               >
@@ -175,11 +188,18 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
           {!loading && faceList.length > 0 && (
             <div className="face-strip">
               {faceList.map((f, i) => {
+                const hot = hasHighlight && isHighlighted(f)
                 // Preferred: server-stored closeup (exact pixels). Fallback:
                 // crop math from stored dims; last resort: whole thumbnail.
                 if (f.thumbnail_url) {
                   return (
-                    <div key={f.id || i} className="face-strip-item">
+                    <div
+                      key={f.id || i}
+                      className="face-strip-item"
+                      style={hot
+                        ? { outline: '2px solid #4ADE80', outlineOffset: 2, borderRadius: 12 }
+                        : hasHighlight ? { opacity: 0.55 } : undefined}
+                    >
                       <div className="face-strip-crop">
                         <img
                           src={fileUrl(f.thumbnail_url)}
@@ -195,7 +215,13 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                 const hasCrop = !!dims;
                 const sq = hasCrop ? closeup(f) : null
                 return (
-                  <div key={f.id || i} className="face-strip-item">
+                  <div
+                    key={f.id || i}
+                    className="face-strip-item"
+                    style={hot
+                      ? { outline: '2px solid #4ADE80', outlineOffset: 2, borderRadius: 12 }
+                      : hasHighlight ? { opacity: 0.55 } : undefined}
+                  >
                     <div className="face-strip-crop">
                       <img
                         src={src}

@@ -234,6 +234,7 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
                   onOpenPhoto(
                     list[Math.max(0, list.findIndex((qq) => qq.photo_id === p.photo_id))],
                     list,
+                    { personName: viewing.person_name || null, faceIds: viewing.face_ids || [] },
                   )
                 }}
                 title="Open fullscreen + face closeups"
