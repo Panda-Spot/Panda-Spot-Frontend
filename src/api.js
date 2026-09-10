@@ -327,6 +327,17 @@ export const setFacePersonName = (eventId, faceIds, personName) =>
 export const searchFaceNames = (q) =>
   request(`/studio/face-names?q=${encodeURIComponent(q)}`)
 
+// Same/different-person review queue for lookalike groups.
+export const getMergeSuggestions = (eventId) =>
+  request(`/events/${eventId}/merge-suggestions`)
+
+export const dismissMergeSuggestion = (eventId, faceA, faceB) =>
+  request(`/events/${eventId}/merge-suggestions/dismiss`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ face_a: faceA, face_b: faceB }),
+  })
+
 // Bulk zero-copy membership: set flags across an id list or a
 // server-side `all` selector ({ source?, status?, approval? }). Adding to
 // Face Search may return a job_id for background face-indexing - watch it

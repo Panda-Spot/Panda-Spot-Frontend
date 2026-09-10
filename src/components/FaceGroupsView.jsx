@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import GalleryMedia from './GalleryMedia.jsx'
+import MergeReview from './MergeReview.jsx'
 import Modal from './Modal.jsx'
 import { fileUrl, setFacePersonName } from '../api.js'
 import { useToast } from '../toast.jsx'
@@ -159,6 +160,7 @@ export default function FaceGroupsView({ eventId, groupsState, openGroupId, onOp
         onChange={(e) => setQuery(e.target.value)}
         style={{ marginBottom: 12 }}
       />
+      <MergeReview eventId={eventId} onChanged={onRenamed} />
       {shown.length === 0 && (
         <p className="hint">No people match “{query.trim()}”.</p>
       )}
