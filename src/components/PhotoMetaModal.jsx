@@ -139,8 +139,8 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel modal-scrollable" data-modal-panel="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.filename}</h3>
+        <div className="meta-head">
+          <h3 className="meta-title" title={photo.filename}>{photo.filename}</h3>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
@@ -177,76 +177,83 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
             </span>
           </div>
         </div>
-        <div className="guest-link-label" style={{ marginTop: 14 }}>Camera metadata</div>
-        {exifRows.length === 0 ? (
-          <p className="hint meta-empty-inline">
-            <CameraOff size={14} /> No camera metadata on this file — screenshots, exports, and some uploads carry none.
-          </p>
-        ) : (
-          <ul className="team-list">
-            {exifRows.map(([k, v]) => (
-              <li key={k} className="team-list-item"><span style={{ flex: 1 }}>{k}</span><span>{String(v)}</span></li>
-            ))}
-          </ul>
-        )}
-        <div className="guest-link-label" style={{ marginTop: 14 }}>Rating & color tag</div>
-        <div className="row" style={{ gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <span className="field-label">Rating</span>
-            <div className="row" style={{ gap: 2 }}>
-              {[1, 2, 3, 4, 5].map((n) => (
+        <div className="meta-section">
+          <div className="guest-link-label meta-section-label">Camera metadata</div>
+          {exifRows.length === 0 ? (
+            <p className="hint meta-empty-inline">
+              <CameraOff size={14} /> No camera metadata on this file — screenshots, exports, and some uploads carry none.
+            </p>
+          ) : (
+            <ul className="team-list">
+              {exifRows.map(([k, v]) => (
+                <li key={k} className="team-list-item"><span style={{ flex: 1 }}>{k}</span><span>{String(v)}</span></li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="meta-section">
+          <div className="guest-link-label meta-section-label">Rating & color tag</div>
+          <div className="meta-rate-row">
+            <div className="meta-rate-group">
+              <span className="meta-rate-label">Rating</span>
+              <div className="meta-stars">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n} type="button" className={`meta-star${(photo.rating || 0) >= n ? ' lit' : ''}`} title={`${n} star${n === 1 ? '' : 's'}`}
+                    disabled={busy} onClick={() => saveRating(photo.rating === n ? 0 : n)}
+                  >
+                    <Star size={18} fill={(photo.rating || 0) >= n ? '#F59E0B' : 'none'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="meta-rate-group">
+              <span className="meta-rate-label">Color tag</span>
+              <div className="meta-swatches">
                 <button
-                  key={n} type="button" className="dismiss-btn" title={`${n} star${n === 1 ? '' : 's'}`}
-                  disabled={busy} onClick={() => saveRating(photo.rating === n ? 0 : n)}
-                  style={{ color: (photo.rating || 0) >= n ? '#F59E0B' : undefined }}
+                  key="none" type="button" title="No tag"
+                  className={`swatch swatch-none${!photo.color_tag ? ' active' : ''}`}
+                  disabled={busy} onClick={() => saveTag(null)}
                 >
-                  <Star size={18} fill={(photo.rating || 0) >= n ? '#F59E0B' : 'none'} />
+                  <X size={12} />
                 </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span className="field-label">Color tag</span>
-            <div className="row" style={{ gap: 6 }}>
-              <button
-                key="none" type="button" title="No tag"
-                className={`swatch swatch-none${!photo.color_tag ? ' active' : ''}`}
-                disabled={busy} onClick={() => saveTag(null)}
-              >
-                <X size={12} />
-              </button>
-              {TAGS.filter((t) => t.value).map((t) => (
-                <button
-                  key={t.value} type="button" title={t.label}
-                  className={`swatch${photo.color_tag === t.value ? ' active' : ''}`}
-                  style={{ background: t.value }}
-                  disabled={busy} onClick={() => saveTag(t.value)}
-                />
-              ))}
+                {TAGS.filter((t) => t.value).map((t) => (
+                  <button
+                    key={t.value} type="button" title={t.label}
+                    className={`swatch${photo.color_tag === t.value ? ' active' : ''}`}
+                    style={{ background: t.value }}
+                    disabled={busy} onClick={() => saveTag(t.value)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-        <div className="guest-link-label" style={{ marginTop: 14 }}>Actions</div>
-        <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label className="field-label" htmlFor="meta-preset">Download</label>
-            <select id="meta-preset" className="text-input" value={preset} onChange={(e) => setPreset(e.target.value)}>
-              {PRESETS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
+        <div className="meta-section">
+          <div className="guest-link-label meta-section-label">Actions</div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label className="field-label" htmlFor="meta-preset">Download</label>
+              <select id="meta-preset" className="text-input" value={preset} onChange={(e) => setPreset(e.target.value)}>
+                {PRESETS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+            <button className="btn secondary" type="button" disabled={downloading} onClick={handleDownload}>
+              <Download size={13} /> {downloading ? 'Preparing…' : 'Download'}
+            </button>
           </div>
-          <button className="btn secondary" type="button" disabled={downloading} onClick={handleDownload}>
-            <Download size={13} /> {downloading ? 'Preparing…' : 'Download'}
-          </button>
-          <button className="btn secondary" type="button" disabled={busy} onClick={handleCover}>
-            Use as cover
-          </button>
-          <button className="btn secondary" type="button" disabled={busy} onClick={handleArchiveToggle}>
-            {photo.archived_at ? <><ArchiveRestore size={13} /> Restore</> : <><Archive size={13} /> Archive</>}
-          </button>
+          <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <button className="btn secondary" type="button" disabled={busy} onClick={handleCover}>
+              Use as cover
+            </button>
+            <button className="btn secondary" type="button" disabled={busy} onClick={handleArchiveToggle}>
+              {photo.archived_at ? <><ArchiveRestore size={13} /> Restore</> : <><Archive size={13} /> Archive</>}
+            </button>
+          </div>
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 18 }}>
           <button type="button" className="btn secondary" onClick={onClose}>Close</button>
         </div>
       </div>

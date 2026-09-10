@@ -439,6 +439,37 @@
 
 /* --- Photo inspector modal (Info popup) --- */
 
+.meta-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.meta-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+}
+
+.meta-head .modal-close {
+  flex-shrink: 0;
+}
+
+/* Uniform vertical rhythm: every section is 18px after the previous
+   block, label 8px above its content. No ad-hoc margins in JSX. */
+.meta-section {
+  margin-top: 18px;
+}
+
+.meta-section-label {
+  margin: 0 0 8px;
+}
+
 .meta-preview {
   background: #111;
   border-radius: 10px;
@@ -465,6 +496,7 @@
   border-radius: 10px;
   background: var(--card);
   min-width: 0;
+  min-height: 56px;
 }
 
 .meta-stat-icon {
@@ -515,10 +547,74 @@
   font-size: 12.5px;
 }
 
+/* Inspector rating stars + color swatches: real 32px targets, even
+   gaps, labels above (never inline) so rows baseline-align. */
+.meta-rate-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.meta-rate-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-rate-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.meta-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.meta-star {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.meta-star:hover:not(:disabled) {
+  transform: scale(1.1);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.meta-star:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.meta-star.lit {
+  color: #F59E0B;
+}
+
+.meta-swatches {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+}
+
 /* Round color-tag swatches (inspector popup). */
 .swatch {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 2px solid transparent;
   padding: 0;
