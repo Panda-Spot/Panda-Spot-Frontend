@@ -1129,7 +1129,7 @@ export default function EventWorkspace() {
 
   const handleBulkRemoveVisible = async (feature) => {
     const members = feature === 'selection' ? selectionMembers() : aiMembers()
-    if (members.length === 0) return
+    if (members.length === 0) return false
     const patch = feature === 'selection' ? { photo_selection_visible: false } : { face_search_visible: false }
     const aiNote = feature === 'selection'
       ? 'Files stay in the manager — only membership flags change.'
@@ -1138,7 +1138,7 @@ export default function EventWorkspace() {
       `Remove ${members.length} visible photo(s) from ${feature === 'selection' ? 'Photo Selection' : 'AI Search'}? ${aiNote}`,
       { title: 'Remove from feature?', confirmLabel: 'Remove', danger: false }
     )
-    if (!confirmed) return
+    if (!confirmed) return false
     setBulking('remove')
     try {
       const res = await bulkSetMembership(eventId, {
@@ -1150,8 +1150,10 @@ export default function EventWorkspace() {
       // Membership changed — drop cached face groups so the Faces sub-tab
       // refetches fresh instead of showing removed photos' clusters.
       setFaceGroupsState((prev) => (prev.data ? { loading: false, error: '', data: null } : prev))
+      return true
     } catch (e) {
       showToast(e.message, { type: 'error' })
+      return false
     } finally {
       setBulking(null)
     }

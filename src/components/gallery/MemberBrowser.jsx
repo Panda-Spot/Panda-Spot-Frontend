@@ -61,6 +61,18 @@ export default function MemberBrowser({
     }
   }
 
+  // "Remove all visible" takes even ticked photos out of the feature, so
+  // the strip count resets with it — but only when it actually ran.
+  const handleRemoveAllVisible = async () => {
+    setBulking(true)
+    try {
+      const applied = await onRemoveAllVisible()
+      if (applied !== false) sel.clear()
+    } finally {
+      setBulking(false)
+    }
+  }
+
   return (
     <div className="photo-browser">
       {selectMode && pagedIds.length > 0 && (
@@ -79,7 +91,7 @@ export default function MemberBrowser({
             <button className="btn secondary" type="button" disabled={bulking || sel.count === 0} onClick={handleRemoveSelected}>
               {bulking ? 'Removing…' : `Remove ${sel.count}`}
             </button>
-            <button className="btn secondary" type="button" disabled={bulking || pagedIds.length === 0} onClick={onRemoveAllVisible}>
+            <button className="btn secondary" type="button" disabled={bulking || pagedIds.length === 0} onClick={handleRemoveAllVisible}>
               Remove all visible
             </button>
           </div>

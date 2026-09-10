@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Archive, ArchiveRestore, CameraOff, Download, Fingerprint, Gauge, ScanFace, Star, X } from 'lucide-react';
 import { archivePhoto, downloadFile, fileUrl, restorePhoto, setCoverFromPhoto, setPhotoColorTag, setPhotoRating } from '../api.js';
@@ -72,29 +72,34 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     }
   };
 
+  // Monotonic per-save sequence: a slow failure only reverts when no
+  // newer tap has landed since (rapid re-taps keep last-tap-wins).
+  const saveSeq = useRef(0);
   const saveRating = async (next) => {
     const prev = rating;
     const value = prev === next ? 0 : next;
+    const my = ++saveSeq.current;
     setRating(value);
     try {
       await setPhotoRating(eventId, photo.photo_id, value);
       showToast(value === 0 ? 'Rating cleared.' : `Rated ${value} star${value === 1 ? '' : 's'}.`);
       onChanged?.();
     } catch (e) {
-      setRating(prev);
+      if (saveSeq.current === my) setRating(prev);
       showToast(e.message, { type: 'error' });
     }
   };
 
   const saveTag = async (next) => {
     const prev = colorTag;
+    const my = ++saveSeq.current;
     setColorTag(next);
     try {
       await setPhotoColorTag(eventId, photo.photo_id, next);
       showToast(next ? `Color tag set to ${next}.` : 'Color tag cleared.');
       onChanged?.();
     } catch (e) {
-      setColorTag(prev);
+      if (saveSeq.current === my) setColorTag(prev);
       showToast(e.message, { type: 'error' });
     }
   };
