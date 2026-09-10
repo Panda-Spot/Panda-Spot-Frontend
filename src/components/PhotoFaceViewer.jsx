@@ -17,19 +17,24 @@ function toRect(bbox, natural) {
   }
 }
 
-// Padded square crop around a face rect (fractions 0..1), clamped inside
-// the image — keeps closeup tiles uniform even for edge faces.
-function paddedSquare(rect) {
-  const cx = rect.left + rect.width / 2
+// Padded SQUARE-IN-PIXELS crop around a face rect (fractions 0..1),
+// clamped inside the image — keeps closeup tiles uniform even for edge
+// faces. Fraction-space squares are NOT pixel squares on non-square
+// photos (a 10%-wide slice of a 3:2 image is 1.5x taller than wide), so
+// the math runs in pixel space (height normalized to 1, width = aspect)
+// and converts back to per-axis fractions. The tile then sizes the img
+// per axis (width % + height %), which maps each axis exactly —
+// width-only sizing shifts/squashes tiles on landscape photos.
+function paddedSquare(rect, aspect) {
+  const a = aspect > 0 ? aspect : 1
+  const cx = (rect.left + rect.width / 2) * a
   const cy = rect.top + rect.height / 2
-  const half = Math.max(rect.width, rect.height) * 0.85
-  let left = Math.max(0, cx - half)
-  let top = Math.max(0, cy - half)
-  let size = half * 2
-  if (left + size > 100) left = Math.max(0, 100 - size)
-  if (top + size > 100) top = Math.max(0, 100 - size)
-  size = Math.min(size, 100 - left, 100 - top)
-  return { left, top, size }
+  let side = Math.max(rect.width * a, rect.height) * 1.7
+  side = Math.min(side, a, 1)
+  if (!(side > 0)) return null
+  const x0 = Math.min(Math.max(cx - side / 2, 0), Math.max(0, a - side))
+  const y0 = Math.min(Math.max(cy - side / 2, 0), Math.max(0, 1 - side))
+  return { left: x0 / a, top: y0, sizeW: side / a, sizeH: side }
 }
 
 /**
@@ -92,7 +97,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
       top: r.top / 100,
       width: r.width / 100,
       height: r.height / 100,
-    })
+    }, dims.width / dims.height)
   }
 
   return createPortal(
@@ -196,12 +201,14 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                         src={src}
                         alt={`Face ${i + 1}`}
                         draggable={false}
-                        style={hasCrop ? {
+                        style={(hasCrop && sq) ? {
                           position: 'absolute',
-                          left: `${-(sq.left / sq.size) * 100}%`,
-                          top: `${-(sq.top / sq.size) * 100}%`,
-                          width: `${100 / sq.size}%`,
+                          left: `${-(sq.left / sq.sizeW) * 100}%`,
+                          top: `${-(sq.top / sq.sizeH) * 100}%`,
+                          width: `${100 / sq.sizeW}%`,
+                          height: `${100 / sq.sizeH}%`,
                           maxWidth: 'none',
+                          maxHeight: 'none',
                         } : {
                           width: '100%',
                           height: '100%',

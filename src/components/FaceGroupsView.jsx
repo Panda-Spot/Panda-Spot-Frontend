@@ -50,21 +50,23 @@ function Closeup({ photoId, bbox, dims, thumbnailUrl, eventId, size = 88 }) {
   }
 
   const [x1, y1, x2, y2] = bbox.map(Number)
-  const left = Math.max(0, Math.min(x1 / dims.width, 1))
-  const top = Math.max(0, Math.min(y1 / dims.height, 1))
-  const right = Math.max(0, Math.min(x2 / dims.width, 1))
-  const bottom = Math.max(0, Math.min(y2 / dims.height, 1))
-  // Padded square around the face, clamped inside the image.
-  const cx = (left + right) / 2
-  const cy = (top + bottom) / 2
-  const half = Math.max(right - left, bottom - top) * 0.85
-  let sqLeft = Math.max(0, cx - half)
-  let sqTop = Math.max(0, cy - half)
-  let sqSize = half * 2
-  if (sqLeft + sqSize > 1) sqLeft = Math.max(0, 1 - sqSize)
-  if (sqTop + sqSize > 1) sqTop = Math.max(0, 1 - sqSize)
-  sqSize = Math.min(sqSize, 1 - sqLeft, 1 - sqTop)
-  if (!(sqSize > 0)) return <div className="skeleton" style={{ width: size, height: size, borderRadius: 12 }} />
+  const fw = Math.max(0, Math.min(x2 / dims.width, 1) - Math.max(0, Math.min(x1 / dims.width, 1)))
+  const fh = Math.max(0, Math.min(y2 / dims.height, 1) - Math.max(0, Math.min(y1 / dims.height, 1)))
+  const cx = (Math.max(0, Math.min(x1 / dims.width, 1)) + Math.max(0, Math.min(x2 / dims.width, 1))) / 2
+  const cy = (Math.max(0, Math.min(y1 / dims.height, 1)) + Math.max(0, Math.min(y2 / dims.height, 1))) / 2
+  // Pixel-square crop (see PhotoFaceViewer): fraction squares drift on
+  // non-square photos, so run the padding in pixel space (height = 1,
+  // width = aspect) and size the tile img per axis.
+  const aspect = dims.width / dims.height || 1
+  let side = Math.max(fw * aspect, fh) * 1.7
+  side = Math.min(side, aspect, 1)
+  if (!(side > 0)) return <div className="skeleton" style={{ width: size, height: size, borderRadius: 12 }} />
+  const x0 = Math.min(Math.max(cx * aspect - side / 2, 0), Math.max(0, aspect - side))
+  const y0 = Math.min(Math.max(cy - side / 2, 0), Math.max(0, 1 - side))
+  const sqLeft = x0 / aspect
+  const sqTop = y0
+  const sqSizeW = side / aspect
+  const sqSizeH = side
 
   return (
     <div style={{ width: size, height: size, borderRadius: 12, overflow: 'hidden', position: 'relative', background: '#000', flexShrink: 0 }}>
@@ -75,10 +77,12 @@ function Closeup({ photoId, bbox, dims, thumbnailUrl, eventId, size = 88 }) {
         onError={() => setFailed(true)}
         style={{
           position: 'absolute',
-          left: `${-(sqLeft / sqSize) * 100}%`,
-          top: `${-(sqTop / sqSize) * 100}%`,
-          width: `${100 / sqSize}%`,
+          left: `${-(sqLeft / sqSizeW) * 100}%`,
+          top: `${-(sqTop / sqSizeH) * 100}%`,
+          width: `${100 / sqSizeW}%`,
+          height: `${100 / sqSizeH}%`,
           maxWidth: 'none',
+          maxHeight: 'none',
         }}
       />
     </div>
