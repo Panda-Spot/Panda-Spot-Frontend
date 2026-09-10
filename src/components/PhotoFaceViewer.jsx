@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Tag, Trash2, X } from 'lucide-react'
 import { fileUrl } from '../api.js'
+import { getToken } from '../authToken.js'
 import { lockScroll, unlockScroll } from '../utils/scrollLock.js'
 import ZoomableImage from './gallery/ZoomableImage.jsx'
 
@@ -52,13 +53,86 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
   const [zoomed, setZoomed] = useState(false)
   // Thumbnails by default — originals may live on Drive (revocable) or be
   // expired; the cached thumbnail is always servable. The eye toggle
-  // lets the studio load the full original explicitly, like Photos.
+  // streams the full original like Photos & Imports: thumbnail stays
+  // painted with a live progress bar, original fades in on top when done.
   const [showOriginal, setShowOriginal] = useState(false)
+  const [origUrl, setOrigUrl] = useState(null)
+  const [origProgress, setOrigProgress] = useState(null) // { loaded, total|null }
+  const [origError, setOrigError] = useState('')
+  const [origReady, setOrigReady] = useState(false)
+  const abortRef = useRef(null)
   // Person-highlight boxes can be hidden to inspect the clean photo.
   const [showHighlight, setShowHighlight] = useState(true)
-  const src = photo
-    ? fileUrl(showOriginal && photo.url ? photo.url : (photo.thumbnail_url || photo.url))
-    : ''
+  const thumbSrc = photo ? fileUrl(photo.thumbnail_url || photo.url) : ''
+
+  const stopOriginalLoad = () => {
+    try { abortRef.current?.abort() } catch { /* already settled */ }
+    abortRef.current = null
+  }
+
+  const loadOriginal = async (p) => {
+    stopOriginalLoad()
+    setOrigError('')
+    setOrigReady(false)
+    setOrigProgress({ loaded: 0, total: null })
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const token = getToken()
+      const res = await fetch(fileUrl(p.url), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: ctrl.signal,
+      })
+      if (!res.ok) throw new Error(`Original unavailable (${res.status})`)
+      const total = Number(res.headers.get('Content-Length')) || null
+      if (!res.body || typeof res.body.getReader !== 'function') {
+        const blob = await res.blob()
+        setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
+        setOrigProgress(null)
+        return
+      }
+      const reader = res.body.getReader()
+      const chunks = []
+      let loaded = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        loaded += value.byteLength || value.length || 0
+        setOrigProgress({ loaded, total })
+      }
+      const blob = new Blob(chunks)
+      setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
+      setOrigProgress(null)
+    } catch (e) {
+      if (e?.name !== 'AbortError') {
+        setOrigError(e.message || 'Could not load the original')
+        setOrigProgress(null)
+      }
+    } finally {
+      if (abortRef.current === ctrl) abortRef.current = null
+    }
+  }
+
+  const toggleOriginal = () => {
+    if (!photo?.url) return
+    if (showOriginal || origUrl) {
+      stopOriginalLoad()
+      setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+      setOrigProgress(null)
+      setOrigError('')
+      setOrigReady(false)
+      setShowOriginal(false)
+    } else {
+      setShowOriginal(true)
+      loadOriginal(photo)
+    }
+  }
+
+  useEffect(() => () => {
+    stopOriginalLoad()
+    setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+  }, [])
   const total = Array.isArray(items) && items.length > 0 ? items.length : 1
   const canNav = typeof onIndexChange === 'function' && total > 1
   const go = (dir) => { if (canNav) onIndexChange(dir) }
@@ -66,7 +140,13 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
   useEffect(() => {
     setNatural(null)
     setImgError(false)
-  }, [photo?.photo_id])
+    stopOriginalLoad()
+    setOrigUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null })
+    setOrigProgress(null)
+    setOrigError('')
+    setOrigReady(false)
+    setShowOriginal(false)
+  }, [photo?.photo_id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!photo) return
     lockScroll()
@@ -128,14 +208,57 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
         <div className="face-viewer-photo">
           {!natural && !imgError && <div className="lightbox-spinner" />}
           <ZoomableImage
-            key={src}
-            src={src}
+            key={`t-${photo.photo_id}`}
+            src={thumbSrc}
             alt={photo.filename}
             className="face-viewer-img"
             onLoad={(e) => setNatural({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
             onError={() => setImgError(true)}
             onZoomChange={(z) => setZoomed(z > 1)}
           />
+          {showOriginal && origUrl && (
+            <ZoomableImage
+              key={`o-${photo.photo_id}`}
+              src={origUrl}
+              alt={photo.filename}
+              className="face-viewer-img"
+              onLoad={() => setOrigReady(true)}
+              onZoomChange={(z) => setZoomed(z > 1)}
+              style={{
+                position: 'absolute', inset: 0,
+                opacity: origReady ? 1 : 0,
+                transition: 'opacity 0.3s',
+                pointerEvents: origReady ? undefined : 'none',
+              }}
+            />
+          )}
+          {(origProgress || origError) && (
+            <div className="orig-progress-float" onClick={(e) => e.stopPropagation()}>
+              {origProgress ? (
+                <>
+                  <div className="orig-progress-bar">
+                    <div
+                      style={{
+                        width: origProgress.total ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%` : '35%',
+                        height: '100%',
+                        background: '#F59E0B',
+                        borderRadius: 3,
+                        transition: origProgress.total ? 'width 0.2s' : undefined,
+                      }}
+                      className={origProgress.total ? undefined : 'orig-progress-busy'}
+                    />
+                  </div>
+                  <span className="hint">
+                    Downloading original… {origProgress.total
+                      ? `${Math.round((origProgress.loaded / origProgress.total) * 100)}%`
+                      : `${(origProgress.loaded / 1048576).toFixed(1)} MB`}
+                  </span>
+                </>
+              ) : (
+                <p className="error" style={{ margin: 0, fontSize: 12 }}>{origError}</p>
+              )}
+            </div>
+          )}
           {imgError && <p className="error" style={{ padding: 12 }}>Couldn&apos;t load the thumbnail.</p>}
           {dims && !zoomed && showHighlight && faceList.map((f, i) => {
             const r = toRect(f.bbox, dims)
@@ -192,7 +315,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, highlight, onCl
                 <button
                   type="button" className="icon-btn"
                   title={showOriginal ? 'Back to thumbnail (fast, always available)' : 'View full original'}
-                  onClick={(e) => { e.stopPropagation(); setShowOriginal((v) => !v) }}
+                  onClick={(e) => { e.stopPropagation(); toggleOriginal() }}
                   style={{ width: 26, height: 26 }}
                 >
                   {showOriginal ? <EyeOff size={14} /> : <Eye size={14} />}
