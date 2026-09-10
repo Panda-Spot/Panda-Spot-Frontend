@@ -188,7 +188,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       </div>
-                      <span className="hint">#{i + 1}{f.det_score != null ? ` · ${Math.round(f.det_score * 100)}%` : ''}</span>
+                      <span className="hint">#{i + 1}{f.person_name ? ` · ${f.person_name}` : ''}{f.det_score != null ? ` · ${Math.round(f.det_score * 100)}%` : ''}</span>
                     </div>
                   )
                 }
@@ -216,7 +216,7 @@ export default function PhotoFaceViewer({ photo, faces, loading, onClose, onRemo
                         }}
                       />
                     </div>
-                    <span className="hint">#{i + 1}{f.det_score != null ? ` · ${Math.round(f.det_score * 100)}%` : ''}</span>
+                    <span className="hint">#{i + 1}{f.person_name ? ` · ${f.person_name}` : ''}{f.det_score != null ? ` · ${Math.round(f.det_score * 100)}%` : ''}</span>
                   </div>
                 )
               })}

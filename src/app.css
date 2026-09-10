@@ -5148,6 +5148,55 @@ a.shoot-cal-entry:hover {
   padding-left: 4px;
 }
 
+/* --- Faces tab: circular person tiles, count badge, name below --- */
+
+.face-circle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 16px 12px;
+}
+
+.face-circle-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.face-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #f59e0b;
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+.face-circle-name {
+  margin: 8px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.face-circle-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   .shoot-cal-cell {
     min-height: 58px;

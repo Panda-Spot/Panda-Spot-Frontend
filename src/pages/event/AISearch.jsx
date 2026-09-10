@@ -20,7 +20,7 @@ export default function AISearch() {
   const {
     eventId, event, photos, analytics, load,
     aiMembers, aiView, setAiView,
-    faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer,
+    faceGroupsState, openGroupId, setOpenGroupId, openFaceViewer, refreshFaceGroups,
     handleBulkRemoveVisible, bulking, handlePhotoFeatureMembership, savingPhotoFeatures,
     privacyDraft, setPrivacyDraft,
     requestStartEvent, setActiveTab,
@@ -177,6 +177,7 @@ export default function AISearch() {
                 onOpenGroup={setOpenGroupId}
                 openGroupId={openGroupId}
                 onOpenPhoto={openFaceViewer}
+                onRenamed={refreshFaceGroups}
               />
             ) : (
               <>

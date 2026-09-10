@@ -431,6 +431,15 @@ export default function EventWorkspace() {
       .then((data) => setFaceGroupsState({ loading: false, error: '', data }))
       .catch((e) => setFaceGroupsState({ loading: false, error: e.message, data: null }))
   }, [aiView, activeTab, event?.face_search_enabled, eventId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Explicit refetch (person rename while sitting on the Faces tab —
+  // busting alone wouldn't refire the effect above).
+  const refreshFaceGroups = useCallback(() => {
+    if (!event?.face_search_enabled) return
+    setFaceGroupsState({ loading: true, error: '', data: null })
+    getEventFaceGroups(eventId)
+      .then((data) => setFaceGroupsState({ loading: false, error: '', data }))
+      .catch((e) => setFaceGroupsState({ loading: false, error: e.message, data: null }))
+  }, [event?.face_search_enabled, eventId])
   const cleanupRef = useRef(null)
   const liveStreamCleanupRef = useRef(null)
   const initialTabAppliedRef = useRef(false)
@@ -2111,7 +2120,7 @@ export default function EventWorkspace() {
     metaPhotoId, setMetaPhotoId, dupIds, setDupIds,
     toolsFilter, setToolsFilter, managerVisible,
     viewingPhoto, viewingFaces, facesLoading,
-    aiView, setAiView, faceGroupsState, openGroupId, setOpenGroupId,
+    aiView, setAiView, faceGroupsState, refreshFaceGroups, openGroupId, setOpenGroupId,
     togglingHighlightId, visibleManageablePhotos, selectedCount, visiblePhotos,
     load, loadAlbums, loadTeam, loadClients, loadFavourites, loadPicks,
     handleStartEvent, requestStartEvent, showStartConfirm, setShowStartConfirm,

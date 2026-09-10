@@ -313,6 +313,20 @@ export const updatePhotoFeatureMembership = (eventId, photoId, patch) =>
     body: JSON.stringify(patch),
   })
 
+// Studio-only person naming for a face group: sets personName on every
+// given face id (empty string clears back to "Person N"). Group display
+// names resolve server-side by majority vote.
+export const setFacePersonName = (eventId, faceIds, personName) =>
+  request(`/events/${eventId}/faces/name`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ face_ids: faceIds, person_name: personName }),
+  })
+
+// Global studio people search across owned events (min 2 chars).
+export const searchFaceNames = (q) =>
+  request(`/studio/face-names?q=${encodeURIComponent(q)}`)
+
 // Bulk zero-copy membership: set flags across an id list or a
 // server-side `all` selector ({ source?, status?, approval? }). Adding to
 // Face Search may return a job_id for background face-indexing - watch it
