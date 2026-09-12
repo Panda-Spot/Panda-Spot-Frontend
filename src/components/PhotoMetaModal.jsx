@@ -57,6 +57,11 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [photo, onClose]);
 
+  // Monotonic per-save sequence: a slow failure only reverts when no
+  // newer tap has landed since (rapid re-taps keep last-tap-wins).
+  // Declared before the early return — hooks must run unconditionally.
+  const saveSeq = useRef(0);
+
   if (!photo) return null;
 
   const handleDownload = async () => {
@@ -72,9 +77,6 @@ export default function PhotoMetaModal({ eventId, photo, onClose, onChanged }) {
     }
   };
 
-  // Monotonic per-save sequence: a slow failure only reverts when no
-  // newer tap has landed since (rapid re-taps keep last-tap-wins).
-  const saveSeq = useRef(0);
   const saveRating = async (next) => {
     const prev = rating;
     const value = prev === next ? 0 : next;
